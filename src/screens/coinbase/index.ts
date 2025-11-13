@@ -1,0 +1,1 @@
+export {default as CoinbaseOnrampScreen} from './CoinbaseOnRampScreen';
