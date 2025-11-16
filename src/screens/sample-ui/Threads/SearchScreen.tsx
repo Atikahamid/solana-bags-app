@@ -144,8 +144,8 @@ export default function SearchScreen() {
         // ✅ Send subscribe list to backend
         if (activeTab === "Trending" && res.length > 0) {
           const mintAddresses = res.map((t: any) => t.mint).filter(Boolean);
-          console.log("📤 Sending subscribe_marketcap with:", mintAddresses);
-          socketService.emit("subscribe_marketcap", mintAddresses);
+          // console.log("📤 Sending subscribe_marketcap with:", mintAddresses);
+          // socketService.emit("subscribe_marketcap", mintAddresses);
         }
       } catch (err) {
         console.error("[SearchScreen] Error loading tokens:", err);

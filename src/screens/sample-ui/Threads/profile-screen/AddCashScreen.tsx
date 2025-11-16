@@ -1,5 +1,5 @@
 // src/screens/AddCashScreen.tsx
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,20 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import {LinearGradient} from 'expo-linear-gradient';
+import {Ionicons} from '@expo/vector-icons';
 import COLORS from '@/assets/colors';
 import Icons from '@/assets/svgs';
 import QRCodeModal from '@/modules/moonpay/components/QRCodeModal';
-import { useWallet } from '@/modules/wallet-providers';
-import { useNavigation } from '@react-navigation/native';
+import {useWallet} from '@/modules/wallet-providers';
+import {useNavigation} from '@react-navigation/native';
 
 const AddCashScreen: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Apple Pay');
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const { address } = useWallet();
+  const {address} = useWallet();
   const navigation = useNavigation();
 
   const walletAddress = address;
@@ -54,7 +54,13 @@ const AddCashScreen: React.FC = () => {
   // ✅ Conditional navigation
   const handleAddCash = () => {
     if (paymentMethod === 'Coinbase') {
-      navigation.navigate('CoinbaseOnRampScreen' as never);
+      navigation.navigate(
+        'CoinbaseOnRampScreen' as never,
+        {
+          walletAddress: walletAddress,
+          amount: numericAmount,
+        } as never,
+      );
     } else if (paymentMethod === 'Apple Pay') {
       navigation.navigate('OnrampScreen' as never);
     } else {
@@ -65,17 +71,19 @@ const AddCashScreen: React.FC = () => {
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
+      start={{x: 0, y: 0}}
+      end={{x: 0, y: 1}}
       style={styles.container}>
       <SafeAreaView>
         {/* Header */}
-        <View style={[styles.header, { padding: 16, height: 70 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <View style={[styles.header, {padding: 16, height: 70}]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}>
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.title}>💸 Add Cash</Text>
-          <View style={{ width: 28 }} />
+          <View style={{width: 28}} />
         </View>
 
         {/* Display */}
@@ -85,7 +93,9 @@ const AddCashScreen: React.FC = () => {
         </View>
 
         {/* Payment Selector */}
-        <TouchableOpacity style={styles.selector} onPress={() => setShowModal(true)}>
+        <TouchableOpacity
+          style={styles.selector}
+          onPress={() => setShowModal(true)}>
           <Ionicons
             name={
               paymentMethod === 'Apple Pay'
@@ -106,7 +116,7 @@ const AddCashScreen: React.FC = () => {
           <TouchableOpacity
             onPress={handleQRPress}
             style={styles.qrIconButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
             activeOpacity={0.7}
             disabled={!walletAddress}>
             <Icons.QrCodeIcon width={22} height={22} color={COLORS.white} />
@@ -128,14 +138,16 @@ const AddCashScreen: React.FC = () => {
 
         {/* Numpad */}
         <View style={styles.numPad}>
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map(num => (
-            <TouchableOpacity
-              key={num}
-              style={styles.numButton}
-              onPress={() => handleNumPress(num)}>
-              <Text style={styles.numText}>{num}</Text>
-            </TouchableOpacity>
-          ))}
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map(
+            num => (
+              <TouchableOpacity
+                key={num}
+                style={styles.numButton}
+                onPress={() => handleNumPress(num)}>
+                <Text style={styles.numText}>{num}</Text>
+              </TouchableOpacity>
+            ),
+          )}
         </View>
 
         {/* ✅ Add Cash Button */}
@@ -143,7 +155,7 @@ const AddCashScreen: React.FC = () => {
           colors={
             isButtonEnabled ? ['#05375fff', '#1c4372ff'] : ['#444', '#333']
           }
-          style={[styles.addButton, { opacity: isButtonEnabled ? 1 : 0.5 }]}>
+          style={[styles.addButton, {opacity: isButtonEnabled ? 1 : 0.5}]}>
           <TouchableOpacity
             onPress={handleAddCash}
             disabled={!isButtonEnabled}
@@ -204,17 +216,17 @@ export default AddCashScreen;
 // (styles remain same as before)
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
+  container: {flex: 1, paddingHorizontal: 20},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: 16,
   },
-  title: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  amountContainer: { alignItems: 'center', marginVertical: 10 },
-  amountText: { color: '#fff', fontSize: 48, fontWeight: '700' },
-  limitText: { color: '#aaa', fontSize: 14, marginTop: 5 },
+  title: {color: '#fff', fontSize: 20, fontWeight: '700'},
+  amountContainer: {alignItems: 'center', marginVertical: 10},
+  amountText: {color: '#fff', fontSize: 48, fontWeight: '700'},
+  limitText: {color: '#aaa', fontSize: 14, marginTop: 5},
   selector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -225,7 +237,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginTop: 20,
   },
-  selectorText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  selectorText: {color: '#fff', fontSize: 16, fontWeight: '600'},
   qrIconButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -251,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
-  presetText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  presetText: {color: '#fff', fontSize: 15, fontWeight: '600'},
   numPad: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -265,14 +277,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
   },
-  numText: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  numText: {color: '#fff', fontSize: 24, fontWeight: '700'},
   addButton: {
     marginTop: 25,
     borderRadius: 40,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  addText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  addText: {color: '#fff', fontSize: 18, fontWeight: '700'},
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',

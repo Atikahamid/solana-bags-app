@@ -28,6 +28,8 @@ import {clusterApiUrl, Connection, PublicKey} from '@solana/web3.js';
 import {getWalletAssets, TokenAccount} from './getWalletAssetsService'; // ✅ import service
 import {FlatList} from 'react-native-gesture-handler';
 import {formatCompactNumber} from '../SearchScreen';
+import {fetchTokenPrice} from '@/modules/data-module';
+import {fetchprice} from '@/modules/data-module/services/tokenService';
 const GET_USER_RELATIVE = '/api/userRoutess/user';
 
 export default function ProfileScreenNew() {
@@ -41,7 +43,7 @@ export default function ProfileScreenNew() {
   const walletAddress = address;
   const [isWalletAsset, setIsWalletAsset] = useState(false);
   const [walletAssets, setWalletAssets] = useState<TokenAccount[]>([]); // ✅ store wallet assets
-
+  const [price, setprice] = useState('');
   const [qrModalVisible, setQrModalVisible] = useState(false);
   // State for balance and loading
   const [nativeBalance, setNativeBalance] = useState<number | null>(null);
@@ -97,7 +99,8 @@ export default function ProfileScreenNew() {
       // ✅ Fetch native SOL balance (lamports → SOL)
       const solBalanceLamports = await connection.getBalance(publicKey);
       const solBalance = solBalanceLamports / 1_000_000_000;
-
+      console.log('sol balance: ', solBalance);
+      setNativeBalance(solBalance);
       // ✅ Fetch SPL token assets
       const result = await getWalletAssets({
         ownerAddress: walletAddress,
@@ -136,6 +139,17 @@ export default function ProfileScreenNew() {
   useEffect(() => {
     fetchWalletAssets();
   }, [fetchWalletAssets]);
+
+  const fetchPricee = async address => {
+    const price = await fetchprice(address);
+    setprice(price);
+    console.log('price: ', price);
+    return price;
+  };
+
+  if (walletAddress) {
+    fetchPricee('So11111111111111111111111111111111111111112');
+  }
 
   // Handle copy animation
   useEffect(() => {
@@ -243,7 +257,9 @@ export default function ProfileScreenNew() {
         </Text>
       </View>
       <View style={styles.assetValueContainer}>
-        <Text style={styles.assetValue}>${(Math.random() * 1).toFixed(2)}</Text>
+        <Text style={styles.assetValue}>
+          ${(Number(price) * Number(nativeBalance)).toFixed(2)}
+        </Text>
         <Text style={styles.assetChange}>
           +${(Math.random() * 1).toFixed(2)}
         </Text>
@@ -279,7 +295,10 @@ export default function ProfileScreenNew() {
       setError(null);
 
       // Create a connection to the Solana cluster
-      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+      const connection = new Connection(
+        clusterApiUrl('mainnet-beta'),
+        'confirmed',
+      );
 
       // Get the wallet public key
       const publicKey = new PublicKey(walletAddress);
@@ -409,7 +428,7 @@ export default function ProfileScreenNew() {
               {/* ✅ Balance + PNL */}
               <View style={styles.balanceSection}>
                 <Text style={styles.balanceText}>
-                  {profile?.pnl_amount ? `$${profile.pnl_amount}` : '$0.00'}
+                  {`$ ${(Number(price) * Number(nativeBalance)).toFixed(2)}`}
                 </Text>
                 <Text style={styles.pnlText}>
                   {profile?.pnl_percent
@@ -460,12 +479,15 @@ export default function ProfileScreenNew() {
                     </View>
                   </TouchableOpacity>
                 </View>
-                <Icons.CreateCoinIcon width={18} height={18} />
+                <View style = {{flexDirection: 'row', gap: 7}}>
+                  <Text style = {{color: '#fff', fontSize: 14}}>{nativeBalance}</Text>
+                  <Icons.CreateCoinIcon width={18} height={18} />
+                </View>
               </View>
             </View>
           </LinearGradient>
 
-          {isWalletAsset && (
+          {!isWalletAsset && nativeBalance === 0 && (
             <View style={styles.addcashView}>
               <Text style={styles.addCashText}>Add Cash to Start Trading</Text>
               <Text style={styles.subText}>
@@ -500,7 +522,7 @@ export default function ProfileScreenNew() {
             </TouchableOpacity>
           </View>
 
-          {isWalletAsset && (
+          {!isWalletAsset && nativeBalance === 0 && (
             <Text style={styles.infoText}>
               Cash is converted to Solana and stored on your Bags Card. You can
               export your wallet anytime in settings.
@@ -509,7 +531,7 @@ export default function ProfileScreenNew() {
           {/* Info */}
 
           {/* Status */}
-          {!isWalletAsset && walletAssets.length > 0 ? (
+          {!isWalletAsset && nativeBalance !== 0 ? (
             <FlatList
               data={walletAssets}
               keyExtractor={(item, index) => item.address || index.toString()}

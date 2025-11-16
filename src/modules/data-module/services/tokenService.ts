@@ -177,6 +177,33 @@ export async function fetchTokenPrice(tokenInfo: TokenInfo | null): Promise<numb
   }
 }
 
+export async function fetchprice(address) {
+   try {
+    console.log("address: ", address);
+      // console.log(`[TokenService] Trying Jupiter as fallback for ${tokenInfo.symbol}`);
+      const jupResponse = await fetch(`https://lite-api.jup.ag/price/v3?ids=${address}`);
+      // console.log("jupiter response : ", jupResponse);
+      // let price;:
+      if (jupResponse.ok) {
+        const jupData = await jupResponse.json();
+        console.log("jupData: ", jupData);
+        const tokenData = jupData?.[address];
+        console.log("tokenData: ", tokenData);
+        if (tokenData?.usdPrice) {
+          const price = tokenData.usdPrice;
+          console.log(`[TokenService] Jupiter returned price for: ${price}`);
+          return price;
+        } else {
+          console.log(`[TokenService] Jupiter API returned invalid price data:`, JSON.stringify(jupData));
+        }
+      } else {
+        console.log(`[TokenService] Jupiter API response not OK for:`, jupResponse.status);
+      }
+    } catch (err) {
+      console.log(`[TokenService] Error fetching price from Jupiter`, err);
+    }
+
+}
 /**
  * Estimates the USD value of a token amount
  */

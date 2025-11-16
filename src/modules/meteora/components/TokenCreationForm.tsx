@@ -34,7 +34,7 @@ import {
   uploadTokenMetadata,
 } from '../services/meteoraService';
 import BondingCurveVisualizer from './BondingCurveVisualizer';
-import {clusterApiUrl, Connection} from '@solana/web3.js';
+import {clusterApiUrl, Connection, PublicKey} from '@solana/web3.js';
 import {useWallet} from '@/modules/wallet-providers/hooks/useWallet';
 import BN from 'bn.js';
 import {HELIUS_STAKED_URL} from '@env';
@@ -60,7 +60,7 @@ export default function TokenCreationForm({
   onTokenCreated,
 }: TokenCreationFormProps) {
   //   const {wallet} = useWallet();
-//   console.log('wallet from wallet address: ', walletAddress);
+  //   console.log('wallet from wallet address: ', walletAddress);
   // Basic token info
   const [tokenName, setTokenName] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('');
@@ -70,6 +70,7 @@ export default function TokenCreationForm({
   const [tokenDescription, setTokenDescription] = useState('');
   const [tokenTwitter, setTokenTwitter] = useState('');
   const [tokenTelegram, setTokenTelegram] = useState('');
+  
 
   // Market cap settings
   const [initialMarketCap, setInitialMarketCap] = useState('100');
@@ -119,16 +120,16 @@ export default function TokenCreationForm({
   // console.log("wallet publickey passing: ", wallet.publicKey?.toBase58())
   // Create a connection to the Solana network with better configuration
 
-//   const connection = new Connection(HELIUS_STAKED_URL, {
-//     commitment: 'confirmed',
-//     confirmTransactionInitialTimeout: 120000, // 2 minutes
-//     disableRetryOnRateLimit: false,
-//   });
+  //   const connection = new Connection(HELIUS_STAKED_URL, {
+  //     commitment: 'confirmed',
+  //     confirmTransactionInitialTimeout: 120000, // 2 minutes
+  //     disableRetryOnRateLimit: false,
+  //   });
 
   const connection = new Connection(clusterApiUrl('devnet'), {
-  commitment: 'confirmed',
-  confirmTransactionInitialTimeout: 120000, // optional
-});
+    commitment: 'confirmed',
+    confirmTransactionInitialTimeout: 120000, // optional
+  });
 
   // Add new state variables for parsed numeric values
   const [parsedInitialMarketCap, setParsedInitialMarketCap] = useState(100);
@@ -243,7 +244,11 @@ export default function TokenCreationForm({
     if (!validateStep2()) {
       return;
     }
-
+    const publicKey = new PublicKey(walletAddress);
+     const balance = await connection.getBalance(publicKey);
+    if(balance===0){
+      return Alert.alert('Error', 'Not enough sol');
+    }
     setError('');
     setIsCreating(true);
 

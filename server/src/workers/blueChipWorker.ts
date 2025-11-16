@@ -153,7 +153,7 @@ async function saveTokens(tokens: any[], category: string, redisKey: string) {
   const trx = await knex.transaction();
   try {
     // Delete+Insert in one atomic commit
-    await trx("discovery_tokens").where({ category }).del();
+    // await trx("discovery_tokens").where({ category }).del();
     await trx("discovery_tokens").insert(tokens.map(t => ({ ...t, category })));
     await trx.commit();
   } catch (err) {

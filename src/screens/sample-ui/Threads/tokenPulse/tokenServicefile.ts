@@ -95,6 +95,7 @@ export async function fetchMigratedTokens(): Promise<BackendToken[]> {
 export async function fetchNewlyCreatedTokens(): Promise<BackendToken[]> {
   try {
     const data = await fetchJson(NEWLY_CREATED_ENDPOINT);
+    console.log("data: ", data);
     return Array.isArray(data) ? data : [];
   } catch (err: any) {
     console.error("[tokenService] fetchNewlyCreatedTokens error:", err?.message ?? err);

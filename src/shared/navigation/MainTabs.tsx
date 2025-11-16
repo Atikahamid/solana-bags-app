@@ -48,11 +48,12 @@ import {IPFSAwareImage} from '../utils/IPFSImage';
 import {TokensScreen} from '@/screens/sample-ui/Threads/tokenPulse/TokenScreen';
 import {CoinDetailPage, TokenDetailScreen} from '@/screens';
 import ProfilescreenNew from '@/screens/sample-ui/Threads/profile-screen/ProfileScreennew';
-import { useSelector } from 'react-redux';
-import { RootState } from '../state/store';
-import { useAuth } from '@/modules/wallet-providers';
-import { PerpetualsScreen } from '@/screens/sample-ui/Threads/perpetuals-screen/PerpetualsScreen';
+import {useSelector} from 'react-redux';
+import {RootState} from '../state/store';
+import {useAuth} from '@/modules/wallet-providers';
+import {PerpetualsScreen} from '@/screens/sample-ui/Threads/perpetuals-screen/PerpetualsScreen';
 import WalletScreen from '@/modules/moonpay/screens/WalletScreen';
+import GlobalSearchScreen from '@/screens/sample-ui/Threads/GlobalSearchScreen';
 // Create context for scroll-based UI hiding
 interface ScrollUIContextType {
   hideTabBar: () => void;
@@ -163,30 +164,9 @@ export default function MainTabs() {
   );
 
   // Create a stable component that doesn't rerender on menu toggle
-  const StableFeedComponent = React.useMemo(() => {
-    // This component is created once and captured in useMemo
-    // It will only update when platformSwitchKey changes
-    const Component = () => {
-      return <FeedScreen key={`threads-${refreshKey}`} />;
-      // switch (currentPlatform) {
-      //   case 'threads':
-      //     return <FeedScreen key={`threads-${refreshKey}`} />;
-      //   case 'insta':
-      //     return <FeedScreen key={`insta-${refreshKey}`} />;
-      //   case 'chats':
-      //     // Navigate to ChatListScreen instead of showing ChatScreen directly
-      //     React.useEffect(() => {
-      //       navigation.navigate('ChatListScreen');
-      //     }, []);
-      //     // Return empty view as navigation will handle the rendering
-      //     return <View style={{ flex: 1 }} />;
-      //   default:
-      //     return <FeedScreen key={`threads-${refreshKey}`} />;
-      // }
-    };
-
-    return Component;
-  }, [currentPlatform, refreshKey, navigation]);
+  const StableFeedComponent = () => {
+    return <FeedScreen refreshKey={refreshKey} />;
+  };
 
   // Calculate transformations for the menu with smoother curves
   const menuTranslateY = menuAnimation.interpolate({
@@ -237,7 +217,7 @@ export default function MainTabs() {
           </TouchableOpacity>
 
           {/* Instagram Option */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={[
               platformStyles.platformButton,
               currentPlatform === 'insta' && platformStyles.activePlatform,
@@ -247,10 +227,10 @@ export default function MainTabs() {
               source={{uri: platformIcons.insta}}
               style={platformStyles.platformIcon}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Chat Option */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={[
               platformStyles.platformButton,
               currentPlatform === 'chats' && platformStyles.activePlatform,
@@ -260,7 +240,7 @@ export default function MainTabs() {
               source={{uri: platformIcons.chats}}
               style={platformStyles.platformIcon}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </Animated.View>
 
@@ -408,8 +388,8 @@ export default function MainTabs() {
 
         <Tab.Screen
           name="perpetuals"
-          component={PerpetualsScreen}
-          // component={TokenDetailScreen}
+          // component={PerpetualsScreen}
+          component={GlobalSearchScreen}
           options={{
             tabBarIcon: ({focused, size}) => (
               <AnimatedTabIcon
@@ -443,15 +423,13 @@ export default function MainTabs() {
                 <IPFSAwareImage
                   source={profile?.profile_image_url}
                   defaultSource={DEFAULT_IMAGES.user}
-                  style={
-                    {
-                      width: size + 4,
-                      height: size + 4,
-                      borderRadius: (size + 4) / 2,
-                      borderWidth: focused ? 2 : 0,
-                      borderColor: focused ? '#e8ecf0ff' : 'transparent',
-                    } 
-                  }
+                  style={{
+                    width: size + 4,
+                    height: size + 4,
+                    borderRadius: (size + 4) / 2,
+                    borderWidth: focused ? 2 : 0,
+                    borderColor: focused ? '#e8ecf0ff' : 'transparent',
+                  }}
                   key={
                     Platform.OS === 'android'
                       ? `profile-${Date.now()}`

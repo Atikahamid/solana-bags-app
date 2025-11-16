@@ -101,22 +101,22 @@ export class BitqueryService {
       switch (msg.type) {
         case "connection_ack":
           // Subscribe to trades
-          // ws.send(
-          //   JSON.stringify({
-          //     id: "multi-wallet-sub",
-          //     type: "start",
-          //     payload: { query: queryOne, variables: { walletAddresses } },
-          //   })
-          // );
+          ws.send(
+            JSON.stringify({
+              id: "multi-wallet-sub",
+              type: "start",
+              payload: { query: queryOne, variables: { walletAddresses } },
+            })
+          );
 
           // Subscribe to new token creations
-          // ws.send(
-          //   JSON.stringify({
-          //     id: "new-tokens-sub",
-          //     type: "start",
-          //     payload: { query: NEWLY_CREATED_TOKENS_SUB },
-          //   })
-          // );
+          ws.send(
+            JSON.stringify({
+              id: "new-tokens-sub",
+              type: "start",
+              payload: { query: NEWLY_CREATED_TOKENS_SUB },
+            })
+          );
 
           // Subscribe to almost bonded pools
           // ws.send(
@@ -137,19 +137,19 @@ export class BitqueryService {
           // );
 
           // Subscribe to live marketcap updates if frontend already requested
-          if (this.subscribedMints.length > 0) {
-            this.subscribeMarketcap(this.subscribedMints);
-          }
+          // if (this.subscribedMints.length > 0) {
+          //   this.subscribeMarketcap(this.subscribedMints);
+          // }
           break;
 
         case "data":
-          // if (msg.id === "multi-wallet-sub") {
-          //   this.handleTrades(msg.payload.data, walletMap);
-          // }
+          if (msg.id === "multi-wallet-sub") {
+            this.handleTrades(msg.payload.data, walletMap);
+          }
 
-          // if (msg.id === "new-tokens-sub") {
-          //   await this.handleNewTokens(msg.payload.data);
-          // }
+          if (msg.id === "new-tokens-sub") {
+            await this.handleNewTokens(msg.payload.data);
+          }
 
           // if (msg.id === "almost-bonded-sub") {
           //   const data = msg.payload?.data;
@@ -164,9 +164,9 @@ export class BitqueryService {
           //   await this.handleMigratedTokens(msg.payload.data);
           // }
 
-          if (msg.id === "live-marketcap-sub") {
-            await this.handleLiveMarketCap(msg.payload.data);
-          }
+          // if (msg.id === "live-marketcap-sub") {
+          //   await this.handleLiveMarketCap(msg.payload.data);
+          // }
           break;
 
         case "error":

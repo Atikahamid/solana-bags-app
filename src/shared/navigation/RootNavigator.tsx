@@ -64,7 +64,10 @@ export type RootStackParamList = {
   Pumpfun: undefined;
   PerpetualsScreen: undefined;
   TokenMill: undefined;
-  CoinbaseOnRampScreen: undefined;
+  CoinbaseOnRampScreen: {
+    walletAddress: string;
+    amount: number;
+  };
   NftScreen: undefined;
   SettingsScreen: undefined;
   ChatListScreen: undefined;

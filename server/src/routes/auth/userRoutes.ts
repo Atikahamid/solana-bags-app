@@ -215,4 +215,32 @@ userRoutess.delete("/deleteAccount/:privyId", async (req, res) => {
 // }
 // });
 
+userRoutess.post("/insert-watchedaddresses", async (req, res) => {
+  try {
+    const { address, username, profile_picture_url } = req.body;
+
+    if (!address || !username) {
+      return res.status(400).json({
+        error: "Missing required fields: address, username",
+      });
+    }
+
+    // Upsert based on primary key (address)
+    await knex("watched_addresses")
+      .insert({
+        address,
+        username,
+        profile_picture_url: profile_picture_url || null,
+      })
+      .onConflict("address")
+      .merge();
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Insert error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 export default userRoutess;

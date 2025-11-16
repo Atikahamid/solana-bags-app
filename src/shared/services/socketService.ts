@@ -146,64 +146,64 @@ class SocketService {
     });
 
     // New message received
-    this.socket.on('new_message', (message: any) => {
-      console.log('New message received via WebSocket:', message);
+    // this.socket.on('new_message', (message: any) => {
+    //   console.log('New message received via WebSocket:', message);
       
-      // Ensure message has all required fields before dispatching
-      if (message && message.id && message.chat_room_id) {
-        // Get currently selected chat from Redux store
-        const state = store.getState();
-        const selectedChatId = state.chat.selectedChatId;
+    //   // Ensure message has all required fields before dispatching
+    //   if (message && message.id && message.chat_room_id) {
+    //     // Get currently selected chat from Redux store
+    //     const state = store.getState();
+    //     const selectedChatId = state.chat.selectedChatId;
         
-        // Don't dispatch messages sent by the current user (already in state from API response)
-        if (message.sender_id === this.userId) {
-          console.log('Ignoring own message broadcast from server');
-          return;
-        }
+    //     // Don't dispatch messages sent by the current user (already in state from API response)
+    //     if (message.sender_id === this.userId) {
+    //       console.log('Ignoring own message broadcast from server');
+    //       return;
+    //     }
         
-        // Dispatch to add message to chat's message list
-        store.dispatch(receiveMessage(message));
+    //     // Dispatch to add message to chat's message list
+    //     store.dispatch(receiveMessage(message));
         
-        // Increment unread count if the message is not for the currently viewed chat
-        if (selectedChatId !== message.chat_room_id) {
-          console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
-          store.dispatch(incrementUnreadCount({
-            chatId: message.chat_room_id,
-            senderId: message.sender_id
-          }));
-        }
-      } else {
-        console.error('Received malformed message from socket:', message);
-      }
-    });
+    //     // Increment unread count if the message is not for the currently viewed chat
+    //     if (selectedChatId !== message.chat_room_id) {
+    //       console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
+    //       store.dispatch(incrementUnreadCount({
+    //         chatId: message.chat_room_id,
+    //         senderId: message.sender_id
+    //       }));
+    //     }
+    //   } else {
+    //     console.error('Received malformed message from socket:', message);
+    //   }
+    // });
 
     // Additional listener for message_broadcast event (server might use a different event name)
-    this.socket.on('message_broadcast', (message: any) => {
-      console.log('Message broadcast received:', message);
-      if (message && message.id) {
-        // Get currently selected chat from Redux store
-        const state = store.getState();
-        const selectedChatId = state.chat.selectedChatId;
+    // this.socket.on('message_broadcast', (message: any) => {
+    //   console.log('Message broadcast received:', message);
+    //   if (message && message.id) {
+    //     // Get currently selected chat from Redux store
+    //     const state = store.getState();
+    //     const selectedChatId = state.chat.selectedChatId;
         
-        // Don't dispatch messages sent by the current user (already in state from API response)
-        if (message.sender_id === this.userId || message.senderId === this.userId) {
-          console.log('Ignoring own message broadcast');
-          return;
-        }
+    //     // Don't dispatch messages sent by the current user (already in state from API response)
+    //     if (message.sender_id === this.userId || message.senderId === this.userId) {
+    //       console.log('Ignoring own message broadcast');
+    //       return;
+    //     }
         
-        // Dispatch to add message to chat's message list
-        store.dispatch(receiveMessage(message));
+    //     // Dispatch to add message to chat's message list
+    //     store.dispatch(receiveMessage(message));
         
-        // Increment unread count if the message is not for the currently viewed chat
-        if (selectedChatId !== message.chat_room_id) {
-          console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
-          store.dispatch(incrementUnreadCount({
-            chatId: message.chat_room_id,
-            senderId: message.sender_id || message.senderId
-          }));
-        }
-      }
-    });
+    //     // Increment unread count if the message is not for the currently viewed chat
+    //     if (selectedChatId !== message.chat_room_id) {
+    //       console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
+    //       store.dispatch(incrementUnreadCount({
+    //         chatId: message.chat_room_id,
+    //         senderId: message.sender_id || message.senderId
+    //       }));
+    //     }
+    //   }
+    // });
 
     //listener for recent swaps feed page
     this.socket.on("token_transfer", (trade: any) => {
@@ -211,10 +211,10 @@ class SocketService {
     })
 
     // User typing indicator
-    this.socket.on('user_typing', (data: { chatId: string; userId: string; isTyping: boolean }) => {
-      console.log('User typing:', data);
-      // Implement typing indicator in UI if needed
-    });
+    // this.socket.on('user_typing', (data: { chatId: string; userId: string; isTyping: boolean }) => {
+    //   console.log('User typing:', data);
+    //   // Implement typing indicator in UI if needed
+    // });
 
     // Handle disconnection
     this.socket.on('disconnect', (reason: string) => {

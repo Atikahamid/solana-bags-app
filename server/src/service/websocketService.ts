@@ -112,24 +112,24 @@ export class WebSocketService {
       });
 
       // Join a chat room
-      socket.on('join_chat', (data: { chatId: string }) => {
-        this.joinChat(socket, data.chatId);
-      });
+      // socket.on('join_chat', (data: { chatId: string }) => {
+      //   this.joinChat(socket, data.chatId);
+      // });
 
       // Leave a chat room
-      socket.on('leave_chat', (data: { chatId: string }) => {
-        this.leaveChat(socket, data.chatId);
-      });
+      // socket.on('leave_chat', (data: { chatId: string }) => {
+      //   this.leaveChat(socket, data.chatId);
+      // });
 
-      // Handle chat message
-      socket.on('send_message', (data: ChatMessage) => {
-        this.handleChatMessage(socket, data);
-      });
+      // // Handle chat message
+      // socket.on('send_message', (data: ChatMessage) => {
+      //   this.handleChatMessage(socket, data);
+      // });
 
       // Handle typing indicator
-      socket.on('typing', (data: { chatId: string, isTyping: boolean }) => {
-        this.handleTypingIndicator(socket, data);
-      });
+      // socket.on('typing', (data: { chatId: string, isTyping: boolean }) => {
+      //   this.handleTypingIndicator(socket, data);
+      // });
 
       // Handle user status
       socket.on('user_status', (data: { userId: string, isOnline: boolean }) => {

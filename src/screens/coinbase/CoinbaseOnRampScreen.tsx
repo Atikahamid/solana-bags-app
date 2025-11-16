@@ -3,16 +3,33 @@ import React, {useEffect, useState} from 'react';
 import {View, ActivityIndicator, Button, StyleSheet, Alert} from 'react-native';
 import {WebView} from 'react-native-webview';
 import {getOnrampUrl} from './onRampServiceFile';
+import {useAuth, useWallet} from '@/modules/wallet-providers';
+import { useRoute } from '@react-navigation/native';
 
 export default function CoinbaseOnrampScreen() {
+  const route = useRoute();
+  const {walletAddress, amount} = route.params as {
+    walletAddress: string;
+    amount: number;
+  };
   const [onrampUrl, setOnrampUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [webviewVisible, setWebviewVisible] = useState<boolean>(false);
-
+  // const {address} = useWallet();
+  // const walletAddress= address;
+  useEffect(() => {
+    loadOnramp();
+  }, []);
   const loadOnramp = async () => {
     try {
       setLoading(true);
-      const url = await getOnrampUrl();
+      const url = await getOnrampUrl(
+        'SOL', // purchaseCurrency
+        'solana', // destinationNetwork
+        walletAddress, // destinationAddress
+        String(amount), // paymentAmount
+        'USD', // paymentCurrency
+      );
       console.log('onrmpurl on screen: ', url);
       setOnrampUrl(url);
       setWebviewVisible(true);
@@ -33,10 +50,10 @@ export default function CoinbaseOnrampScreen() {
 
   return (
     <View style={styles.container}>
-      {loading && <ActivityIndicator size="large" color="#007AFF" />}
-      {!loading && !webviewVisible && (
+      {/* {loading && <ActivityIndicator size="large" color="#007AFF" />} */}
+      {/* {!loading && !webviewVisible && (
         <Button title="Buy with Coinbase" onPress={loadOnramp} />
-      )}
+      )} */}
 
       {webviewVisible && onrampUrl && (
         <WebView
@@ -66,7 +83,15 @@ export default function CoinbaseOnrampScreen() {
           renderLoading={() => (
             <ActivityIndicator size="large" color="#007AFF" />
           )}
-          style={{flex: 1, width: 400, height: '100%', borderWidth: 2, borderColor: '#1a1818ff', marginTop: 7, padding: 8}}
+          style={{
+            flex: 1,
+            width: 400,
+            height: '100%',
+            borderWidth: 2,
+            borderColor: '#1a1818ff',
+            marginTop: 7,
+            padding: 8,
+          }}
         />
       )}
     </View>
@@ -80,7 +105,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     height: '100%',
-     borderWidth: 2, borderColor: '#1a1818ff'
+    borderWidth: 2,
+    borderColor: '#1a1818ff',
   },
   loader: {flex: 1, justifyContent: 'center', alignItems: 'center'},
 });

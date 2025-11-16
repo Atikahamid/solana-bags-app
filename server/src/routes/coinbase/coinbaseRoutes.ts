@@ -44,25 +44,81 @@ coinRouter.post('/session', async (req, res) => {
 
 
 coinRouter.post('/session/onRampUrl', async (req, res) => {
+  try {
+    const {
+      purchaseCurrency,
+      destinationNetwork,
+      destinationAddress,
+      paymentAmount,
+      paymentCurrency,
+      paymentMethod,
+      country,
+      subdivision,
+      redirectUrl,
+    } = req.body;
 
-    const token = await  generateJWTToken();
-    console.log("token from util: ", token);
-    const url = 'https://api.cdp.coinbase.com/platform/v2/onramp/sessions';
-    const options = {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: '{"purchaseCurrency":"USDC","destinationNetwork":"base","destinationAddress":"0x71C7656EC7ab88b098defB751B7401B5f6d8976F","paymentAmount":"100.00","paymentCurrency":"USD","paymentMethod":"CARD","country":"US","subdivision":"NY","redirectUrl":"https://yourapp.com/success","clientIp":"8.8.8.8"}'
-    };
-    try {
-        const response = await fetch(url, options);
-        console.log("response: ", response);
-        const data = await response.json();
-        console.log(data);
-        return res.json({ data });
-    } catch (error) {
-        console.error(error);
+    // Validate important fields
+    if (!destinationAddress) {
+      return res.status(400).json({ error: "destinationAddress is required" });
     }
+    if (!paymentAmount) {
+      return res.status(400).json({ error: "paymentAmount is required" });
+    }
+
+    // backend-generated fields
+    const clientIp =
+      req.headers['x-forwarded-for'] ||
+      req.connection.remoteAddress ||
+      "0.0.0.0";
+
+    const token = await generateJWTToken();
+
+    const url = "https://api.cdp.coinbase.com/platform/v2/onramp/sessions";
+
+    const body = {
+      purchaseCurrency: purchaseCurrency || "SOL",
+      destinationNetwork: destinationNetwork || "solana",
+      destinationAddress,
+      paymentAmount,
+      paymentCurrency: paymentCurrency || "USD",
+      paymentMethod: paymentMethod || "CARD",
+      country: country || "US",
+      subdivision: subdivision || "NY",
+      redirectUrl: redirectUrl || "solanabagsapp://MainTabs",
+      clientIp: '0.0.0.0',
+    };
+
+    console.log("📤 Coinbase Onramp Request Body:", body);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    console.log("📥 Coinbase Onramp Response:", data);
+
+    if (!response.ok) {
+      return res.status(400).json({
+        error: "Coinbase API error",
+        details: data,
+      });
+    }
+
+    return res.json({ data });
+  } catch (error) {
+    console.error("❌ Error creating onramp session:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      details: error.message,
+    });
+  }
 });
+
 
 
 // Webhook receiver (optional)

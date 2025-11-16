@@ -19,7 +19,7 @@ import { RootStackParamList } from '@/shared/navigation/RootNavigator';
 import { DEFAULT_IMAGES } from '@/shared/config/constants';
 import HomeEnvErrorBanner from '@/core/shared-ui/EnvErrors/HomeEnvErrorBanner';
 import FeedItemSkeleton from '@/core/thread/components/FeedSkeleton';
-import notificationService from '@/shared/services/notificationService';
+// import notificationService from '@/shared/services/notificationService';
 import { useScrollUI } from '@/shared/navigation/MainTabs';
 
 /**
@@ -65,30 +65,30 @@ export default function FeedScreen() {
   };
 
   // Register push token with server when user is logged in
-  useEffect(() => {
-    const registerPushToken = async () => {
-      if (userWallet && isLoggedIn && !hasRegisteredPushToken) {
-        try {
-          console.log('🔔 Attempting to register push token for user:', userWallet);
+  // useEffect(() => {
+  //   const registerPushToken = async () => {
+  //     if (userWallet && isLoggedIn && !hasRegisteredPushToken) {
+  //       try {
+  //         console.log('🔔 Attempting to register push token for user:', userWallet);
 
-          // Wait a bit to ensure notification service is initialized
-          await new Promise(resolve => setTimeout(resolve, 1000));
+  //         // Wait a bit to ensure notification service is initialized
+  //         await new Promise(resolve => setTimeout(resolve, 1000));
 
-          const success = await notificationService.registerTokenWithServer(userWallet);
-          if (success) {
-            setHasRegisteredPushToken(true);
-            console.log('✅ Push token registered successfully for user:', userWallet);
-          } else {
-            console.warn('⚠️ Failed to register push token for user:', userWallet);
-          }
-        } catch (error) {
-          console.error('❌ Error registering push token:', error);
-        }
-      }
-    };
+  //         const success = await notificationService.registerTokenWithServer(userWallet);
+  //         if (success) {
+  //           setHasRegisteredPushToken(true);
+  //           console.log('✅ Push token registered successfully for user:', userWallet);
+  //         } else {
+  //           console.warn('⚠️ Failed to register push token for user:', userWallet);
+  //         }
+  //       } catch (error) {
+  //         console.error('❌ Error registering push token:', error);
+  //       }
+  //     }
+  //   };
 
-    registerPushToken();
-  }, [userWallet, isLoggedIn, hasRegisteredPushToken]);
+  //   registerPushToken();
+  // }, [userWallet, isLoggedIn, hasRegisteredPushToken]);
 
   // Reset push token registration status when user logs out
   useEffect(() => {
@@ -139,17 +139,17 @@ export default function FeedScreen() {
   }, [userWallet, isLoggedIn, dispatch]);
 
   // We now include both root posts AND replies in the feed
-  useEffect(() => {
-    const sortedAll = [...allPosts];
-    // Sort descending by createdAt
-    sortedAll.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-    setFeedPosts(sortedAll);
-  }, [allPosts]);
+  // useEffect(() => {
+  //   const sortedAll = [...allPosts];
+  //   // Sort descending by createdAt
+  //   sortedAll.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+  //   setFeedPosts(sortedAll);
+  // }, [allPosts]);
 
   // Pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await dispatch(fetchAllPosts(userWallet || undefined));
+    // await dispatch(fetchAllPosts(userWallet || undefined));
     setRefreshing(false);
   }, [dispatch, userWallet]);
 
@@ -236,8 +236,8 @@ export default function FeedScreen() {
         <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />
         {renderCustomHeader()}
         <Thread
-          rootPosts={feedPosts} // Passing all posts (including replies)
-          currentUser={currentUser}
+          // rootPosts={feedPosts} // Passing all posts (including replies)
+          // currentUser={currentUser}
           ctaButtons={ctaButtons}
           // Set disableReplies to false so that replies render with their parent snippet.
           disableReplies={false}
@@ -246,27 +246,27 @@ export default function FeedScreen() {
           // Pass scroll UI context to Thread component
           scrollUI={scrollUI}
           // onPressPost navigates to the PostThreadScreen with the post's ID.
-          onPressPost={post => {
-            // For retweets and quotes, handle navigation correctly:
-            if (post.retweetOf) {
-              // If this is a retweet with no content (direct retweet), navigate to the original
-              if (post.sections.length === 0) {
-                navigation.navigate('PostThread', { postId: post.retweetOf.id });
-              } else {
-                // If it's a quote retweet, navigate to the quote itself
-                navigation.navigate('PostThread', { postId: post.id });
-              }
-            } else {
-              // Regular post
-              navigation.navigate('PostThread', { postId: post.id });
-            }
-          }}
-          themeOverrides={{
-            '--thread-bg-primary': COLORS.background,
-            '--retweet-border-color': COLORS.borderDarkColor,
-            '--retweet-bg-color': COLORS.lighterBackground,
-            '--retweet-text-color': COLORS.greyMid
-          }}
+          // onPressPost={post => {
+          //   // For retweets and quotes, handle navigation correctly:
+          //   if (post.retweetOf) {
+          //     // If this is a retweet with no content (direct retweet), navigate to the original
+          //     if (post.sections.length === 0) {
+          //       navigation.navigate('PostThread', { postId: post.retweetOf.id });
+          //     } else {
+          //       // If it's a quote retweet, navigate to the quote itself
+          //       navigation.navigate('PostThread', { postId: post.id });
+          //     }
+          //   } else {
+          //     // Regular post
+          //     navigation.navigate('PostThread', { postId: post.id });
+          //   }
+          // }}
+          // themeOverrides={{
+          //   '--thread-bg-primary': COLORS.background,
+          //   '--retweet-border-color': COLORS.borderDarkColor,
+          //   '--retweet-bg-color': COLORS.lighterBackground,
+          //   '--retweet-text-color': COLORS.greyMid
+          // }}
           styleOverrides={{
             container: { padding: 6 },
             button: { borderRadius: 8 },
@@ -297,14 +297,14 @@ export default function FeedScreen() {
               borderColor: COLORS.borderDarkColor,
             },
           }}
-          onPressUser={user => {
-            // Check if the tapped user is the current (logged-in) user
-            if (user.id === currentUser.id) {
-              navigation.navigate('ProfileScreen' as never); // Show own profile
-            } else {
-              navigation.navigate('OtherProfile', { userId: user.id }); // Show other profile
-            }
-          }}
+          // onPressUser={user => {
+          //   // Check if the tapped user is the current (logged-in) user
+          //   if (user.id === currentUser.id) {
+          //     navigation.navigate('ProfileScreen' as never); // Show own profile
+          //   } else {
+          //     navigation.navigate('OtherProfile', { userId: user.id }); // Show other profile
+          //   }
+          // }}
         />
       </SafeAreaView>
     </LinearGradient>

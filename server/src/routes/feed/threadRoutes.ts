@@ -16,7 +16,7 @@ const threadRouter = Router();
 import { GET_MARKETCAP_OF_TOKEN, SIMPLE_PAST_TRADES_QUERY,TOKEN_DETAIL } from '../../queries/allQueryFile';
 // const walletAddresses = [
 //   "9HCTuTPEiQvkUtLmTZvK6uch4E3pDynwJTbNw6jLhp9z",
-//   "6kbwsSY4hL6WVadLRLnWV2irkMN2AvFZVAS8McKJmAtJ",
+//   "6kbwsSY4hL6WVadLRLnWV2irkMN2AvFZVAS8McKJmAtJ", 
 //   "DYAn4XpAkN5mhiXkRB7dGq4Jadnx6XYgu8L5b3WGhbrt",
 //   "BTf4A2exGK9BCVDNzy65b9dUzXgMqB4weVkvTMFQsadd",
 //   "GJA1HEbxGnqBhBifH9uQauzXSB53to5rhDrzmKxhSU65"

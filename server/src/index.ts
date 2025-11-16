@@ -33,16 +33,17 @@ import nftRoutes from './routes/nft';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import luloRouter from './routes/lulo';
 import tradesRouter from './routes/tradesRoutes';
-import {startTradesIngestor} from './services/tradeServices';
+import { startTradesIngestor } from './services/tradeServices';
 import { startIndexer } from './services/indexerService';
 import { BitqueryService } from './services/bitQueryService';
 import { custodialRouter } from './routes/custodialWalletsRoutes';
 import tokenRelatedRouter from './routes/tokenListing/tokensRelatedRoutes';
-import { connectRedis} from './redis/redisClient';
+import { connectRedis } from './redis/redisClient';
 import userRoutes from './routes/auth/userRoutes';
 import coinbaseRoutes from './routes/coinbase/coinbaseRoutes';
 import exportRoutes from './routes/auth/exportWallet';
-require('dotenv').config({path: '../../.env'})
+import { startDiscoveryWorker } from './workers/blueChipWorker';
+require('dotenv').config({ path: '../../.env' })
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -63,7 +64,7 @@ app.use(cors(corsOptions));
 
 // Create HTTP server for Socket.IO
 const server = http.createServer(app);
- 
+
 // Initialize WebSocket service with improved options
 const webSocketService = new WebSocketService(server);
 
@@ -134,7 +135,7 @@ async function runMigrationsAndStartServer() {
     if (log.length > 0) {
       console.log('Migrations executed:', log);
     }
-    
+
     // Setup global chat after migrations
     await setupGlobalChat();
   } catch (error) {
@@ -152,12 +153,12 @@ app.get('/api/websocket-status', (req, res) => {
     connections: 0,
     activeTransports: {}
   };
-  
+
   // Count connections and gather transport stats
   if (webSocketService.io) {
     const sockets = webSocketService.io.sockets.sockets;
     engineStats.connections = sockets.size;
-    
+
     // Count transports
     sockets.forEach((socket: any) => {
       const transport = socket.conn.transport.name;
@@ -168,7 +169,7 @@ app.get('/api/websocket-status', (req, res) => {
       }
     });
   }
-  
+
   res.json({
     status: 'active',
     environment: process.env.NODE_ENV,
@@ -266,6 +267,8 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
     await testDbConnection();
     await runMigrationsAndStartServer();
     await connectRedis();
+    // startDiscoveryWorker();   // <-- ADD THIS
+    // console.log('🔄 Discovery worker started from index.ts');
     console.log('✅ Database and migrations completed successfully');
 
     // await startIndexer(webSocketService.io);

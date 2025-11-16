@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {getThreadBaseStyles, headerStyles} from './Thread.styles';
@@ -20,17 +21,17 @@ import {useTrades} from '../../hooks/useTrades';
 import {formatTimeAgo} from '../../utils';
 import {formatCompactNumber} from '@/screens/sample-ui/Threads/SearchScreen';
 import SearchBox from '@/screens/sample-ui/Threads/SearchBox';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 export const Thread: React.FC<ThreadProps> = ({
-  rootPosts,
-  currentUser,
+  // rootPosts,
+  // currentUser,
   showHeader = true,
-  themeOverrides,
+  // themeOverrides,
   styleOverrides,
   userStyleSheet,
 }) => {
-  // const trades = useTrades();
-
+  // loading state
   const trades = [
     {
       walletAddress: 'So11111111111111111111111111111111111111112',
@@ -101,6 +102,51 @@ export const Thread: React.FC<ThreadProps> = ({
       },
     },
   ];
+  // const trades = useTrades();
+  // console.log('trades: ', trades);
+  const isLoading = !trades || trades.length === 0;
+
+  // spinner animation
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  // useEffect(() => {
+  //   const loop = Animated.loop(
+  //     Animated.timing(spinAnim, {
+  //       toValue: 1,
+  //       duration: 800,
+  //       useNativeDriver: true,
+  //     }),
+  //   );
+  //   loop.start();
+  //   return () => loop.stop();
+  // }, []);
+
+  // const spin = spinAnim.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ['0deg', '360deg'],
+  // });
+
+  // show loader first
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          padding: 24,
+          alignItems: 'center',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          marginTop: 100,
+          borderWidth: 2,
+          width: '100%',
+          height: '80%',
+        }}>
+        <ActivityIndicator size="large" color={COLORS.brandPrimary} />
+        <Text style={{color: COLORS.greyMid, marginTop: 10}}>
+          Loading Trades...
+        </Text>
+      </View>
+    );
+  }
 
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,50 +170,44 @@ export const Thread: React.FC<ThreadProps> = ({
   return (
     <View style={styles.threadRootContainer}>
       {showHeader && (
-        <Animated.View
-          style={[
-            styles.header,
-            {padding: 16},
-            {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 1000,
-              backgroundColor: COLORS.backgroundGradient,
-              height: 80,
-              // borderWidth: 2,
-              borderBottomColor: COLORS.backgroundGradient,
-            },
-          ]}>
-          <View style={headerStyles.container}>
-            {/* Left */}
-            <TouchableOpacity
-              onPress={handleProfilePress}
-              style={headerStyles.profileContainer}>
-              <Icons.SettingsIcon width={28} height={28} color={COLORS.white} />
-            </TouchableOpacity>
-
-            {/* Right */}
-            <View style={headerStyles.iconsContainer}>
+        <SafeAreaView edges={['top']}>
+          <Animated.View style={[styles.header, {padding: 16, height: 40}]}>
+            <View style={headerStyles.container}>
+              {/* Left */}
               <TouchableOpacity
                 onPress={handleProfilePress}
                 style={headerStyles.profileContainer}>
-                
-                <Icons.RefreshIcon width={28} height={28} color={COLORS.white} />
+                <Icons.SettingsIcon
+                  width={28}
+                  height={28}
+                  color={COLORS.white}
+                />
               </TouchableOpacity>
-            </View>
 
-            {/* Center Logo */}
-            <View style={headerStyles.absoluteLogoContainer}>
-              <Icons.AppLogo width={28} height={28} />
+              {/* Right */}
+              <View style={headerStyles.iconsContainer}>
+                <TouchableOpacity
+                  onPress={handleProfilePress}
+                  style={headerStyles.profileContainer}>
+                  <Icons.RefreshIcon
+                    width={28}
+                    height={28}
+                    color={COLORS.white}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Center Logo */}
+              <View style={headerStyles.absoluteLogoContainer}>
+                <Icons.AppLogo width={28} height={28} />
+              </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </SafeAreaView>
       )}
 
       {/* Feed only */}
-      <View style={{flex: 1, paddingTop: showHeader ? 70 : 80}}>
+      <View style={{flex: 1, paddingTop: showHeader ? 20 : 40}}>
         <FlatList
           data={trades}
           keyExtractor={(item, index) =>
@@ -285,8 +325,8 @@ export const Thread: React.FC<ThreadProps> = ({
                           <Icons.UpArrowIcon width={13} height={10} />
                         )}
                         {item.priceChange24h < 0
-                          ? `-${Math.abs(item.priceChange24h)}`
-                          : `+${Math.abs(item.priceChange24h)}`}
+                          ? `-${Math.abs(item.priceChange24h).toFixed()}`
+                          : `+${Math.abs(item.priceChange24h).toFixed()}`}
                         %
                       </Text>
                     </View>
