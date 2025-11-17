@@ -40,7 +40,7 @@
 
 
 // File: backend/routes/authRoutes.js
-import express, { Router } from "express";
+import express, {Request, Response } from "express";
 import knex from "../../db/knex"; // import configured knex instance
 // import {PrivyClient} from '@privy-io/node';
 // import dotenv from "dotenv";
@@ -57,13 +57,13 @@ import knex from "../../db/knex"; // import configured knex instance
 
 // });
 // console.log("privy: ", privy);
-const userRoutess = Router();
+const userRoutess = express.Router();
 
 /**
  * POST /api/auth/syncUser
  * Store or update user + wallet info after successful login
  */
-userRoutess.post("/syncUser", async (req, res) => {
+userRoutess.post("/syncUser", async (req: Request, res: Response): Promise<any> => {
   const { user, wallet } = req.body;
 
   if (!user?.id || !wallet?.address) {
@@ -84,7 +84,7 @@ userRoutess.post("/syncUser", async (req, res) => {
           privy_id: user.id,
           username,
           display_name: user.linked_accounts?.[0]?.name || null,
-          email: user.linked_accounts?.find(a => a.type === "google_oauth")?.email || null,
+          email: user.linked_accounts?.find((a: { type: string; email?: string }) => a.type === "google_oauth")?.email || null,
           profile_image_url: user.linked_accounts?.[0]?.profile_image_url || null,
           has_accepted_terms: user.has_accepted_terms || false,
           is_guest: user.is_guest || false,
@@ -120,7 +120,7 @@ userRoutess.post("/syncUser", async (req, res) => {
     }
 
     res.json({ success: true, userId: existingUser.id });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[syncUser] Error:", err);
     res.status(500).json({ success: false, message: "Internal server error", error: err.message });
   }
@@ -129,7 +129,7 @@ userRoutess.post("/syncUser", async (req, res) => {
  * GET /api/auth/user/:privyId
  * Fetch full user info for profile page
  */
-userRoutess.get("/user/:privyId", async (req, res) => {
+userRoutess.get("/user/:privyId", async (req: Request, res: Response): Promise<any> => {
   const { privyId } = req.params;
 
   try {
@@ -140,7 +140,7 @@ userRoutess.get("/user/:privyId", async (req, res) => {
     const wallets = await knex("wallets").where({ user_id: user.id });
 
     res.json({ success: true, user, wallets });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[getUserInfo] Error:", err);
     res.status(500).json({ success: false, message: "Internal server error", error: err.message });
   }
@@ -150,7 +150,7 @@ userRoutess.get("/user/:privyId", async (req, res) => {
  * PUT /api/auth/updateProfile/:privyId
  * Update username and profile picture only
  */
-userRoutess.put("/updateProfile/:privyId", async (req, res) => {
+userRoutess.put("/updateProfile/:privyId", async (req: Request, res: Response): Promise<any> => {
   const { privyId } = req.params;
   const { username, profile_image_url } = req.body;
 
@@ -169,7 +169,7 @@ userRoutess.put("/updateProfile/:privyId", async (req, res) => {
     }
 
     res.json({ success: true, message: "Profile updated successfully.", user: updatedUser });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[updateProfile] Error:", err);
     res.status(500).json({ success: false, message: "Internal server error", error: err.message });
   }
@@ -181,7 +181,7 @@ userRoutess.put("/updateProfile/:privyId", async (req, res) => {
  * DELETE /api/auth/deleteAccount/:privyId
  * Deletes a user and all linked wallets by Privy ID
  */
-userRoutess.delete("/deleteAccount/:privyId", async (req, res) => {
+userRoutess.delete("/deleteAccount/:privyId", async (req: Request, res: Response): Promise<any> => {
   const { privyId } = req.params;
 
   if (!privyId) {
@@ -199,7 +199,7 @@ userRoutess.delete("/deleteAccount/:privyId", async (req, res) => {
     await knex("users").where({ privy_id: privyId }).del();
 
     res.json({ success: true, message: "User and linked wallets deleted successfully." });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[deleteAccount] Error:", err);
     res.status(500).json({ success: false, message: "Internal server error", error: err.message });
   }
@@ -215,7 +215,7 @@ userRoutess.delete("/deleteAccount/:privyId", async (req, res) => {
 // }
 // });
 
-userRoutess.post("/insert-watchedaddresses", async (req, res) => {
+userRoutess.post("/insert-watchedaddresses", async (req: Request, res: Response): Promise<any> => {
   try {
     const { address, username, profile_picture_url } = req.body;
 

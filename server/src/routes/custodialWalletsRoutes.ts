@@ -1,5 +1,5 @@
 // src/services/custodialWalletService.ts
-import express from "express";
+import express, {Request, Response} from "express";
 import { Connection, sendAndConfirmRawTransaction, Keypair } from "@solana/web3.js";
 import {
   createWalletLocal,
@@ -27,7 +27,7 @@ custodialRouter.post("/wallets/dev-bootstrap", async (_req, res) => {
 // ----------------------------------------------------
 // Get wallet by ID
 // ----------------------------------------------------
-custodialRouter.get("/wallets/:id", async (req, res) => {
+custodialRouter.get("/wallets/:id", async (req: Request, res: Response): Promise<any> => {
   try {
     const row = await getWallet(req.params.id);
     if (!row) return res.status(404).json({ success: false, error: "Not found" });
@@ -40,7 +40,7 @@ custodialRouter.get("/wallets/:id", async (req, res) => {
 // ----------------------------------------------------
 // Sign transaction locally
 // ----------------------------------------------------
-custodialRouter.post("/wallets/:id/signTransaction", async (req, res) => {
+custodialRouter.post("/wallets/:id/signTransaction", async (req: Request, res: Response): Promise<any> => {
   try {
     const { txBase64 } = req.body as { txBase64: string };
     if (!txBase64)
@@ -64,7 +64,7 @@ custodialRouter.post("/wallets/:id/signTransaction", async (req, res) => {
 // ----------------------------------------------------
 // Broadcast raw signed tx to Solana
 // ----------------------------------------------------
-custodialRouter.post("/sendRaw", async (req, res) => {
+custodialRouter.post("/sendRaw", async (req: Request, res: Response): Promise<any> => {
   try {
     const { signedTxBase64 } = req.body as { signedTxBase64: string };
     if (!signedTxBase64)

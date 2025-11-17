@@ -195,7 +195,8 @@ export async function fetchTokenDetailBatch(tokens: any[]): Promise<any[]> {
 const queue = new PQueue({ concurrency: 10 });
 
 // in-memory cache to prevent re-fetching the same URI
-const cache = new Map<string, string | null>();
+// const cache = new Map<string, string | null>();
+const cache = new Map<string, Metadata | null>();
 
 // multiple IPFS gateways
 const IPFS_GATEWAYS = [
@@ -206,8 +207,15 @@ const IPFS_GATEWAYS = [
   "https://dweb.link/ipfs/",
 ];
 
+export interface Metadata {
+  image?: string | null;
+  createdOn?: string | null;
+  telegram?: string | null;
+  twitter?: string | null;
+  website?: string | null;
+}
 
-export async function decodeMetadata(uri?: string | null): Promise<string | null> {
+export async function decodeMetadata(uri?: string | null): Promise<Metadata | null> {
   if (!uri) return null;
   if (cache.has(uri)) return cache.get(uri)!;
 
@@ -215,23 +223,31 @@ export async function decodeMetadata(uri?: string | null): Promise<string | null
     try {
       let url = uri;
 
-      // IPFS handling
+      // IPFS
       if (uri.startsWith("ipfs://")) {
         const cid = uri.replace("ipfs://", "");
-        // randomize gateway order per request
         const shuffled = [...IPFS_GATEWAYS].sort(() => Math.random() - 0.5);
 
         for (const gateway of shuffled) {
           try {
             const res = await axios.get(`${gateway}${cid}`, { timeout: 15000 });
-            if (res.data?.image) {
-              cache.set(uri, res.data.image);
-              return res.data.image;
+            if (res.data) {
+              const meta: Metadata = {
+                image: res.data.image ?? null,
+                createdOn: res.data.createdOn ?? null,
+                telegram: res.data.telegram ?? null,
+                twitter: res.data.twitter ?? null,
+                website: res.data.website ?? null
+              };
+
+              cache.set(uri, meta);
+              return meta;
             }
           } catch (err: any) {
-            console.warn(`⚠️ [IPFS fail @ ${gateway}]`, cid, err.message);
+            console.warn(`⚠️ IPFS fail @ ${gateway}`, cid, err.message);
           }
         }
+
         cache.set(uri, null);
         return null;
       }
@@ -241,11 +257,19 @@ export async function decodeMetadata(uri?: string | null): Promise<string | null
         url = uri.replace("ar://", "https://arweave.net/");
       }
 
-      // Shadow drive or HTTPS
+      // Default HTTP
       const res = await axios.get(url, { timeout: 15000 });
-      const img = res.data?.image ?? null;
-      cache.set(uri, img);
-      return img;
+
+      const meta: Metadata = {
+        image: res.data?.image ?? null,
+        createdOn: res.data?.createdOn ?? null,
+        telegram: res.data?.telegram ?? null,
+        twitter: res.data?.twitter ?? null,
+        website: res.data?.website ?? null
+      };
+
+      cache.set(uri, meta);
+      return meta;
     } catch (err: any) {
       console.warn("⚠️ decodeMetadata final fail:", uri, err.message);
       cache.set(uri, null);
@@ -254,9 +278,10 @@ export async function decodeMetadata(uri?: string | null): Promise<string | null
   });
 }
 
+
 // batch decoder
 export async function decodeMetadataBatch(
   uris: (string | null | undefined)[]
-): Promise<(string | null)[]> {
+): Promise<(Metadata | null)[]> {
   return Promise.all(uris.map((uri) => decodeMetadata(uri)));
 }

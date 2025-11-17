@@ -1,11 +1,12 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import express, { Router, Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { decodeMetadata, getTokenAnalytics } from '../../utils/tokenRelatedUtils';
 import { AI_TOKENS_QUERY, ALMOST_BONDED_QUERY, blacklist, BLUECHIP_MEMES_QUERY, GET_LATEST_TRADES_QUERY, GET_MIGRATED_TOKENS_QUERY, GET_TOKEN_OHLC_QUERY, GET_TOP_HOLDERS_QUERY, metadataQuery, NEWLY_CREATED_TOKENS_QUERY, POPULAR_TOKENS_QUERY, TOKEN_DETAIL, TRENDING_TOKENS_QUERY, VERIFIED_LSTS_QUERY, xSTOCK_TOKENS_QUERY } from '../../queries/allQueryFile';
 import { redisClient } from "../../redis/redisClient";
 // import { fetchBluechipMemesNow } from '../../workers/blueChipWorker';
 import knex from "../../db/knex";
-const tokenRelatedRouter = Router();
+const tokenRelatedRouter = express.Router();
+
 
 // async function decodeMetadata(uri: string | undefined) {
 //     if (!uri) return null;
@@ -427,27 +428,27 @@ async function serveTokens(
 }
 
 // ================== Routes ==================
-tokenRelatedRouter.get("/bluechip-memes", (req, res) =>
+tokenRelatedRouter.get("/bluechip-memes", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "bluechip_meme", "bluechip-memes", Number(process.env.BLUECHIP_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/xstock-tokens", (req, res) =>
+tokenRelatedRouter.get("/xstock-tokens",  (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "xstock", "xstock-tokens", Number(process.env.XSTOCK_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/lsts-tokens", (req, res) =>
+tokenRelatedRouter.get("/lsts-tokens",  (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "lsts", "lsts-tokens", Number(process.env.LSTS_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/ai-tokens", (req, res) =>
+tokenRelatedRouter.get("/ai-tokens",  (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "ai", "ai-tokens", Number(process.env.AI_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/trending-tokens", (req, res) =>
+tokenRelatedRouter.get("/trending-tokens",  (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "trending", "trending-tokens", Number(process.env.TRENDING_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/popular-tokens", (req, res) =>
+tokenRelatedRouter.get("/popular-tokens",  (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "popular", "popular-tokens", Number(process.env.POPULAR_CACHE_TTL ?? 120))
 );
 
@@ -965,7 +966,7 @@ tokenRelatedRouter.get("/popular-tokens", (req, res) =>
 // GET /token-holders/:mintAddress
 tokenRelatedRouter.get(
   "/token-holders/:mintAddress",
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<any> => {
     try {
       const { mintAddress } = req.params;
 
@@ -1011,7 +1012,7 @@ tokenRelatedRouter.get(
 // GET /token-activity/:mintAddress
 tokenRelatedRouter.get(
   "/token-activity/:mintAddress",
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<any> => {
     try {
       const { mintAddress } = req.params;
 
@@ -1094,7 +1095,7 @@ tokenRelatedRouter.get(
   }
 );
 
-tokenRelatedRouter.get("/chart/:mintAddress", async (req: Request, res: Response) => {
+tokenRelatedRouter.get("/chart/:mintAddress", async (req: Request, res: Response): Promise<any> => {
   try {
     const { mintAddress } = req.params;
 

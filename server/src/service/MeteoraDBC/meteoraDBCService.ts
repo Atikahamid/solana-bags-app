@@ -157,79 +157,79 @@ export class MeteoraDBCService {
   /**
    * Create a configuration for Dynamic Bonding Curve
    */
-  async createConfig(params: types.CreateConfigParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.partner.createConfig({
-        payer: this.toPublicKey(params.payer),
-        config: this.toPublicKey(params.config),
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
-        quoteMint: this.toPublicKey(params.quoteMint),
-        poolFees: {
-          baseFee: {
-            cliffFeeNumerator: this.toBN(params.poolFees.baseFee.cliffFeeNumerator),
-            numberOfPeriod: params.poolFees.baseFee.numberOfPeriod,
-            reductionFactor: this.toBN(params.poolFees.baseFee.reductionFactor),
-            periodFrequency: this.toBN(params.poolFees.baseFee.periodFrequency),
-            feeSchedulerMode: params.poolFees.baseFee.feeSchedulerMode,
-          },
-          dynamicFee: params.poolFees.dynamicFee ? {
-            binStep: params.poolFees.dynamicFee.binStep,
-            binStepU128: this.toBN(params.poolFees.dynamicFee.binStepU128),
-            filterPeriod: params.poolFees.dynamicFee.filterPeriod,
-            decayPeriod: params.poolFees.dynamicFee.decayPeriod,
-            reductionFactor: params.poolFees.dynamicFee.reductionFactor,
-            variableFeeControl: params.poolFees.dynamicFee.variableFeeControl,
-            maxVolatilityAccumulator: params.poolFees.dynamicFee.maxVolatilityAccumulator,
-          } : null,
-        },
-        activationType: params.activationType,
-        collectFeeMode: params.collectFeeMode,
-        migrationOption: params.migrationOption,
-        tokenType: params.tokenType,
-        tokenDecimal: params.tokenDecimal,
-        migrationQuoteThreshold: this.toBN(params.migrationQuoteThreshold),
-        partnerLpPercentage: params.partnerLpPercentage,
-        creatorLpPercentage: params.creatorLpPercentage,
-        partnerLockedLpPercentage: params.partnerLockedLpPercentage,
-        creatorLockedLpPercentage: params.creatorLockedLpPercentage,
-        sqrtStartPrice: this.toBN(params.sqrtStartPrice),
-        lockedVesting: {
-          amountPerPeriod: this.toBN(params.lockedVesting.amountPerPeriod),
-          cliffDurationFromMigrationTime: this.toBN(params.lockedVesting.cliffDurationFromMigrationTime),
-          frequency: this.toBN(params.lockedVesting.frequency),
-          numberOfPeriod: this.toBN(params.lockedVesting.numberOfPeriod),
-          cliffUnlockAmount: this.toBN(params.lockedVesting.cliffUnlockAmount),
-        },
-        migrationFeeOption: params.migrationFeeOption,
-        tokenSupply: params.tokenSupply ? {
-          preMigrationTokenSupply: this.toBN(params.tokenSupply.preMigrationTokenSupply),
-          postMigrationTokenSupply: this.toBN(params.tokenSupply.postMigrationTokenSupply),
-        } : null,
-        creatorTradingFeePercentage: params.creatorTradingFeePercentage,
-        padding0: [],
-        padding1: [],
-        curve: params.curve.map(curve => ({
-          sqrtPrice: this.toBN(curve.sqrtPrice),
-          liquidity: this.toBN(curve.liquidity),
-        })),
-      });
+  // async createConfig(params: types.CreateConfigParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.createConfig({
+  //       payer: this.toPublicKey(params.payer),
+  //       config: this.toPublicKey(params.config),
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
+  //       quoteMint: this.toPublicKey(params.quoteMint),
+  //       poolFees: {
+  //         baseFee: {
+  //           cliffFeeNumerator: this.toBN(params.poolFees.baseFee.cliffFeeNumerator),
+  //           numberOfPeriod: params.poolFees.baseFee.numberOfPeriod,
+  //           reductionFactor: this.toBN(params.poolFees.baseFee.reductionFactor),
+  //           periodFrequency: this.toBN(params.poolFees.baseFee.periodFrequency),
+  //           feeSchedulerMode: params.poolFees.baseFee.feeSchedulerMode,
+  //         },
+  //         dynamicFee: params.poolFees.dynamicFee ? {
+  //           binStep: params.poolFees.dynamicFee.binStep,
+  //           binStepU128: this.toBN(params.poolFees.dynamicFee.binStepU128),
+  //           filterPeriod: params.poolFees.dynamicFee.filterPeriod,
+  //           decayPeriod: params.poolFees.dynamicFee.decayPeriod,
+  //           reductionFactor: params.poolFees.dynamicFee.reductionFactor,
+  //           variableFeeControl: params.poolFees.dynamicFee.variableFeeControl,
+  //           maxVolatilityAccumulator: params.poolFees.dynamicFee.maxVolatilityAccumulator,
+  //         } : null,
+  //       },
+  //       activationType: params.activationType,
+  //       collectFeeMode: params.collectFeeMode,
+  //       migrationOption: params.migrationOption,
+  //       tokenType: params.tokenType,
+  //       tokenDecimal: params.tokenDecimal,
+  //       migrationQuoteThreshold: this.toBN(params.migrationQuoteThreshold),
+  //       partnerLpPercentage: params.partnerLpPercentage,
+  //       creatorLpPercentage: params.creatorLpPercentage,
+  //       partnerLockedLpPercentage: params.partnerLockedLpPercentage,
+  //       creatorLockedLpPercentage: params.creatorLockedLpPercentage,
+  //       sqrtStartPrice: this.toBN(params.sqrtStartPrice),
+  //       lockedVesting: {
+  //         amountPerPeriod: this.toBN(params.lockedVesting.amountPerPeriod),
+  //         cliffDurationFromMigrationTime: this.toBN(params.lockedVesting.cliffDurationFromMigrationTime),
+  //         frequency: this.toBN(params.lockedVesting.frequency),
+  //         numberOfPeriod: this.toBN(params.lockedVesting.numberOfPeriod),
+  //         cliffUnlockAmount: this.toBN(params.lockedVesting.cliffUnlockAmount),
+  //       },
+  //       migrationFeeOption: params.migrationFeeOption,
+  //       tokenSupply: params.tokenSupply ? {
+  //         preMigrationTokenSupply: this.toBN(params.tokenSupply.preMigrationTokenSupply),
+  //         postMigrationTokenSupply: this.toBN(params.tokenSupply.postMigrationTokenSupply),
+  //       } : null,
+  //       creatorTradingFeePercentage: params.creatorTradingFeePercentage,
+  //       padding0: [],
+  //       padding1: [],
+  //       curve: params.curve.map(curve => ({
+  //         sqrtPrice: this.toBN(curve.sqrtPrice),
+  //         liquidity: this.toBN(curve.liquidity),
+  //       })),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in createConfig:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in createConfig:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   async myTestFunc() {
     try {
@@ -350,63 +350,63 @@ export class MeteoraDBCService {
   /**
    * Build curve and create config
    */
-  async buildCurveAndCreateConfig(params: types.BuildCurveAndCreateConfigParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.partner.buildCurveAndCreateConfig({
-        buildCurveParam: {
-          totalTokenSupply: params.buildCurveParam.totalTokenSupply,
-          percentageSupplyOnMigration: params.buildCurveParam.percentageSupplyOnMigration,
-          migrationQuoteThreshold: params.buildCurveParam.migrationQuoteThreshold,
-          migrationOption: params.buildCurveParam.migrationOption,
-          tokenBaseDecimal: params.buildCurveParam.tokenBaseDecimal,
-          tokenQuoteDecimal: params.buildCurveParam.tokenQuoteDecimal,
-          lockedVesting: {
-            amountPerPeriod: this.toBN(params.buildCurveParam.lockedVesting.amountPerPeriod),
-            cliffDurationFromMigrationTime: this.toBN(params.buildCurveParam.lockedVesting.cliffDurationFromMigrationTime),
-            frequency: this.toBN(params.buildCurveParam.lockedVesting.frequency),
-            numberOfPeriod: this.toBN(params.buildCurveParam.lockedVesting.numberOfPeriod),
-            cliffUnlockAmount: this.toBN(params.buildCurveParam.lockedVesting.cliffUnlockAmount),
-          },
-          feeSchedulerParam: {
-            numberOfPeriod: params.buildCurveParam.feeSchedulerParam.numberOfPeriod,
-            reductionFactor: params.buildCurveParam.feeSchedulerParam.reductionFactor,
-            periodFrequency: params.buildCurveParam.feeSchedulerParam.periodFrequency,
-            feeSchedulerMode: params.buildCurveParam.feeSchedulerParam.feeSchedulerMode,
-          },
-          baseFeeBps: params.buildCurveParam.baseFeeBps,
-          dynamicFeeEnabled: params.buildCurveParam.dynamicFeeEnabled,
-          activationType: params.buildCurveParam.activationType,
-          collectFeeMode: params.buildCurveParam.collectFeeMode,
-          migrationFeeOption: params.buildCurveParam.migrationFeeOption,
-          tokenType: params.buildCurveParam.tokenType,
-          partnerLpPercentage: params.buildCurveParam.partnerLpPercentage,
-          creatorLpPercentage: params.buildCurveParam.creatorLpPercentage,
-          partnerLockedLpPercentage: params.buildCurveParam.partnerLockedLpPercentage,
-          creatorLockedLpPercentage: params.buildCurveParam.creatorLockedLpPercentage,
-          creatorTradingFeePercentage: params.buildCurveParam.creatorTradingFeePercentage,
-        },
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
-        payer: this.toPublicKey(params.payer),
-        quoteMint: this.toPublicKey(params.quoteMint),
-        config: this.toPublicKey(params.config),
-      });
+  // async buildCurveAndCreateConfig(params: types.BuildCurveAndCreateConfigParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.buildCurveAndCreateConfig({
+  //       buildCurveParam: {
+  //         totalTokenSupply: params.buildCurveParam.totalTokenSupply,
+  //         percentageSupplyOnMigration: params.buildCurveParam.percentageSupplyOnMigration,
+  //         migrationQuoteThreshold: params.buildCurveParam.migrationQuoteThreshold,
+  //         migrationOption: params.buildCurveParam.migrationOption,
+  //         tokenBaseDecimal: params.buildCurveParam.tokenBaseDecimal,
+  //         tokenQuoteDecimal: params.buildCurveParam.tokenQuoteDecimal,
+  //         lockedVesting: {
+  //           amountPerPeriod: this.toBN(params.buildCurveParam.lockedVesting.amountPerPeriod),
+  //           cliffDurationFromMigrationTime: this.toBN(params.buildCurveParam.lockedVesting.cliffDurationFromMigrationTime),
+  //           frequency: this.toBN(params.buildCurveParam.lockedVesting.frequency),
+  //           numberOfPeriod: this.toBN(params.buildCurveParam.lockedVesting.numberOfPeriod),
+  //           cliffUnlockAmount: this.toBN(params.buildCurveParam.lockedVesting.cliffUnlockAmount),
+  //         },
+  //         feeSchedulerParam: {
+  //           numberOfPeriod: params.buildCurveParam.feeSchedulerParam.numberOfPeriod,
+  //           reductionFactor: params.buildCurveParam.feeSchedulerParam.reductionFactor,
+  //           periodFrequency: params.buildCurveParam.feeSchedulerParam.periodFrequency,
+  //           feeSchedulerMode: params.buildCurveParam.feeSchedulerParam.feeSchedulerMode,
+  //         },
+  //         baseFeeBps: params.buildCurveParam.baseFeeBps,
+  //         dynamicFeeEnabled: params.buildCurveParam.dynamicFeeEnabled,
+  //         activationType: params.buildCurveParam.activationType,
+  //         collectFeeMode: params.buildCurveParam.collectFeeMode,
+  //         migrationFeeOption: params.buildCurveParam.migrationFeeOption,
+  //         tokenType: params.buildCurveParam.tokenType,
+  //         partnerLpPercentage: params.buildCurveParam.partnerLpPercentage,
+  //         creatorLpPercentage: params.buildCurveParam.creatorLpPercentage,
+  //         partnerLockedLpPercentage: params.buildCurveParam.partnerLockedLpPercentage,
+  //         creatorLockedLpPercentage: params.buildCurveParam.creatorLockedLpPercentage,
+  //         creatorTradingFeePercentage: params.buildCurveParam.creatorTradingFeePercentage,
+  //       },
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
+  //       payer: this.toPublicKey(params.payer),
+  //       quoteMint: this.toPublicKey(params.quoteMint),
+  //       config: this.toPublicKey(params.config),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in buildCurveAndCreateConfig:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in buildCurveAndCreateConfig:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Build curve by market cap and create config
@@ -656,30 +656,30 @@ export class MeteoraDBCService {
   /**
    * Claim partner trading fee
    */
-  async claimPartnerTradingFee(params: types.ClaimTradingFeeParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.partner.claimPartnerTradingFee({
-        pool: this.toPublicKey(params.pool),
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        maxBaseAmount: this.toBN(params.maxBaseAmount),
-        maxQuoteAmount: this.toBN(params.maxQuoteAmount),
-      });
+  // async claimPartnerTradingFee(params: types.ClaimTradingFeeParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.claimPartnerTradingFee({
+  //       pool: this.toPublicKey(params.pool),
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       maxBaseAmount: this.toBN(params.maxBaseAmount),
+  //       maxQuoteAmount: this.toBN(params.maxQuoteAmount),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in claimPartnerTradingFee:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in claimPartnerTradingFee:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Partner withdraw surplus
@@ -1236,30 +1236,30 @@ export class MeteoraDBCService {
   /**
    * Claim creator trading fee
    */
-  async claimCreatorTradingFee(params: types.ClaimCreatorTradingFeeParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.creator.claimCreatorTradingFee({
-        creator: this.toPublicKey(params.creator),
-        pool: this.toPublicKey(params.pool),
-        maxBaseAmount: this.toBN(params.maxBaseAmount),
-        maxQuoteAmount: this.toBN(params.maxQuoteAmount),
-      });
+  // async claimCreatorTradingFee(params: types.ClaimCreatorTradingFeeParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.creator.claimCreatorTradingFee({
+  //       creator: this.toPublicKey(params.creator),
+  //       pool: this.toPublicKey(params.pool),
+  //       maxBaseAmount: this.toBN(params.maxBaseAmount),
+  //       maxQuoteAmount: this.toBN(params.maxQuoteAmount),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in claimCreatorTradingFee:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in claimCreatorTradingFee:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Creator withdraw surplus
@@ -1519,106 +1519,106 @@ export class MeteoraDBCService {
   /**
    * Get swap quote
    */
-  async getSwapQuote(params: {
-    poolAddress: string,
-    inputAmount: string,
-    slippageBps: number,
-    swapBaseForQuote: boolean
-  }): Promise<{
-    estimatedOutput: string,
-    minimumAmountOut: string,
-    price: string,
-    priceImpact: string
-  }> {
-    try {
-      // Get the pool
-      const pool = await this.client.state.getPool(params.poolAddress);
-      if (!pool) {
-        throw new Error('Pool not found');
-      }
+  // async getSwapQuote(params: {
+  //   poolAddress: string,
+  //   inputAmount: string,
+  //   slippageBps: number,
+  //   swapBaseForQuote: boolean
+  // }): Promise<{
+  //   estimatedOutput: string,
+  //   minimumAmountOut: string,
+  //   price: string,
+  //   priceImpact: string
+  // }> {
+  //   try {
+  //     // Get the pool
+  //     const pool = await this.client.state.getPool(params.poolAddress);
+  //     if (!pool) {
+  //       throw new Error('Pool not found');
+  //     }
 
-      // Get the pool config
-      const config = await this.client.state.getPoolConfig(pool.config.toString());
+  //     // Get the pool config
+  //     const config = await this.client.state.getPoolConfig(pool.config.toString());
 
-      // Get current slot or timestamp based on activation type
-      let currentPoint = new BN(0);
-      try {
-        if (config.activationType === 0) { // Slot
-          const slot = await this.client.connection.getSlot();
-          currentPoint = new BN(slot);
-        } else { // Timestamp
-          const blockTime = await this.client.connection.getBlockTime(
-            await this.client.connection.getSlot()
-          );
-          if (blockTime) {
-            currentPoint = new BN(blockTime);
-          }
-        }
-      } catch (error) {
-        console.warn('Error getting current point, using 0:', error);
-      }
+  //     // Get current slot or timestamp based on activation type
+  //     let currentPoint = new BN(0);
+  //     try {
+  //       if (config.activationType === 0) { // Slot
+  //         const slot = await this.client.connection.getSlot();
+  //         currentPoint = new BN(slot);
+  //       } else { // Timestamp
+  //         const blockTime = await this.client.connection.getBlockTime(
+  //           await this.client.connection.getSlot()
+  //         );
+  //         if (blockTime) {
+  //           currentPoint = new BN(blockTime);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.warn('Error getting current point, using 0:', error);
+  //     }
 
-      // Process and validate the input amount
-      let processedAmount: string;
-      try {
-        // Make sure we're working with a string
-        const amountStr = String(params.inputAmount);
-        console.log(`Original input amount: ${amountStr}`);
+  //     // Process and validate the input amount
+  //     let processedAmount: string;
+  //     try {
+  //       // Make sure we're working with a string
+  //       const amountStr = String(params.inputAmount);
+  //       console.log(`Original input amount: ${amountStr}`);
 
-        // Check if it contains a decimal point
-        if (amountStr.includes('.')) {
-          // Convert float to integer considering decimals
-          // For Solana tokens, you typically need to convert to lamports (smallest unit)
-          // Assuming 9 decimals (like SOL), we'll multiply by 10^9
-          // For USDC with 6 decimals, you'd use 10^6
-          const floatVal = parseFloat(amountStr);
-          if (isNaN(floatVal)) {
-            throw new Error(`Invalid amount format: ${amountStr}`);
-          }
+  //       // Check if it contains a decimal point
+  //       if (amountStr.includes('.')) {
+  //         // Convert float to integer considering decimals
+  //         // For Solana tokens, you typically need to convert to lamports (smallest unit)
+  //         // Assuming 9 decimals (like SOL), we'll multiply by 10^9
+  //         // For USDC with 6 decimals, you'd use 10^6
+  //         const floatVal = parseFloat(amountStr);
+  //         if (isNaN(floatVal)) {
+  //           throw new Error(`Invalid amount format: ${amountStr}`);
+  //         }
 
-          // Default to 9 decimals (like for SOL) if we don't know the token's decimals
-          const decimals = 9;
-          const intVal = Math.floor(floatVal * Math.pow(10, decimals));
-          processedAmount = intVal.toString();
-        } else {
-          // If it's already an integer string with no decimal, just use it directly
-          // But verify it's actually a number
-          const intVal = parseInt(amountStr, 10);
-          if (isNaN(intVal)) {
-            throw new Error(`Invalid integer amount: ${amountStr}`);
-          }
-          processedAmount = amountStr;
-        }
+  //         // Default to 9 decimals (like for SOL) if we don't know the token's decimals
+  //         const decimals = 9;
+  //         const intVal = Math.floor(floatVal * Math.pow(10, decimals));
+  //         processedAmount = intVal.toString();
+  //       } else {
+  //         // If it's already an integer string with no decimal, just use it directly
+  //         // But verify it's actually a number
+  //         const intVal = parseInt(amountStr, 10);
+  //         if (isNaN(intVal)) {
+  //           throw new Error(`Invalid integer amount: ${amountStr}`);
+  //         }
+  //         processedAmount = amountStr;
+  //       }
 
-        console.log(`Processed amount for BN: ${processedAmount}`);
-      } catch (error) {
-        console.error('Error processing input amount:', error);
-        throw new Error(`Failed to process amount: ${params.inputAmount}`);
-      }
+  //       console.log(`Processed amount for BN: ${processedAmount}`);
+  //     } catch (error) {
+  //       console.error('Error processing input amount:', error);
+  //       throw new Error(`Failed to process amount: ${params.inputAmount}`);
+  //     }
 
-      // Get the quote using the processed amount
-      const quote = await this.client.pool.swapQuote({
-        virtualPool: pool,
-        config: config,
-        swapBaseForQuote: params.swapBaseForQuote,
-        amountIn: new BN(processedAmount),
-        slippageBps: params.slippageBps,
-        hasReferral: false,
-        currentPoint: currentPoint
-      });
+  //     // Get the quote using the processed amount
+  //     const quote = await this.client.pool.swapQuote({
+  //       virtualPool: pool,
+  //       config: config,
+  //       swapBaseForQuote: params.swapBaseForQuote,
+  //       amountIn: new BN(processedAmount),
+  //       slippageBps: params.slippageBps,
+  //       hasReferral: false,
+  //       currentPoint: currentPoint
+  //     });
 
-      // Return quote information with safe property access
-      return {
-        estimatedOutput: quote.amountOut?.toString() || "0",
-        minimumAmountOut: quote.minimumAmountOut?.toString() || "0",
-        price: "0", // SDK may not provide this directly
-        priceImpact: "0" // SDK may not provide this directly
-      };
-    } catch (error) {
-      console.error('Error getting swap quote:', error);
-      throw new Error('Failed to get swap quote');
-    }
-  }
+  //     // Return quote information with safe property access
+  //     return {
+  //       estimatedOutput: quote.amountOut?.toString() || "0",
+  //       minimumAmountOut: quote.minimumAmountOut?.toString() || "0",
+  //       price: "0", // SDK may not provide this directly
+  //       priceImpact: "0" // SDK may not provide this directly
+  //     };
+  //   } catch (error) {
+  //     console.error('Error getting swap quote:', error);
+  //     throw new Error('Failed to get swap quote');
+  //   }
+  // }
 
   /**
    * Get all pools for a specific token

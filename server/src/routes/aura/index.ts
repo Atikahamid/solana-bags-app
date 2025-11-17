@@ -32,7 +32,7 @@ async function fetchRPC(method: string, params: any) {
     if (data.error) throw new Error(data.error.message);
     return data.result;
 }
-router.get('/get-trending-tokens', async (req, res) => {
+router.get('/get-trending-tokens', async (req: Request, res: Response) => {
     const options = {
         method: 'GET',
         headers: {
@@ -443,7 +443,7 @@ router.post("/token/accounts/with-assets", async (req: Request, res: Response): 
         }
 
         // Extract unique mint addresses
-        const mintAddresses = [...new Set(tokenAccounts.map((t: any) => t.mint))];
+        const mintAddresses: string[] = [...new Set<string>(tokenAccounts.map((t: any) => t.mint as string))];
 
         // Fetch all asset metadata concurrently
         const assetResults = await Promise.allSettled(

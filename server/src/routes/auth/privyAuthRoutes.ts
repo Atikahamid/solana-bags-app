@@ -1,12 +1,13 @@
-import express, { Router } from 'express';
+import express, {Request, Response } from 'express';
+// import { Request, Response } from "express";
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import  knex  from '../../db/knex';
-
-const privyRouter = Router();
+// import dotenv from "dotenv";
+const privyRouter = express.Router();
 
 // Verify Privy token & login
-privyRouter.post('/privy-login', async (req, res) => {
+privyRouter.post('/privy-login', async (req: Request, res: Response): Promise<any> => {
   try {
     const { privyToken, wallet } = req.body;
     if (!privyToken || !wallet?.address)
@@ -51,7 +52,7 @@ privyRouter.post('/privy-login', async (req, res) => {
     // Generate local JWT session token
     const sessionToken = jwt.sign(
       { user_id: user.id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
 

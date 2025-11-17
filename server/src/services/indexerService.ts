@@ -47,82 +47,82 @@ export async function startIndexer(io: SocketIOServer) {
     await knex('processed_signatures').insert({ signature }).onConflict('signature').ignore();
   }
 
-  async function processSignature(signature: string, wallet: string, slot?: number) {
-    if (await alreadyProcessed(signature)) return;
-    await markProcessed(signature);
+  // async function processSignature(signature: string, wallet: string, slot?: number) {
+  //   if (await alreadyProcessed(signature)) return;
+  //   await markProcessed(signature);
 
-    // enqueue getTransaction to avoid rate limit; return null on error
-    const tx = await queue.add(async () => {
-      try {
-        return await connection!.getTransaction(signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' });
-      } catch (err) {
-        console.warn('getTransaction failed', err?.message || err);
-        return null;
-      }
-    });
+  //   // enqueue getTransaction to avoid rate limit; return null on error
+  //   const tx = await queue.add(async () => {
+  //     try {
+  //       return await connection!.getTransaction(signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' });
+  //     } catch (err) {
+  //       console.warn('getTransaction failed', err?.message || err);
+  //       return null;
+  //     }
+  //   });
 
-    if (!tx || !tx.meta || tx.meta.err) return;
+  //   if (!tx || !tx.meta || tx.meta.err) return;
 
-    const parsed = parseSwapFromTransaction(tx);
-    if (!parsed) return;
+  //   const parsed = parseSwapFromTransaction(tx);
+  //   if (!parsed) return;
 
-    // upsert into swaps table
-    try {
-      await knex('swaps').insert({
-        signature,
-        slot: tx.slot ?? slot ?? null,
-        block_time: tx.blockTime ?? null,
-        wallet,
-        in_mint: parsed.in_mint,
-        in_amount: parsed.in_amount,
-        out_mint: parsed.out_mint,
-        out_amount: parsed.out_amount,
-        program_id: parsed.program_id,
-        raw: JSON.stringify({ meta: tx.meta }),
-      }).onConflict(['signature']).ignore();
+  //   // upsert into swaps table
+  //   try {
+  //     await knex('swaps').insert({
+  //       signature,
+  //       slot: tx.slot ?? slot ?? null,
+  //       block_time: tx.blockTime ?? null,
+  //       wallet,
+  //       in_mint: parsed.in_mint,
+  //       in_amount: parsed.in_amount,
+  //       out_mint: parsed.out_mint,
+  //       out_amount: parsed.out_amount,
+  //       program_id: parsed.program_id,
+  //       raw: JSON.stringify({ meta: tx.meta }),
+  //     }).onConflict(['signature']).ignore();
 
-      // emit to clients (global channel)
-      io.emit('swap:new', {
-        signature,
-        slot: tx.slot ?? slot ?? null,
-        blockTime: tx.blockTime ?? null,
-        wallet,
-        inMint: parsed.in_mint,
-        inAmount: parsed.in_amount,
-        outMint: parsed.out_mint,
-        outAmount: parsed.out_amount,
-        programId: parsed.program_id,
-      });
-    } catch (err) {
-      console.error('Failed to insert swap:', err?.message || err);
-    }
-  }
+  //     // emit to clients (global channel)
+  //     io.emit('swap:new', {
+  //       signature,
+  //       slot: tx.slot ?? slot ?? null,
+  //       blockTime: tx.blockTime ?? null,
+  //       wallet,
+  //       inMint: parsed.in_mint,
+  //       inAmount: parsed.in_amount,
+  //       outMint: parsed.out_mint,
+  //       outAmount: parsed.out_amount,
+  //       programId: parsed.program_id,
+  //     });
+  //   } catch (err) {
+  //     console.error('Failed to insert swap:', err?.message || err);
+  //   }
+  // }
 
   // subscribe one logs subscription per address
-  for (const r of rows) {
-    const address = r.address;
-    try {
-      connection.onLogs(
-        address,
-        async (log) => {
-          try {
-            const signature = log?.value?.signature;
-            const logs: string[] = log?.value?.logs ?? [];
-            const slot = log?.context?.slot ?? log?.result?.context?.slot;
-            if (!signature) return;
-            if (!looksLikeSwapLog(logs)) return; // fast filter
-            await processSignature(signature, address, slot);
-          } catch (err) {
-            console.error('onLogs handler error:', err?.message || err);
-          }
-        },
-        'confirmed'
-      );
-      console.log(`Subscribed logs for ${address}`);
-    } catch (err) {
-      console.error('Subscription failed for', address, err?.message || err);
-    }
-  }
+  // for (const r of rows) {
+  //   const address = r.address;
+  //   try {
+  //     connection.onLogs(
+  //       address,
+  //       async (log) => {
+  //         try {
+  //           const signature = log?.value?.signature;
+  //           const logs: string[] = log?.value?.logs ?? [];
+  //           const slot = log?.context?.slot ?? log?.result?.context?.slot;
+  //           if (!signature) return;
+  //           if (!looksLikeSwapLog(logs)) return; // fast filter
+  //           await processSignature(signature, address, slot);
+  //         } catch (err) {
+  //           console.error('onLogs handler error:', err?.message || err);
+  //         }
+  //       },
+  //       'confirmed'
+  //     );
+  //     console.log(`Subscribed logs for ${address}`);
+  //   } catch (err) {
+  //     console.error('Subscription failed for', address, err?.message || err);
+  //   }
+  // }
 
   console.log('Indexer started');
 }

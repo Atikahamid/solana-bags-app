@@ -126,18 +126,19 @@ const meteoraDBCService = new MeteoraDBCService(connection);
  * Create a new config
  * @route POST /api/meteora/config
  */
-router.post('/config', async (req: Request<{}, {}, types.CreateConfigParam>, res: Response) => {
-  try {
-    const result = await meteoraDBCService.createConfig(req.body);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in createConfig route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// router.post('/config', async (req: Request<{}, {}, types.CreateConfigParam>, res: Response) => {
+//   try {
+//     const result = await meteoraDBCService.createConfig(req.body);
+//     res.json(result);
+//   } catch (error) {
+//     console.error('Error in createConfig route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
+
 router.post('/my-test-api', async (req, res) => {
   try {
     const response = await meteoraDBCService.myTestFunc();
@@ -155,18 +156,18 @@ router.post('/my-test-api', async (req, res) => {
  * Build curve and create config
  * @route POST /api/meteora/build-curve
  */
-router.post('/build-curve', async (req: Request<{}, {}, types.BuildCurveAndCreateConfigParam>, res: Response) => {
-  try {
-    const result = await meteoraDBCService.buildCurveAndCreateConfig(req.body);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in buildCurveAndCreateConfig route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// router.post('/build-curve', async (req: Request<{}, {}, types.BuildCurveAndCreateConfigParam>, res: Response) => {
+//   try {
+//     const result = await meteoraDBCService.buildCurveAndCreateConfig(req.body);
+//     res.json(result);
+//   } catch (error) {
+//     console.error('Error in buildCurveAndCreateConfig route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
 
 /**
  * Build curve by market cap and create config
@@ -209,18 +210,18 @@ router.post('/partner-metadata', async (req: Request<{}, {}, types.CreatePartner
  * Claim partner trading fee
  * @route POST /api/meteora/claim-partner-fee
  */
-router.post('/claim-partner-fee', async (req: Request<{}, {}, types.ClaimTradingFeeParam>, res: Response) => {
-  try {
-    const result = await meteoraDBCService.claimPartnerTradingFee(req.body);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in claimPartnerTradingFee route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// router.post('/claim-partner-fee', async (req: Request<{}, {}, types.ClaimTradingFeeParam>, res: Response) => {
+//   try {
+//     const result = await meteoraDBCService.claimPartnerTradingFee(req.body);
+//     res.json(result);
+//   } catch (error) {
+//     console.error('Error in claimPartnerTradingFee route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
 
 /**
  * Partner withdraw surplus
@@ -277,112 +278,112 @@ router.post('/pool-and-buy', async (req: Request<{}, {}, types.CreatePoolAndBuyP
  * Get swap quote
  * @route GET /api/meteora/quote
  */
-router.get('/quote', async (req: any, res: any) => {
-  try {
-    const { inputToken, outputToken, amount, slippage, poolAddress } = req.query;
+// router.get('/quote', async (req: any, res: any) => {
+//   try {
+//     const { inputToken, outputToken, amount, slippage, poolAddress } = req.query;
 
-    if (!inputToken || !outputToken || !amount) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required parameters: inputToken, outputToken, amount',
-      });
-    }
+//     if (!inputToken || !outputToken || !amount) {
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Missing required parameters: inputToken, outputToken, amount',
+//       });
+//     }
 
-    // Check if this is a SOL-USDC pair (these are common)
-    const isSOLUSDCPair = (
-      (inputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
-        outputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v') ||
-      (outputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
-        inputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v')
-    );
+//     // Check if this is a SOL-USDC pair (these are common)
+//     const isSOLUSDCPair = (
+//       (inputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
+//         outputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v') ||
+//       (outputToken.toLowerCase() === 'so11111111111111111111111111111111111111112' &&
+//         inputToken.toLowerCase() === 'epjfwdd5aufqssqem2qn1xzybapC8G4wEGGkZwyTDt1v')
+//     );
 
-    if (isSOLUSDCPair) {
-      console.log("Attempting to find SOL-USDC pool - this should be available");
-    }
+//     if (isSOLUSDCPair) {
+//       console.log("Attempting to find SOL-USDC pool - this should be available");
+//     }
 
-    // If a specific pool address is provided, use it directly
-    if (poolAddress) {
-      console.log(`Using specific pool: ${poolAddress}`);
-      try {
-        // Get quote using the specified pool
-        const quote = await meteoraDBCService.getSwapQuote({
-          poolAddress: poolAddress as string,
-          inputAmount: amount as string,
-          slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
-          swapBaseForQuote: true, // This will be determined by the pool structure
-        });
+//     // If a specific pool address is provided, use it directly
+//     if (poolAddress) {
+//       console.log(`Using specific pool: ${poolAddress}`);
+//       try {
+//         // Get quote using the specified pool
+//         const quote = await meteoraDBCService.getSwapQuote({
+//           poolAddress: poolAddress as string,
+//           inputAmount: amount as string,
+//           slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
+//           swapBaseForQuote: true, // This will be determined by the pool structure
+//         });
 
-        return res.json({
-          success: true,
-          poolAddress: poolAddress,
-          estimatedOutput: quote.estimatedOutput,
-          minimumAmountOut: quote.minimumAmountOut,
-          price: quote.price,
-          priceImpact: quote.priceImpact,
-        });
-      } catch (error) {
-        console.error('Error getting quote for specified pool:', error);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to get quote from specified pool',
-        });
-      }
-    }
+//         return res.json({
+//           success: true,
+//           poolAddress: poolAddress,
+//           estimatedOutput: quote.estimatedOutput,
+//           minimumAmountOut: quote.minimumAmountOut,
+//           price: quote.price,
+//           priceImpact: quote.priceImpact,
+//         });
+//       } catch (error) {
+//         console.error('Error getting quote for specified pool:', error);
+//         return res.status(500).json({
+//           success: false,
+//           error: 'Failed to get quote from specified pool',
+//         });
+//       }
+//     }
 
-    // Otherwise, find a suitable pool for this token pair
-    console.log(`Attempting to find pool for: ${inputToken} <-> ${outputToken}`);
-    const pools = await meteoraDBCService.getPoolForTokenPair(
-      inputToken as string,
-      outputToken as string
-    );
+//     // Otherwise, find a suitable pool for this token pair
+//     console.log(`Attempting to find pool for: ${inputToken} <-> ${outputToken}`);
+//     const pools = await meteoraDBCService.getPoolForTokenPair(
+//       inputToken as string,
+//       outputToken as string
+//     );
 
-    if (!pools || pools.length === 0) {
-      console.log(`No pool found for ${inputToken} and ${outputToken}. Returning price-based estimate.`);
+//     if (!pools || pools.length === 0) {
+//       console.log(`No pool found for ${inputToken} and ${outputToken}. Returning price-based estimate.`);
 
-      // Instead of returning 404, return a special response indicating fallback to price-based estimate
-      return res.json({
-        success: false,
-        error: 'No pool found for this token pair',
-        shouldFallbackToPriceEstimate: true,
-        inputToken,
-        outputToken,
-        amount,
-        note: isSOLUSDCPair ?
-          "SOL-USDC pair was expected but not found in Meteora. Using price estimation instead." :
-          "No liquidity pool available for this pair. Using price estimation."
-      });
-    }
+//       // Instead of returning 404, return a special response indicating fallback to price-based estimate
+//       return res.json({
+//         success: false,
+//         error: 'No pool found for this token pair',
+//         shouldFallbackToPriceEstimate: true,
+//         inputToken,
+//         outputToken,
+//         amount,
+//         note: isSOLUSDCPair ?
+//           "SOL-USDC pair was expected but not found in Meteora. Using price estimation instead." :
+//           "No liquidity pool available for this pair. Using price estimation."
+//       });
+//     }
 
-    console.log(`Found ${pools.length} pools for this pair. Using the first one.`);
+//     console.log(`Found ${pools.length} pools for this pair. Using the first one.`);
 
-    // Get the best pool (first one for now, but could implement price comparison)
-    const pool = pools[0];
+//     // Get the best pool (first one for now, but could implement price comparison)
+//     const pool = pools[0];
 
-    // Get quote
-    const quote = await meteoraDBCService.getSwapQuote({
-      poolAddress: pool.address,
-      inputAmount: amount as string,
-      slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
-      swapBaseForQuote: inputToken === pool.baseMint, // True if selling the base token
-    });
+//     // Get quote
+//     const quote = await meteoraDBCService.getSwapQuote({
+//       poolAddress: pool.address,
+//       inputAmount: amount as string,
+//       slippageBps: slippage ? parseInt(slippage as string) * 100 : 50, // Convert percent to basis points (default 0.5%)
+//       swapBaseForQuote: inputToken === pool.baseMint, // True if selling the base token
+//     });
 
-    res.json({
-      success: true,
-      poolAddress: pool.address,
-      baseMint: pool.baseMint,
-      estimatedOutput: quote.estimatedOutput,
-      minimumAmountOut: quote.minimumAmountOut,
-      price: quote.price,
-      priceImpact: quote.priceImpact,
-    });
-  } catch (error) {
-    console.error('Error in quote route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+//     res.json({
+//       success: true,
+//       poolAddress: pool.address,
+//       baseMint: pool.baseMint,
+//       estimatedOutput: quote.estimatedOutput,
+//       minimumAmountOut: quote.minimumAmountOut,
+//       price: quote.price,
+//       priceImpact: quote.priceImpact,
+//     });
+//   } catch (error) {
+//     console.error('Error in quote route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
 
 /**
  * Swap tokens
@@ -558,18 +559,18 @@ router.post('/pool-metadata', async (req: Request<{}, {}, types.CreatePoolMetada
  * Claim creator trading fee
  * @route POST /api/meteora/claim-creator-fee
  */
-router.post('/claim-creator-fee', async (req: Request<{}, {}, types.ClaimCreatorTradingFeeParam>, res: Response) => {
-  try {
-    const result = await meteoraDBCService.claimCreatorTradingFee(req.body);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in claimCreatorTradingFee route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// router.post('/claim-creator-fee', async (req: Request<{}, {}, types.ClaimCreatorTradingFeeParam>, res: Response) => {
+//   try {
+//     const result = await meteoraDBCService.claimCreatorTradingFee(req.body);
+//     res.json(result);
+//   } catch (error) {
+//     console.error('Error in claimCreatorTradingFee route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
 
 /**
  * Creator withdraw surplus
