@@ -40,7 +40,7 @@ import { custodialRouter } from './routes/custodialWalletsRoutes';
 import tokenRelatedRouter from './routes/tokenListing/tokensRelatedRoutes';
 import { connectRedis } from './redis/redisClient';
 import userRoutes from './routes/auth/userRoutes';
-import coinbaseRoutes from './routes/coinbase/coinbaseRoutes';
+// import coinbaseRoutes from './routes/coinbase/coinbaseRoutes';
 // import exportRoutes from './routes/auth/exportWallet';
 import { startDiscoveryWorker } from './workers/blueChipWorker';
 require('dotenv').config({ path: '../../.env' })
@@ -234,7 +234,7 @@ app.use('/api/pastTrades', threadRouter);
 app.use('/api/custodial', custodialRouter);
 app.use('/api/tokenRelatedData', tokenRelatedRouter);
 app.use('/api/userRoutess', userRoutes);
-app.use('/api/coinbaseRoutes', coinbaseRoutes);
+// app.use('/api/coinbaseRoutes', coinbaseRoutes);
 // app.use('/api/export', exportRoutes);
 // app.post('/api/build-compressed-nft-listing-tx', async (req: any, res: any) => {
 //   try {
