@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import Animated from 'react-native-reanimated';
@@ -22,6 +23,7 @@ import {useWallet} from '@/modules/wallet-providers';
 import {RootStackParamList} from '@/shared/navigation/RootNavigator';
 import {DEFAULT_SOL_TOKEN} from '@/modules/data-module';
 import SwapSettingsModal from './SwapSettingsModal';
+import {clusterApiUrl, Connection, PublicKey} from '@solana/web3.js';
 
 type TokenAndModeParams = {
   TradeScreen: {
@@ -39,7 +41,9 @@ type SwapScreenRouteProp = RouteProp<TokenAndModeParams, 'TradeScreen'>;
 
 export default function TradeScreen() {
   const navigation = useNavigation();
-  const {wallet} = useWallet();
+  const {wallet, address} = useWallet();
+  const walletAddress = address;
+  console.log('wallet address: ', walletAddress);
   const route = useRoute<SwapScreenRouteProp>();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -58,7 +62,10 @@ export default function TradeScreen() {
   } = useWallet();
   // 💡 Local UI toggles for Buy/Sell mode
   const [isBuy, setIsBuy] = useState(true);
-
+  const connection = new Connection(clusterApiUrl('mainnet-beta'), {
+    commitment: 'confirmed',
+    confirmTransactionInitialTimeout: 120000, // optional
+  });
   /**
    * ✅ Import everything we need from useSwapLogic
    * These functions/states are enough to make the TradeScreen fully interactive.
@@ -118,6 +125,16 @@ export default function TradeScreen() {
     if (!wallet?.publicKey) {
       alert('Please connect your wallet first.');
       return;
+    }
+    console.log('wallet address in secure function: ', walletAddress);
+    const publicKey = new PublicKey(walletAddress);
+
+    // balance returned in lamports
+    const lamports = await connection.getBalance(publicKey);
+    const solBalance = lamports / 1_000_000_000; // convert to SOL
+
+    if (solBalance === 0 || Number(inputValue) >= solBalance) {
+      return Alert.alert('Error', 'Not enough SOL');
     }
     await handleSwap();
   };

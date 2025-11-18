@@ -230,7 +230,7 @@ export default function FeedScreen() {
         style={[
           styles.container,
           Platform.OS === 'android' && {
-            paddingTop: insets.top
+            // paddingTop: insets.top
           }
         ]}>
         <StatusBar backgroundColor={COLORS.background} barStyle="light-content" />

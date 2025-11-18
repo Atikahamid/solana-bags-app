@@ -180,6 +180,7 @@ export class TradeService {
       switch (provider) {
         case 'JupiterUltra':
           console.log('[TradeService] 🪐 Using JupiterUltraService for swap');
+          console.log("wallet publickey: ", walletPublicKey);
           swapResponse = await JupiterUltraService.executeUltraSwap(
             inputToken,
             outputToken,

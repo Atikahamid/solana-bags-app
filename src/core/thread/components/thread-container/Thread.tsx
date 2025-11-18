@@ -32,77 +32,77 @@ export const Thread: React.FC<ThreadProps> = ({
   userStyleSheet,
 }) => {
   // loading state
-  const trades = [
-    {
-      walletAddress: 'So11111111111111111111111111111111111111112',
-      username: 'whale123',
-      userProfilePic:
-        'https://arweave.net/beGAyeIzjV_UkyjFtxbkZyi_YqfOBWayiQ0B6wqWygY',
-      action: 'buy',
-      solPrice: 5.23,
-      marketCapAtTrade: 1500000,
-      time: Date.now() - 1000 * 60 * 5,
-      pnl: 120,
-      // priceChange24h: 12.5,
-      currentMarketCap: 1700000,
-      // liquidity: 450000,
-      // volume: 220000,
-      token: {
-        mintAddress: 'TOKENMINT111',
-        symbol: 'MEME',
-        name: 'Meme Token',
-        tokendecimal: 6,
-        imageUrl:
-          'https://raw.githubusercontent.com/worldliberty/usd1-metadata/refs/heads/main/logo.png',
-      },
-    },
-    {
-      walletAddress: 'So11111111111111111111111111111111111111113',
-      username: 'solanaFan',
-      userProfilePic:
-        'https://gateway.irys.xyz/TccS3HWiMB0hylmkRHL--4IIQzS-w-UMQ5bL39oFdMY',
-      action: 'sell',
-      solPrice: 3.87,
-      marketCapAtTrade: 2000000,
-      time: Date.now() - 1000 * 60 * 30,
-      pnl: -75,
-      priceChange24h: -8.2,
-      currentMarketCap: 1850000,
-      liquidity: 380000,
-      volume: 190000,
-      token: {
-        mintAddress: 'HYHiYPLg8wD4qpGxV54jELRkUon8hDFsvuCfszZApump',
-        symbol: 'AI',
-        name: 'AI Token',
-        tokendecimal: 6,
-        imageUrl:
-          'https://gateway.irys.xyz/CGPj5pQGCPBr291pmpiQdxeYZJKH48po7VKNG9hKttn9',
-      },
-    },
-    {
-      walletAddress: 'So11111111111111111111111111111111111111114',
-      username: 'traderJoe',
-      userProfilePic: 'https://cdn.kamino.finance/kamino.svg',
-      action: 'buy',
-      solPrice: 1.12,
-      marketCapAtTrade: 500000,
-      time: Date.now() - 1000 * 60 * 60,
-      pnl: 300,
-      priceChange24h: 20.1,
-      currentMarketCap: 650000,
-      liquidity: 200000,
-      volume: 80000,
-      token: {
-        mintAddress: 'TOKENMINT333',
-        symbol: 'LST',
-        name: 'Liquid Staking Token',
-        tokendecimal: 6,
-        imageUrl:
-          'https://gateway.irys.xyz/TJRvvcIhEfQHL8L8dWo0ZZW3UvEtXTJg88KyTsFRG74',
-      },
-    },
-  ];
-  // const trades = useTrades();
+  // const trades = [ 
+  //   {
+  //     walletAddress: 'So11111111111111111111111111111111111111112',
+  //     username: 'whale123',
+  //     userProfilePic:
+  //       'https://arweave.net/beGAyeIzjV_UkyjFtxbkZyi_YqfOBWayiQ0B6wqWygY',
+  //     action: 'buy',
+  //     solPrice: 5.23,
+  //     marketCapAtTrade: 1500000,
+  //     time: Date.now() - 1000 * 60 * 5,
+  //     pnl: 120,
+  //     // priceChange24h: 12.5,
+  //     currentMarketCap: 1700000,
+  //     // liquidity: 450000,
+  //     // volume: 220000,
+  //     token: {
+  //       mint: 'TOKENMINT111',
+  //       symbol: 'MEME',
+  //       name: 'Meme Token',
+  //       tokendecimal: 6,
+  //       imageUrl:
+  //         'https://raw.githubusercontent.com/worldliberty/usd1-metadata/refs/heads/main/logo.png',
+  //     },
+  //   },
+  //   {
+  //     walletAddress: 'So11111111111111111111111111111111111111113',
+  //     username: 'solanaFan',
+  //     userProfilePic:
+  //       'https://gateway.irys.xyz/TccS3HWiMB0hylmkRHL--4IIQzS-w-UMQ5bL39oFdMY',
+  //     action: 'sell',
+  //     solPrice: 3.87,
+  //     marketCapAtTrade: 2000000,
+  //     time: Date.now() - 1000 * 60 * 30,
+  //     pnl: -75,
+  //     priceChange24h: -8.2,
+  //     currentMarketCap: 1850000,
+  //     liquidity: 380000,
+  //     volume: 190000,
+  //     token: {
+  //       mint: 'HYHiYPLg8wD4qpGxV54jELRkUon8hDFsvuCfszZApump',
+  //       symbol: 'AI',
+  //       name: 'AI Token',
+  //       tokendecimal: 6,
+  //       imageUrl:
+  //         'https://gateway.irys.xyz/CGPj5pQGCPBr291pmpiQdxeYZJKH48po7VKNG9hKttn9',
+  //     },
+  //   },
+  //   {
+  //     walletAddress: 'So11111111111111111111111111111111111111114',
+  //     username: 'traderJoe',
+  //     userProfilePic: 'https://cdn.kamino.finance/kamino.svg',
+  //     action: 'buy',
+  //     solPrice: 1.12,
+  //     marketCapAtTrade: 500000,
+  //     time: Date.now() - 1000 * 60 * 60,
+  //     pnl: 300,
+  //     priceChange24h: 20.1,
+  //     currentMarketCap: 650000,
+  //     liquidity: 200000,
+  //     volume: 80000,
+  //     token: {
+  //       mint: 'TOKENMINT333',
+  //       symbol: 'LST',
+  //       name: 'Liquid Staking Token',
+  //       tokendecimal: 6,
+  //       imageUrl:
+  //         'https://gateway.irys.xyz/TJRvvcIhEfQHL8L8dWo0ZZW3UvEtXTJg88KyTsFRG74',
+  //     },
+  //   },
+  // ];
+  const trades = useTrades(); 
   // console.log('trades: ', trades);
   const isLoading = !trades || trades.length === 0;
 
@@ -126,28 +126,6 @@ export const Thread: React.FC<ThreadProps> = ({
   //   outputRange: ['0deg', '360deg'],
   // });
 
-  // show loader first
-  if (isLoading) {
-    return (
-      <View
-        style={{
-          padding: 24,
-          alignItems: 'center',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          marginTop: 100,
-          borderWidth: 2,
-          width: '100%',
-          height: '80%',
-        }}>
-        <ActivityIndicator size="large" color={COLORS.brandPrimary} />
-        <Text style={{color: COLORS.greyMid, marginTop: 10}}>
-          Loading Trades...
-        </Text>
-      </View>
-    );
-  }
-
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
@@ -167,6 +145,59 @@ export const Thread: React.FC<ThreadProps> = ({
     navigation.navigate('TokenDetailScreen' as never);
   };
 
+  // show loader first
+  if (isLoading) {
+    return (
+      <View style={styles.threadRootContainer}>
+        {showHeader && (
+          <SafeAreaView edges={['top']}>
+            <Animated.View style={[styles.header, {padding: 16, height: 40}]}>
+              <View style={headerStyles.container}>
+                <TouchableOpacity
+                  onPress={handleProfilePress}
+                  style={headerStyles.profileContainer}>
+                  <Icons.SettingsIcon
+                    width={28}
+                    height={28}
+                    color={COLORS.white}
+                  />
+                </TouchableOpacity>
+
+                <View style={headerStyles.iconsContainer}>
+                  <TouchableOpacity style={headerStyles.profileContainer}>
+                    <Icons.RefreshIcon
+                      width={28}
+                      height={28}
+                      color={COLORS.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={headerStyles.absoluteLogoContainer}>
+                  <Icons.AppLogo width={28} height={28} />
+                </View>
+              </View>
+            </Animated.View>
+          </SafeAreaView>
+        )}
+   
+        <View
+          style={{
+            padding: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 100,
+            width: '100%',
+            height: '70%',
+          }}>
+          <ActivityIndicator size="large" color={COLORS.brandPrimary} />
+          <Text style={{color: COLORS.greyMid, marginTop: 10}}>
+            Loading Trades...
+          </Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.threadRootContainer}>
       {showHeader && (
@@ -212,7 +243,7 @@ export const Thread: React.FC<ThreadProps> = ({
           data={trades}
           keyExtractor={(item, index) =>
             `${item.walletAddress}-${item.time}-${
-              item.token.mintAddress || index
+              item.token.mint || index
             }`
           }
           renderItem={({item}) => (
@@ -226,7 +257,7 @@ export const Thread: React.FC<ThreadProps> = ({
                     defaultSource={DEFAULT_IMAGES.user}
                     key={
                       Platform.OS === 'android'
-                        ? `user-${item.token.mintAddress}`
+                        ? `user-${item.token.mint}`
                         : 'user'
                     }
                   />
@@ -262,7 +293,7 @@ export const Thread: React.FC<ThreadProps> = ({
                         'TokenDetailScreen' as never,
                         {
                           token: {
-                            mintaddress: item.token.mintAddress,
+                            mint: item.token.mint,
                             name: item.token.name,
                             symbol: item.token.symbol,
                             tokenDecimal: item.token.tokendecimal || 6,
@@ -281,7 +312,7 @@ export const Thread: React.FC<ThreadProps> = ({
                       defaultSource={DEFAULT_IMAGES.token}
                       key={
                         Platform.OS === 'android'
-                          ? `token-${item.token.mintAddress}`
+                          ? `token-${item.token.mint}`
                           : 'token'
                       }
                     />

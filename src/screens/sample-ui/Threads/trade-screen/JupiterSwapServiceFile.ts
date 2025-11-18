@@ -14,7 +14,7 @@ export interface QuoteResponse {
   // and other data...
   routePlan: any;
 }
-
+ 
 export interface SwapInstructionResponse {
   // fields returned by /swap-instructions or /swap endpoint
   swapTransaction: string; // base64 transaction string

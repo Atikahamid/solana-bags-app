@@ -111,7 +111,7 @@ export class JupiterUltraService {
       
       const ultraOrderUrl = `${ENDPOINTS.serverBase}/api/jupiter/ultra/order`;
       
-      const requestBody = {
+      const requestBody = { 
         inputMint,
         outputMint,
         amount: amount.toString(),
@@ -324,8 +324,8 @@ export class JupiterUltraService {
         inputToken.address,
         outputToken.address,
         inputLamports.toString(),
-        // walletPublicKey.toString()
-        'AZxYoq26chaKTzhxN1FaD8FjHKhyEtgnmcHACNsX8JRy'
+        walletPublicKey.toString()
+        // 'AZxYoq26chaKTzhxN1FaD8FjHKhyEtgnmcHACNsX8JRy'
       );
 
       if (!order || !order.transaction) {

@@ -508,18 +508,18 @@ router.post('/migration/claim-damm-v1-lp', async (req: Request<{}, {}, types.Dam
  * Create DAMM V2 migration metadata
  * @route POST /api/meteora/migration/damm-v2-metadata
  */
-router.post('/migration/damm-v2-metadata', async (req: Request<{}, {}, types.CreateDammV2MigrationMetadataParam>, res: Response) => {
-  try {
-    const result = await meteoraDBCService.createDammV2MigrationMetadata(req.body);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in createDammV2MigrationMetadata route:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
+// router.post('/migration/damm-v2-metadata', async (req: Request<{}, {}, types.CreateDammV2MigrationMetadataParam>, res: Response) => {
+//   try {
+//     const result = await meteoraDBCService.createDammV2MigrationMetadata(req.body);
+//     res.json(result);
+//   } catch (error) {
+//     console.error('Error in createDammV2MigrationMetadata route:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     });
+//   }
+// });
 
 /**
  * Migrate to DAMM V2

@@ -42,6 +42,7 @@ export class JupiterUltraController {
       }
 
       // Validate taker address if provided
+      console.log("takerrrrrr: ", taker);
       if (taker) {
         try {
           new PublicKey(taker);

@@ -19,7 +19,7 @@ export function useTrades() {
                     (t) =>
                         t.walletAddress === trade.walletAddress &&
                         t.time === trade.time &&
-                        t.token.mintAddress === trade.token.mintAddress
+                        t.token.mint === trade.token.mint
                 );
                 if (exists) return prev;
                 return [trade, ...prev];

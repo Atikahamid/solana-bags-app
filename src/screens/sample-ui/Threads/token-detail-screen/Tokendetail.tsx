@@ -32,7 +32,7 @@ type TokenDetailParams = {
       logo?: string;
       mc: string;
       tokenDecimal: number,
-      mintaddress: string;
+      mint: string;
       change: number;
     };
   };
@@ -42,7 +42,7 @@ const TokenDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<TokenDetailParams, 'TokenDetailScreen'>>();
   const {token} = route.params;
-//   console.log('tpoken mint address: ', token.mintaddress);
+  console.log('tpoken mint address: ', token);
   console.log("++++++++++++++++++__________________________");
 //   console.log("token: ", token.tokenDecimal);
   // const onBackPress = () => { undefined}; // You can define a custom back press handler if needed
@@ -133,7 +133,7 @@ const TokenDetailScreen: React.FC = () => {
                 <Text style={{color: '#fff', fontWeight: 'bold'}}>
                   {token.symbol[0]}
                 </Text>
-                <Text>{token.mintaddress}</Text>
+                {/* <Text>{token.mint}</Text> */}
               </View>
             )}
             <View>
@@ -156,11 +156,12 @@ const TokenDetailScreen: React.FC = () => {
                     </View> */}
 
           {/* Chart Component */}
-          <Chart mintAddress={token.mintaddress}/>
+          <Chart mintAddress={token.mint}/>
           <TokenStats />
           <TokenStats2 />
+          {/* <Text>{token.mint}</Text> */}
           {/* <TokenStats3 mintAddress={token.mintAddress}/> */}
-          <TokenStats3 mintAddress={token.mintaddress} />
+          <TokenStats3 mintAddress={token.mint} />
         </ScrollView>
 
         {/* Bottom Buttons */}
@@ -181,8 +182,8 @@ const TokenDetailScreen: React.FC = () => {
                   {
                     mode: 'buy', // or "sell"
                     token: {
-                      mintaddress: token.mintaddress,
-                      tokendecimal: token.tokenDecimal,
+                      mintaddress: token.mint,
+                      tokendecimal: token.tokenDecimal || 6,
                       symbol: token.symbol,
                       name: token.name,
                       logoURI: token.logo,

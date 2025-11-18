@@ -860,6 +860,7 @@ console.log("slipagggggggggggggggggggggggggggggggge: ", slippage);
     try {
       // Execute the swap using the trade service with the selected provider
       console.log('[SwapScreen] Calling TradeService.executeSwap');
+      console.log("userPublickey: ", userPublicKey);
       const response = await TradeService.executeSwap(
         inputToken,
         outputToken,

@@ -68,78 +68,78 @@ router.post('/quote-liquidity', async (req: Request, res: Response) => {
  * Build a swap transaction
  * @route POST /api/pump-swap/build-swap
  */
-router.post('/build-swap', async (req: Request, res: Response) => {
-  console.log('[PumpSwapRoutes] Received request to /build-swap');
-  console.log('[PumpSwapRoutes] Request body:', JSON.stringify(req.body, null, 2));
+// router.post('/build-swap', async (req: Request, res: Response) => {
+//   console.log('[PumpSwapRoutes] Received request to /build-swap');
+//   console.log('[PumpSwapRoutes] Request body:', JSON.stringify(req.body, null, 2));
   
-  try {
-    // Validate input addresses
-    try {
-      console.log('[PumpSwapRoutes] Validating public keys');
-      if (req.body.userPublicKey) {
-        console.log('[PumpSwapRoutes] Validating userPublicKey:', req.body.userPublicKey);
-        new PublicKey(req.body.userPublicKey);
-      }
+//   try {
+//     // Validate input addresses
+//     try {
+//       console.log('[PumpSwapRoutes] Validating public keys');
+//       if (req.body.userPublicKey) {
+//         console.log('[PumpSwapRoutes] Validating userPublicKey:', req.body.userPublicKey);
+//         new PublicKey(req.body.userPublicKey);
+//       }
       
-      if (req.body.pool) {
-        console.log('[PumpSwapRoutes] Validating pool address:', req.body.pool);
-        new PublicKey(req.body.pool);
-      }
-    } catch (err) {
-      console.error('[PumpSwapRoutes] Invalid public key format:', err);
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid public key format',
-      });
-    }
+//       if (req.body.pool) {
+//         console.log('[PumpSwapRoutes] Validating pool address:', req.body.pool);
+//         new PublicKey(req.body.pool);
+//       }
+//     } catch (err) {
+//       console.error('[PumpSwapRoutes] Invalid public key format:', err);
+//       return res.status(400).json({
+//         success: false,
+//         error: 'Invalid public key format',
+//       });
+//     }
     
-    console.log('[PumpSwapRoutes] Calling pumpSwapClient.buildSwapTx');
-    const result = await pumpSwapClient.buildSwapTx(req.body);
-    console.log('[PumpSwapRoutes] Successfully built swap transaction');
+//     console.log('[PumpSwapRoutes] Calling pumpSwapClient.buildSwapTx');
+//     const result = await pumpSwapClient.buildSwapTx(req.body);
+//     console.log('[PumpSwapRoutes] Successfully built swap transaction');
     
-    // Don't log the full result as it may contain a large transaction
-    console.log('[PumpSwapRoutes] Transaction built successfully:', { 
-      success: result.success,
-      txSize: result.data?.transaction ? 
-        `${Buffer.from(result.data.transaction, 'base64').length} bytes` : 'N/A'
-    });
+//     // Don't log the full result as it may contain a large transaction
+//     console.log('[PumpSwapRoutes] Transaction built successfully:', { 
+//       success: result.success,
+//       txSize: result.data?.transaction ? 
+//         `${Buffer.from(result.data.transaction, 'base64').length} bytes` : 'N/A'
+//     });
     
-    res.json(result);
-  } catch (error: any) {
-    console.error('[PumpSwapRoutes] Error in POST /build-swap:', error);
-    console.error('[PumpSwapRoutes] Error stack:', error.stack);
+//     res.json(result);
+//   } catch (error: any) {
+//     console.error('[PumpSwapRoutes] Error in POST /build-swap:', error);
+//     console.error('[PumpSwapRoutes] Error stack:', error.stack);
     
-    // Try to extract the RPC error details 
-    const errorMsg = error.message || '';
-    if (errorMsg.includes('401 Unauthorized')) {
-      console.error('[PumpSwapRoutes] RPC Authorization error detected - API key issue. Check your RPC endpoint configuration.');
+//     // Try to extract the RPC error details 
+//     const errorMsg = error.message || '';
+//     if (errorMsg.includes('401 Unauthorized')) {
+//       console.error('[PumpSwapRoutes] RPC Authorization error detected - API key issue. Check your RPC endpoint configuration.');
       
-      // Try to extract the specific RPC URL being used
-      const urlMatch = errorMsg.match(/https:\/\/[^\s"')]+/);
-      if (urlMatch) {
-        console.error('[PumpSwapRoutes] RPC URL with auth error:', urlMatch[0]);
-      }
-    }
+//       // Try to extract the specific RPC URL being used
+//       const urlMatch = errorMsg.match(/https:\/\/[^\s"')]+/);
+//       if (urlMatch) {
+//         console.error('[PumpSwapRoutes] RPC URL with auth error:', urlMatch[0]);
+//       }
+//     }
     
-    if (errorMsg.includes('jsonrpc')) {
-      try {
-        // Try to extract and parse the JSON-RPC error message
-        const jsonRpcMatch = errorMsg.match(/{[\s\S]*"jsonrpc"[\s\S]*}/);
-        if (jsonRpcMatch) {
-          const jsonRpcError = JSON.parse(jsonRpcMatch[0]);
-          console.error('[PumpSwapRoutes] JSON-RPC error details:', JSON.stringify(jsonRpcError, null, 2));
-        }
-      } catch (parseErr) {
-        console.error('[PumpSwapRoutes] Could not parse JSON-RPC error');
-      }
-    }
+//     if (errorMsg.includes('jsonrpc')) {
+//       try {
+//         // Try to extract and parse the JSON-RPC error message
+//         const jsonRpcMatch = errorMsg.match(/{[\s\S]*"jsonrpc"[\s\S]*}/);
+//         if (jsonRpcMatch) {
+//           const jsonRpcError = JSON.parse(jsonRpcMatch[0]);
+//           console.error('[PumpSwapRoutes] JSON-RPC error details:', JSON.stringify(jsonRpcError, null, 2));
+//         }
+//       } catch (parseErr) {
+//         console.error('[PumpSwapRoutes] Could not parse JSON-RPC error');
+//       }
+//     }
     
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Error building swap transaction',
-    });
-  }
-});
+//     res.status(500).json({
+//       success: false,
+//       error: error.message || 'Error building swap transaction',
+//     });
+//   }
+// });
 
 /**
  * Build an add liquidity transaction

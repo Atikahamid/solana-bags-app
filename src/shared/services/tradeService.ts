@@ -8,7 +8,7 @@ export interface Trade {
     token: {
         name: string;
         symbol: string;
-        mintAddress: string;
+        mint: string;
         tokenDecimal: number;
         imageUrl: string;
     }; 
@@ -17,7 +17,7 @@ export interface Trade {
     solPrice: number;
     marketCapAtTrade: number;
     currentMarketCap: number; 
-    // priceChange24h: number;
+    priceChange24h: number;
 }
 
 

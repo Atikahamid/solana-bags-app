@@ -1136,29 +1136,29 @@ export class MeteoraDBCService {
   /**
    * Create DAMM V2 migration metadata
    */
-  async createDammV2MigrationMetadata(params: types.CreateDammV2MigrationMetadataParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.migration.createDammV2MigrationMetadata({
-        payer: this.toPublicKey(params.payer),
-        virtualPool: this.toPublicKey(params.virtualPool),
-        config: this.toPublicKey(params.config),
-      });
+  // async createDammV2MigrationMetadata(params: types.CreateDammV2MigrationMetadataParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.migration.createDammV2MigrationMetadata({
+  //       payer: this.toPublicKey(params.payer),
+  //       virtualPool: this.toPublicKey(params.virtualPool),
+  //       config: this.toPublicKey(params.config),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in createDammV2MigrationMetadata:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in createDammV2MigrationMetadata:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Migrate to DAMM V2
