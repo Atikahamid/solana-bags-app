@@ -15,7 +15,7 @@
   "license": "ISC",
   "description": "A Solana-based backend service for TokenMill, providing token management, staking, and vesting functionality.",
   "dependencies": {
-    "@coinbase/cdp-sdk": "1.36.0",
+    "@coinbase/cdp-sdk": "1.30.0",
     "@coral-xyz/anchor": "^0.30.1",
     "@google-cloud/storage": "^7.15.2",
     "@metaplex-foundation/mpl-core": "^1.4.0",
