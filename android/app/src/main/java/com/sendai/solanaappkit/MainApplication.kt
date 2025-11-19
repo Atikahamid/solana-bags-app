@@ -1,4 +1,4 @@
-package com.example.solanaappkit
+package com.sendai.solanaappkit
 
 import android.app.Application
 import android.content.res.Configuration

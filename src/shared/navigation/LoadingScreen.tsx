@@ -9,6 +9,7 @@ import {
   Easing,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -16,24 +17,24 @@ const LoadingScreen = () => {
   // ✅ useRef ensures the value persists across re-renders
   const spinValue = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const spinAnimation = Animated.loop(
-      Animated.timing(spinValue, {
-        toValue: 1,
-        duration: 1000, // speed of rotation
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    spinAnimation.start();
+  // useEffect(() => {
+  //   const spinAnimation = Animated.loop(
+  //     Animated.timing(spinValue, {
+  //       toValue: 1,
+  //       duration: 1000, // speed of rotation
+  //       easing: Easing.linear,
+  //       useNativeDriver: true,
+  //     }),
+  //   );
+  //   spinAnimation.start();
 
-    return () => spinAnimation.stop(); // cleanup
-  }, [spinValue]);
+  //   return () => spinAnimation.stop(); // cleanup
+  // }, [spinValue]);
 
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  // const spin = spinValue.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ['0deg', '360deg'],
+  // });
 
   return (
     <LinearGradient
@@ -42,13 +43,11 @@ const LoadingScreen = () => {
       end={{x: 0, y: 1}}
       style={styles.container}>
       <View style={styles.constainerOne}>
-        <Animated.View
-          style={[styles.spinner, {transform: [{rotate: spin}]}]}
-        />
+        <ActivityIndicator size="small" color={COLORS.brandPrimary} />
         <Text style={styles.text}>Setting up your wallet...</Text>
       </View>
     </LinearGradient>
-  );
+  ); 
 };
 
 const styles = StyleSheet.create({
