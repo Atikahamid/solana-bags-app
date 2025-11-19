@@ -307,7 +307,7 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
       </TouchableOpacity>
       {/* Google */}
 
-      {hasError(state) && <Text>Error: {state.error.message}</Text>}
+      {/* {hasError(state) && <Text>Error: {state.error.message}</Text>} */}
       {/* Apple */}
       {Platform.OS === 'ios' && (
         <TouchableOpacity style={styles.loginButton} onPress={handleAppleLogin}>
