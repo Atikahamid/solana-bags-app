@@ -20,7 +20,7 @@ import { resourceLimits } from 'worker_threads';
 import { useWallet } from '@/modules/wallet-providers';
 
 // API base URL - Use local server that implements the SDK
-const API_BASE_URL = `${SERVER_URL || 'http://192.168.1.70:8080'}/api`;
+const API_BASE_URL = `${SERVER_URL || 'https://solana-bags-app-production.up.railway.app'}/api`;
 // const { sendBase64Transaction, isPrivy } = useWallet();
 
 // Helper function to make API calls

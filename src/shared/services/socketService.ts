@@ -6,6 +6,7 @@ import { SERVER_URL } from '@env';
 import { store } from '@/shared/state/store';
 import { receiveMessage, incrementUnreadCount } from '@/shared/state/chat/slice';
 
+console.log("serverURL: ", SERVER_URL);
 class SocketService {
   private socket: Socket | null = null;
   private userId: string | null = null;

@@ -1,3 +1,4 @@
 <resources>
-  <string name="app_name">Solana App Kit</string>
+  <string name="app_name">Solana Bags App</string>
+  <string name="expo_system_ui_user_interface_style" translatable="false">light</string>
 </resources>

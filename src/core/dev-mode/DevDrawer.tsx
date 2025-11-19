@@ -324,8 +324,9 @@ const ServerStatus = () => {
     const { setServerStatus } = useDevMode();
     const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
     const [lastChecked, setLastChecked] = useState<Date | null>(null);
-    const [serverUrl, setServerUrl] = useState<string>(SERVER_URL || 'http://192.168.1.70:8080');
+    const [serverUrl, setServerUrl] = useState<string>(SERVER_URL || 'https://solana-bags-app-production.up.railway.app');
 
+    console.log("server url: in dev: ", serverUrl);
     // Check server connection status
     const checkServerStatus = async () => {
         setStatus('checking');
@@ -427,10 +428,10 @@ const DevDrawer = () => {
     const checkServerConnection = async () => {
         try {
             setServerConnectionStatus('checking');
-            console.log(`Checking server status in DevDrawer at: ${SERVER_URL || 'http://192.168.1.70:8080'}`);
+            console.log(`Checking server status in DevDrawer at: ${SERVER_URL || 'https://solana-bags-app-production.up.railway.app'}`);
 
             // Use the ws-health endpoint which should be lightweight and fast
-            const response = await fetchWithTimeout(`${SERVER_URL || 'http://192.168.1.70:8080'}/ws-health`, {
+            const response = await fetchWithTimeout(`${SERVER_URL || 'https://solana-bags-app-production.up.railway.app'}/ws-health`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',

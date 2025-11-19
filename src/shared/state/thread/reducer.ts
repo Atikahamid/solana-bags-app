@@ -7,7 +7,7 @@ import type {
 import {allposts as fallbackPosts} from '../../mocks/posts';
 import {SERVER_URL} from '@env';
 
-const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
 
 // Debug environment variable loading
 console.log('[Thread Reducer] SERVER_URL from @env:', SERVER_URL);

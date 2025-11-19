@@ -2,7 +2,7 @@
 
 The Meteora module integrates Meteora's Dynamic Liquidity Markets (DLMM) and token creation functionalities into the application. It allows users to swap tokens, manage liquidity, and create new tokens with customizable bonding curves.
 
-This module interacts with a backend service (assumed to be running at `http://192.168.1.70:8080/api` or a configurable `SERVER_URL`) that wraps the Meteora SDK to simplify client-side interactions.
+This module interacts with a backend service (assumed to be running at `https://solana-bags-app-production.up.railway.app/api` or a configurable `SERVER_URL`) that wraps the Meteora SDK to simplify client-side interactions.
 
 ## Core Functionalities
 

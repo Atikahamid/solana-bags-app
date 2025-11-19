@@ -366,7 +366,7 @@ const SellSection: React.FC<SellSectionProps> = ({
           creatorsHash: compressedData.creatorsHash
         };
         console.log('[handleSellNftOnTensor] sending to server:', params);
-        const resp = await fetch('http://192.168.1.70:8080/api/build-compressed-nft-listing-tx', {
+        const resp = await fetch('https://solana-bags-app-production.up.railway.app/api/build-compressed-nft-listing-tx', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

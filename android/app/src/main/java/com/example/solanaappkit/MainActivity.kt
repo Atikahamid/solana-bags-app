@@ -1,4 +1,4 @@
-package com.sendai.solanaappkit
+package com.example.solanaappkit
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

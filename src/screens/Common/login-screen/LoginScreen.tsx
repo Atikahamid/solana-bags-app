@@ -22,7 +22,7 @@ import styles from './LoginScreen.styles';
 import { useAuth } from '@/modules/wallet-providers';
 import LoadingScreen from '@/shared/navigation/LoadingScreen';
 
-const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
 
 export default function LoginScreen() {
   const navigation = useAppNavigation();

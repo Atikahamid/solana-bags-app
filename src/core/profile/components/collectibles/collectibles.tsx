@@ -79,7 +79,7 @@ const SOL_DECIMAL = 1000000000; // 1 SOL = 10^9 lamports
 // NFT data cache to prevent redundant fetches
 const nftDataCache = new Map<string, any>();
 
-const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
 
 // List renderer for token items
 const TokenListItem: React.FC<{

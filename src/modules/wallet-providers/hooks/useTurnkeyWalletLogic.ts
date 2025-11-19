@@ -112,7 +112,7 @@ export function useTurnkeyWalletLogic() {
         }
       }
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/initOtpAuth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,7 +178,7 @@ export function useTurnkeyWalletLogic() {
       // Generate public key for the embedded key
       const targetPublicKey = await createEmbeddedKey();
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/otpAuth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -265,7 +265,7 @@ export function useTurnkeyWalletLogic() {
       // Generate public key for the embedded key
       const targetPublicKey = await createEmbeddedKey();
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://192.168.1.70:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/oAuthLogin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

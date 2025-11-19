@@ -183,7 +183,7 @@ async function fetchBluechipMemesNow() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
         },
-        timeout: 60_000,
+        timeout: 120_000,
       }
     );
 
