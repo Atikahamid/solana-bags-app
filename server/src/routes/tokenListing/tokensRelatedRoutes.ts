@@ -5,6 +5,7 @@ import { AI_TOKENS_QUERY, ALMOST_BONDED_QUERY, blacklist, BLUECHIP_MEMES_QUERY, 
 import { redisClient } from "../../redis/redisClient";
 // import { fetchBluechipMemesNow } from '../../workers/blueChipWorker';
 import knex from "../../db/knex";
+import { fetchTokenDetailBatch } from '../../workers/blueChipWorker';
 const tokenRelatedRouter = express.Router();
 
 
@@ -25,302 +26,304 @@ const tokenRelatedRouter = express.Router();
 //         return null;
 //     }
 // }
-tokenRelatedRouter.get("/almost-bonded-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: ALMOST_BONDED_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
+// tokenRelatedRouter.get("/almost-bonded-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: ALMOST_BONDED_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
 
 
-    const pools = response.data?.data?.Solana?.DEXPools ?? [];
+//     const pools = response.data?.data?.Solana?.DEXPools ?? [];
 
-    // console.log("pools: ", pools);
-    const mapped = await Promise.all(
-      pools.map(async (p: any) => {
-        const pool = p.Pool ?? {};
-        const market = pool.Market ?? {};
-        const baseCurrency = market.BaseCurrency ?? {};
-
-
-        const rawBalance = pool.Base?.Balance ?? pool.Base?.PostAmount ?? null;
-        const bondingProgress = p.Bonding_Curve_Progress_Percentage;
-        const protocolFamily = pool.Dex.ProtocolFamily;
-        const mint = baseCurrency.MintAddress ?? null;
+//     // console.log("pools: ", pools);
+//     const mapped = await Promise.all(
+//       pools.map(async (p: any) => {
+//         const pool = p.Pool ?? {};
+//         const market = pool.Market ?? {};
+//         const baseCurrency = market.BaseCurrency ?? {};
 
 
-        // Decode token metadata (Uri -> JSON -> image)
-        let imageUrl: string | null = null;
-        let createdOn: string | null = null;
-        let twitterX: string | null = null;
-        let telegramX: string | null = null;
-        let website: string | null = null;
-        // let createdOn, telegramX, twitterX, website;
-        if (baseCurrency.Uri) {
-          const meta = await decodeMetadata(baseCurrency.Uri);
-          if (meta) {
-            imageUrl = meta.image || null;
-            createdOn = meta.createdOn || null;
-            telegramX = meta.telegram || null;
-            twitterX = meta.twitter || null;
-            website = meta.website || null;
-          }
-        }
+//         const rawBalance = pool.Base?.Balance ?? pool.Base?.PostAmount ?? null;
+//         const bondingProgress = p.Bonding_Curve_Progress_Percentage;
+//         const protocolFamily = pool.Dex.ProtocolFamily;
+//         const mint = baseCurrency.MintAddress ?? null;
 
 
-        // Analytics for token
-        const analytics = await getTokenAnalytics(mint);
+//         // Decode token metadata (Uri -> JSON -> image)
+//         let imageUrl: string | null = null;
+//         let createdOn: string | null = null;
+//         let twitterX: string | null = null;
+//         let telegramX: string | null = null;
+//         let website: string | null = null;
+//         // let createdOn, telegramX, twitterX, website;
+//         if (baseCurrency.Uri) {
+//           const meta = await decodeMetadata(baseCurrency.Uri);
+//           if (meta) {
+//             imageUrl = meta.image || null;
+//             createdOn = meta.createdOn || null;
+//             telegramX = meta.telegram || null;
+//             twitterX = meta.twitter || null;
+//             website = meta.website || null;
+//           }
+//         }
 
 
-        return {
-          mint,
-          name: baseCurrency.Name ?? null,
-          symbol: baseCurrency.Symbol ?? null,
-          uri: baseCurrency.Uri ?? null,
-          image: imageUrl,
-          createdOn: createdOn, // placeholder if available in metadata
-          twitterX: twitterX,
-          telegramX: telegramX,
-          website: website, // placeholder if available in metadata
-          blockTime: p.Block?.Time ?? null,
-          slot: p.Block?.Slot ?? null,
-          // feePayer: p.Transaction?.Signer ?? null,
-          bondingProgress,
-          analytics,
-          protocolFamily: protocolFamily
-        };
-      })
-    );
+//         // Analytics for token
+//         const analytics = await getTokenAnalytics(mint);
 
 
-    // ✅ Apply filter (only 65%–97%)
-    const filtered = mapped.filter(
-      (t) => t.bondingProgress >= 65 && t.bondingProgress <= 97
-    );
+//         return {
+//           mint,
+//           name: baseCurrency.Name ?? null,
+//           symbol: baseCurrency.Symbol ?? null,
+//           uri: baseCurrency.Uri ?? null,
+//           image: imageUrl,
+//           createdOn: createdOn, // placeholder if available in metadata
+//           twitterX: twitterX,
+//           telegramX: telegramX,
+//           website: website, // placeholder if available in metadata
+//           blockTime: p.Block?.Time ?? null,
+//           slot: p.Block?.Slot ?? null,
+//           // feePayer: p.Transaction?.Signer ?? null,
+//           bondingProgress,
+//           analytics,
+//           protocolFamily: protocolFamily
+//         };
+//       })
+//     );
 
-    // ✅ Sort remaining by bondingProgress descending
-    filtered.sort((a, b) => (b.bondingProgress ?? 0) - (a.bondingProgress ?? 0));
-    console.log("filtered token data 1: ", filtered[0]);
-    res.json(filtered);
-  } catch (err: any) {
-    console.error("❌ Error fetching almost bonded tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch almost bonded tokens" });
-  }
-});
 
-tokenRelatedRouter.get("/migrated-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: GET_MIGRATED_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
+//     // ✅ Apply filter (only 65%–97%)
+//     const filtered = mapped.filter(
+//       (t) => t.bondingProgress >= 65 && t.bondingProgress <= 97
+//     );
 
-    const instructions = response.data?.data?.Solana?.Instructions ?? [];
-    const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+//     // ✅ Sort remaining by bondingProgress descending
+//     filtered.sort((a, b) => (b.bondingProgress ?? 0) - (a.bondingProgress ?? 0));
+//     console.log("filtered token data 1: ", filtered[0]);
+//     res.json(filtered);
+//   } catch (err: any) {
+//     console.error("❌ Error fetching almost bonded tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch almost bonded tokens" });
+//   }
+// });
 
-    // Collect results
-    const migratedTokens: any[] = [];
+// tokenRelatedRouter.get("/migrated-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: GET_MIGRATED_TOKENS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
 
-    for (const instr of instructions) {
-      const method = instr?.Instruction?.Program?.Method ?? "";
-      const accounts = instr?.Instruction?.Accounts ?? [];
+//     const instructions = response.data?.data?.Solana?.Instructions ?? [];
+//     const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
-      // filter candidates: Mint present and Owner+ProgramId = TOKEN_PROGRAM_ID
-      const candidates = accounts.filter(
-        (acc: any) =>
-          acc?.Token?.Mint &&
-          acc?.Token?.Owner === TOKEN_PROGRAM_ID &&
-          acc?.Token?.ProgramId === TOKEN_PROGRAM_ID
-      );
+//     // Collect results
+//     const migratedTokens: any[] = [];
 
-      if (candidates.length === 0) continue;
+//     for (const instr of instructions) {
+//       const method = instr?.Instruction?.Program?.Method ?? "";
+//       const accounts = instr?.Instruction?.Accounts ?? [];
 
-      let chosenMint = "";
-      if (method === "migrate_meteora_damm") {
-        // Special rule: take the *second* candidate if available
-        chosenMint = candidates[1]?.Token?.Mint || candidates[0]?.Token?.Mint;
-      } else {
-        chosenMint = candidates[0]?.Token?.Mint;
-      }
+//       // filter candidates: Mint present and Owner+ProgramId = TOKEN_PROGRAM_ID
+//       const candidates = accounts.filter(
+//         (acc: any) =>
+//           acc?.Token?.Mint &&
+//           acc?.Token?.Owner === TOKEN_PROGRAM_ID &&
+//           acc?.Token?.ProgramId === TOKEN_PROGRAM_ID
+//       );
 
-      if (!chosenMint) continue;
+//       if (candidates.length === 0) continue;
 
-      const metaResponse = await axios.post(
-        process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-        {
-          query: metadataQuery,
-          variables: { mintAddress: chosenMint },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-          },
-        }
-      );
+//       let chosenMint = "";
+//       if (method === "migrate_meteora_damm") {
+//         // Special rule: take the *second* candidate if available
+//         chosenMint = candidates[1]?.Token?.Mint || candidates[0]?.Token?.Mint;
+//       } else {
+//         chosenMint = candidates[0]?.Token?.Mint;
+//       }
 
-      const poolMeta = metaResponse.data?.data?.Solana?.DEXPools?.[0] ?? null;
-      const baseCurrency = poolMeta?.Pool?.Market?.BaseCurrency ?? {};
+//       if (!chosenMint) continue;
 
-      // 🔹 Decode metadata (image + social links)
-      let imageUrl: string | null = null;
-      let createdOn: string | null = null;
-      let twitterX: string | null = null;
-      let telegramX: string | null = null;
-      let website: string | null = null;
+//       const metaResponse = await axios.post(
+//         process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//         {
+//           query: metadataQuery,
+//           variables: { mintAddress: chosenMint },
+//         },
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//           },
+//         }
+//       );
 
-      if (baseCurrency?.Uri) {
-        const meta = await decodeMetadata(baseCurrency.Uri);
-        if (meta) {
-          imageUrl = meta.image || null;
-          createdOn = meta.createdOn || null;
-          telegramX = meta.telegram || null;
-          twitterX = meta.twitter || null;
-          website = meta.website || null;
-        }
-      }
+//       const poolMeta = metaResponse.data?.data?.Solana?.DEXPools?.[0] ?? null;
+//       const baseCurrency = poolMeta?.Pool?.Market?.BaseCurrency ?? {};
 
-      // 🔹 Analytics
-      const analytics = await getTokenAnalytics(chosenMint);
+//       // 🔹 Decode metadata (image + social links)
+//       let imageUrl: string | null = null;
+//       let createdOn: string | null = null;
+//       let twitterX: string | null = null;
+//       let telegramX: string | null = null;
+//       let website: string | null = null;
 
-      // 🔹 Build result object (same structure as almost-bonded)
-      migratedTokens.push({
-        mint: chosenMint,
-        name: baseCurrency?.Name ?? null,
-        symbol: baseCurrency?.Symbol ?? null,
-        uri: baseCurrency?.Uri ?? null,
-        image: imageUrl,
-        createdOn,
-        twitterX,
-        telegramX,
-        website,
-        blockTime: poolMeta?.Block?.Time ?? null,
-        analytics,
-        protocolFamily: poolMeta?.Pool?.Dex?.ProtocolFamily ?? null,
-        method,
-      });
-    }
+//       if (baseCurrency?.Uri) {
+//         const meta = await decodeMetadata(baseCurrency.Uri);
+//         if (meta) {
+//           imageUrl = meta.image || null;
+//           createdOn = meta.createdOn || null;
+//           telegramX = meta.telegram || null;
+//           twitterX = meta.twitter || null;
+//           website = meta.website || null;
+//         }
+//       }
 
-    res.json({
-      count: migratedTokens.length,
-      tokens: migratedTokens,
-    });
-  } catch (err: any) {
-    console.error("❌ Error fetching migrated tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch migrated tokens" });
-  }
-});
+//       // 🔹 Analytics
+//       const analytics = await getTokenAnalytics(chosenMint);
 
-tokenRelatedRouter.get("/newly-created-tokens", async (req: Request, res: Response) => {
-  try {
-    const response = await axios.post(
-      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
-      { query: NEWLY_CREATED_TOKENS_QUERY },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
-        },
-      }
-    );
+//       // 🔹 Build result object (same structure as almost-bonded)
+//       migratedTokens.push({
+//         mint: chosenMint,
+//         name: baseCurrency?.Name ?? null,
+//         symbol: baseCurrency?.Symbol ?? null,
+//         uri: baseCurrency?.Uri ?? null,
+//         image: imageUrl,
+//         createdOn,
+//         twitterX,
+//         telegramX,
+//         website,
+//         blockTime: poolMeta?.Block?.Time ?? null,
+//         analytics,
+//         protocolFamily: poolMeta?.Pool?.Dex?.ProtocolFamily ?? null,
+//         method,
+//       });
+//     }
 
-    const instructions = response.data?.data?.Solana?.Instructions ?? [];
+//     res.json({
+//       count: migratedTokens.length,
+//       tokens: migratedTokens,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching migrated tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch migrated tokens" });
+//   }
+// });
 
-    const tokens = await Promise.all(
-      instructions.map(async (instr: any) => {
-        const block = instr.Block ?? {};
-        const tx = instr.Transaction ?? {};
-        const accounts = instr?.Instruction?.Accounts ?? [];
+// tokenRelatedRouter.get("/newly-created-tokens", async (req: Request, res: Response) => {
+//   try {
+//     const response = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       { query: NEWLY_CREATED_TOKENS_QUERY },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${process.env.BITQUERY_AUTH_TOKEN}`,
+//         },
+//       }
+//     );
 
-        // Find the mint address from accounts
-        const mintAccount = accounts.find((acc: any) => acc?.Token?.Mint);
-        const mint = mintAccount?.Token?.Mint ?? null;
-        if (!mint) return null;
+//     const instructions = response.data?.data?.Solana?.Instructions ?? [];
 
-        // Extract metadata JSON string
-        const arg = instr.Instruction?.Program?.Arguments?.find(
-          (a: any) => a.Name === "createMetadataAccountArgsV3"
-        );
-        let metaJson: any = null;
-        try {
-          metaJson = arg?.Value?.json ? JSON.parse(arg.Value.json) : null;
-        } catch {
-          metaJson = null;
-        }
+//     const tokens = await Promise.all(
+//       instructions.map(async (instr: any) => {
+//         const block = instr.Block ?? {};
+//         const tx = instr.Transaction ?? {};
+//         const accounts = instr?.Instruction?.Accounts ?? [];
 
-        const data = metaJson?.data ?? {};
-        const uri = data?.uri ?? null;
+//         // Find the mint address from accounts
+//         const mintAccount = accounts.find((acc: any) => acc?.Token?.Mint);
+//         const mint = mintAccount?.Token?.Mint ?? null;
+//         if (!mint) return null;
 
-        // Decode metadata (fetch from IPFS/Arweave JSON → image + socials)
-        let imageUrl: string | null = null;
-        let createdOn: string | null = null;
-        let twitterX: string | null = null;
-        let telegramX: string | null = null;
-        let website: string | null = null;
+//         // Extract metadata JSON string
+//         const arg = instr.Instruction?.Program?.Arguments?.find(
+//           (a: any) => a.Name === "createMetadataAccountArgsV3"
+//         );
+//         let metaJson: any = null;
+//         try {
+//           metaJson = arg?.Value?.json ? JSON.parse(arg.Value.json) : null;
+//         } catch {
+//           metaJson = null;
+//         }
 
-        if (uri) {
-          const meta = await decodeMetadata(uri);
-          if (meta) {
-            imageUrl = meta.image || null;
-            createdOn = meta.createdOn || null;
-            telegramX = meta.telegram || null;
-            twitterX = meta.twitter || null;
-            website = meta.website || null;
-          }
-        }
+//         const data = metaJson?.data ?? {};
+//         const uri = data?.uri ?? null;
 
-        // Analytics
-        const analytics = await getTokenAnalytics(mint);
+//         // Decode metadata (fetch from IPFS/Arweave JSON → image + socials)
+//         let imageUrl: string | null = null;
+//         let createdOn: string | null = null;
+//         let twitterX: string | null = null;
+//         let telegramX: string | null = null;
+//         let website: string | null = null;
 
-        return {
-          mint,
-          name: data?.name ?? null,
-          symbol: data?.symbol ?? null,
-          uri,
-          image: imageUrl,
-          createdOn,
-          twitterX,
-          telegramX,
-          website,
-          blockTime: block.Time ?? null,
-          slot: block.Slot ?? null,
-          feePayer: tx.FeePayer ?? null,
-          fee: tx.Fee ?? null,
-          feeInUSD: tx.FeeInUSD ?? null,
-          analytics,
-        };
-      })
-    );
+//         if (uri) {
+//           const meta = await decodeMetadata(uri);
+//           if (meta) {
+//             imageUrl = meta.image || null;
+//             createdOn = meta.createdOn || null;
+//             telegramX = meta.telegram || null;
+//             twitterX = meta.twitter || null;
+//             website = meta.website || null;
+//           }
+//         }
 
-    // filter out nulls
-    const filtered = tokens.filter(Boolean);
+//         // Analytics
+//         const analytics = await getTokenAnalytics(mint);
 
-    res.json({
-      count: filtered.length,
-      tokens: filtered,
-    });
-  } catch (err: any) {
-    console.error("❌ Error fetching newly created tokens:", err.message);
-    res.status(500).json({ error: "Failed to fetch newly created tokens" });
-  }
-});
+//         return {
+//           mint,
+//           name: data?.name ?? null,
+//           symbol: data?.symbol ?? null,
+//           uri,
+//           image: imageUrl,
+//           createdOn,
+//           twitterX,
+//           telegramX,
+//           website,
+//           blockTime: block.Time ?? null,
+//           slot: block.Slot ?? null,
+//           feePayer: tx.FeePayer ?? null,
+//           fee: tx.Fee ?? null,
+//           feeInUSD: tx.FeeInUSD ?? null,
+//           analytics,
+//         };
+//       })
+//     );
+
+//     // filter out nulls
+//     const filtered = tokens.filter(Boolean);
+
+//     res.json({
+//       count: filtered.length,
+//       tokens: filtered,
+//     });
+//   } catch (err: any) {
+//     console.error("❌ Error fetching newly created tokens:", err.message);
+//     res.status(500).json({ error: "Failed to fetch newly created tokens" });
+//   }
+// });
 
 
 // -------------------------------------
 // Helper: Fetch market cap, volume, price change, liquidity
 // -------------------------------------
+
+
 async function fetchTokenDetail(mint: string) {
   try {
     const marketRes = await axios.post(
@@ -427,30 +430,119 @@ async function serveTokens(
   }
 }
 
+// ======================================================
+// SHARED SERVE FUNCTION (like serveTokens but for launchpad)
+// ======================================================
+async function serveLaunchpad(
+  req: Request,
+  res: Response,
+  category: string,
+  redisKey: string,
+  cacheTTL: number = 120
+) {
+  try {
+    // Redis first
+    try {
+      const cached = await redisClient.get(redisKey);
+      if (cached) {
+        const tokens = JSON.parse(cached);
+        return res.json({ source: "cache", count: tokens.length, tokens });
+      }
+    } catch { }
+
+    // DB fallback
+    const rows = await knex("launchpad_tokens")
+      .select("*")
+      .where({ category })
+      .orderBy("marketcap", "desc")
+      .limit(300);
+
+    if (rows.length > 0) {
+      try {
+        await redisClient.set(redisKey, JSON.stringify(rows), { EX: cacheTTL });
+      } catch { }
+      return res.json({ source: "db", count: rows.length, tokens: rows });
+    }
+
+    return res.json({ source: "fallback", count: 0, tokens: [] });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch launchpad" });
+  }
+}
+
+
+tokenRelatedRouter.get("/almost-bonded-tokens", (req,res) =>
+  serveLaunchpad(req,res,"almost_bonded","launchpad-almost-bonded")
+);
+
+tokenRelatedRouter.get("/migrated-tokens", (req,res) =>
+  serveLaunchpad(req,res,"migrated","launchpad-migrated")
+);
+
+tokenRelatedRouter.get("/newly-created-tokens", (req,res) =>
+  serveLaunchpad(req,res,"newly_created","launchpad-newly-created")
+); 
+
+
 // ================== Routes ==================
 tokenRelatedRouter.get("/bluechip-memes", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "bluechip_meme", "bluechip-memes", Number(process.env.BLUECHIP_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/xstock-tokens",  (req: Request, res: Response): Promise<any> =>
+tokenRelatedRouter.get("/xstock-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "xstock", "xstock-tokens", Number(process.env.XSTOCK_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/lsts-tokens",  (req: Request, res: Response): Promise<any> =>
+tokenRelatedRouter.get("/lsts-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "lsts", "lsts-tokens", Number(process.env.LSTS_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/ai-tokens",  (req: Request, res: Response): Promise<any> =>
+tokenRelatedRouter.get("/ai-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "ai", "ai-tokens", Number(process.env.AI_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/trending-tokens",  (req: Request, res: Response): Promise<any> =>
+tokenRelatedRouter.get("/trending-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "trending", "trending-tokens", Number(process.env.TRENDING_CACHE_TTL ?? 120))
 );
 
-tokenRelatedRouter.get("/popular-tokens",  (req: Request, res: Response): Promise<any> =>
+tokenRelatedRouter.get("/popular-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "popular", "popular-tokens", Number(process.env.POPULAR_CACHE_TTL ?? 120))
 );
+
+tokenRelatedRouter.post("/token-details", async (req: Request, res: Response) => {
+  try {
+    const { mints } = req.body;
+
+    if (!Array.isArray(mints) || mints.length === 0) {
+      return res.status(400).json({
+        error: "Request body must include `mints` as a non-empty array",
+      });
+    }
+
+    // Wrap mints into tokens array
+    const tokens = mints.map((mint: string) => ({ mint }));
+
+    // Fetch details
+    const enrichedTokens = await fetchTokenDetailBatch(tokens);
+
+    // Extract only required fields
+    const responseData = enrichedTokens.map((t) => ({
+      mint: t.mint,
+      marketcap: t.marketcap ?? null,
+      price_change_24h: t.price_change_24h ?? null,
+      liquidity: t.liquidity ?? null,
+      volume_24h: t.volume_24h ?? null,
+    }));
+
+    return res.json({ data: responseData });
+  } catch (err: any) {
+    return res.status(500).json({
+      error: "Internal server error",
+      details: err.message,
+    });
+  }
+});
+
 
 // ---------------------------------------------------------------------------------------------------------
 

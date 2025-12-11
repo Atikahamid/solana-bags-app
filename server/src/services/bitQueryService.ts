@@ -112,7 +112,7 @@ export class BitqueryService {
           // Subscribe to new token creations
           ws.send(
             JSON.stringify({
-              id: "new-tokens-sub",
+              id: "new_token_created",
               type: "start",
               payload: { query: NEWLY_CREATED_TOKENS_SUB },
             })
@@ -147,7 +147,7 @@ export class BitqueryService {
             this.handleTrades(msg.payload.data, walletMap);
           }
 
-          if (msg.id === "new-tokens-sub") {
+          if (msg.id === "new_token_created") {
             await this.handleNewTokens(msg.payload.data);
           }
 

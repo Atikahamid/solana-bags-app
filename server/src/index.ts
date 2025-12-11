@@ -21,8 +21,8 @@ import { pumpSwapRouter } from './routes/pumpfun/pumpSwapRoutes';
 import turnkeyAuthRouter from './routes/auth/turnkeyAuthRoutes';
 import adminAuthRouter from './routes/auth/adminAuthRoutes';
 import auraRouter from './routes/aura';
-import { chatRouter } from './routes/chat/chatRoutes';
-import { setupGlobalChat } from './controllers/chatController';
+// import { chatRouter } from './routes/chat/chatRoutes';
+// import { setupGlobalChat } from './controllers/chatController';
 import http from 'http';
 import { WebSocketService } from './service/websocketService';
 import cors from 'cors';
@@ -137,7 +137,7 @@ async function runMigrationsAndStartServer() {
     }
 
     // Setup global chat after migrations
-    await setupGlobalChat();
+    // await setupGlobalChat();
   } catch (error) {
     console.error('Migration error:', error);
     console.warn('Proceeding without running migrations.');
@@ -224,7 +224,7 @@ app.use('/api', tokenMillRouter);
 app.use('/api/auth', turnkeyAuthRouter);
 app.use('/api/auth', adminAuthRouter);
 app.use('/api/aura', auraRouter);
-app.use('/api/chat', chatRouter); // Add the chat routes
+// app.use('/api/chat', chatRouter); // Add the chat routes
 app.use('/api/meteora', meteoraDBCRouter);
 app.use('/api/nft', nftRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -267,8 +267,8 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
     await testDbConnection();
     await runMigrationsAndStartServer();
     await connectRedis();
-    // startDiscoveryWorker();   // <-- ADD THIS
-    // console.log('🔄 Discovery worker started from index.ts');
+    startDiscoveryWorker();   // <-- ADD THIS
+    console.log('🔄 Discovery worker started from index.ts');
     console.log('✅ Database and migrations completed successfully');
 
     // await startIndexer(webSocketService.io);

@@ -4,7 +4,11 @@ import type { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable('onramp_sessions', (t) => {
         t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-        t.integer('user_id').references('id').inTable('users').onDelete('CASCADE');
+        t.string("user_id")
+            .notNullable()
+            .references("privy_id")
+            .inTable("users")
+            .onDelete("CASCADE");
         t.string('asset').notNullable();
         t.decimal('amount', 30, 8).nullable();
         t.string('chain').nullable();
@@ -21,4 +25,3 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
     await knex.schema.dropTableIfExists('onramp_sessions');
 }
-

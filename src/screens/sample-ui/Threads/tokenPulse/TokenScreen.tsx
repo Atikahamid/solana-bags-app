@@ -1,4 +1,5 @@
 // ==== File: src/screens/TokensScreen.tsx ====
+
 import React, {useState, useEffect} from 'react';
 import {
   View,
@@ -6,7 +7,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Platform,
   Animated,
   ActivityIndicator,
 } from 'react-native';
@@ -15,15 +15,8 @@ import {TokenCard} from './TokenCard';
 import COLORS from '@/assets/colors';
 import {useNavigation} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {
-  BackendToken,
-  getRelativeTime,
-  fetchAlmostBondedTokens,
-  fetchMigratedTokens,
-} from './tokenServicefile';
+import {BackendToken, getRelativeTime} from './tokenServicefile';
 import {LinearGradient} from 'expo-linear-gradient';
-import {getValidImageSource, IPFSAwareImage} from '@/shared/utils/IPFSImage';
-import {DEFAULT_IMAGES} from '@/shared/config/constants';
 import {useAppSelector} from '@/shared/hooks/useReduxHooks';
 import {useNewlyCreatedTokens} from './hooks/useNewlyCreatedTokens';
 import {useAlmostBondedTokens} from './hooks/useAlmostBondedTokens';
@@ -52,41 +45,72 @@ const TABS = [
 
 export const TokensScreen: React.FC = () => {
   const navigation = useNavigation();
+  const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
+
+  // ====== TAB STATE ======
   const [activeTab, setActiveTab] = useState<
     'newPairs' | 'finalStretch' | 'migrated'
   >('newPairs');
-  const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
-  const showHeader = true;
 
-  const newlyCreatedTokens = useNewlyCreatedTokens();
-  const almostBondedTokens = useAlmostBondedTokens();
-  const migratedTokens = useMigratedTokens();
+  // ====== FETCH HOOKS (ASYNC) ======
+  const hookNew = useNewlyCreatedTokens();
+  const hookFinal = useAlmostBondedTokens();
+  const hookMigrated = useMigratedTokens();
 
-  // Local state to hold what’s displayed in FlatList
+  // ====== LOCAL STORED DATA (FETCHED ONCE) ======
+  const [newPairs, setNewPairs] = useState<BackendToken[]>([]);
+  const [finalStretch, setFinalStretch] = useState<BackendToken[]>([]);
+  const [migrated, setMigrated] = useState<BackendToken[]>([]);
+
+  // ====== TAB-SPECIFIC LOADERS ======
+  const [loadingNew, setLoadingNew] = useState(true);
+  const [loadingFinal, setLoadingFinal] = useState(true);
+  const [loadingMigrated, setLoadingMigrated] = useState(true);
+
   const [displayTokens, setDisplayTokens] = useState<BackendToken[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen' as never);
-  };
-
-  // 🚀 Fetch correct data whenever tab changes
+  // ====== CAPTURE HOOK RESULTS WHEN READY ======
   useEffect(() => {
-    setLoading(true);
-    try {
-      if (activeTab === 'newPairs') {
-        setDisplayTokens(newlyCreatedTokens);
-      } else if (activeTab === 'finalStretch') {
-        setDisplayTokens(almostBondedTokens);
-      } else if (activeTab === 'migrated') {
-        setDisplayTokens(migratedTokens);
-      }
-    } finally {
-      setLoading(false);
+    if (hookNew && hookNew.length > 0) {
+      setNewPairs(hookNew);
+      setLoadingNew(false);
     }
-  }, [activeTab, newlyCreatedTokens, almostBondedTokens, migratedTokens]);
+  }, [hookNew]);
 
-  // Map to UI props
+  useEffect(() => {
+    if (hookFinal && hookFinal.length > 0) {
+      setFinalStretch(hookFinal);
+      setLoadingFinal(false);
+    }
+  }, [hookFinal]);
+
+  useEffect(() => {
+    if (hookMigrated && hookMigrated.length > 0) {
+      setMigrated(hookMigrated);
+      setLoadingMigrated(false);
+    }
+  }, [hookMigrated]);
+
+  // ====== UPDATE UI WHEN TAB CHANGES (INSTANT SWITCH) ======
+  useEffect(() => {
+    if (activeTab === 'newPairs') {
+      setDisplayTokens(newPairs);
+    } else if (activeTab === 'finalStretch') {
+      setDisplayTokens(finalStretch);
+    } else if (activeTab === 'migrated') {
+      setDisplayTokens(migrated);
+    }
+  }, [activeTab, newPairs, finalStretch, migrated]);
+
+  // Determine loading for current tab
+  const tabLoading =
+    activeTab === 'newPairs'
+      ? loadingNew
+      : activeTab === 'finalStretch'
+      ? loadingFinal
+      : loadingMigrated;
+
+  // ====== MAP TOKENS TO UI PROPS ======
   const mappedTokens = displayTokens.map(t => ({
     mint: t.mint,
     logo: t.image ?? 'https://dummyimage.com/42x42/666/fff.png&text=?',
@@ -111,6 +135,10 @@ export const TokensScreen: React.FC = () => {
     },
   }));
 
+  const handleProfilePress = () => {
+    navigation.navigate('ProfileScreen' as never);
+  };
+
   return (
     <LinearGradient
       colors={COLORS.backgroundGradient}
@@ -118,49 +146,44 @@ export const TokensScreen: React.FC = () => {
       end={{x: 0, y: 1}}
       style={styles.container}>
       <View style={styles.container}>
-        {showHeader && (
-          <SafeAreaView edges={['top']}>
-            <Animated.View style={[styles.header, {padding: 16, height: 80}]}>
-              <View style={headerStyles.container}>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('FiltersScreen' as never)}
-                  style={headerStyles.profileContainer}>
-                  <Icons.SettingsIcon
-                    width={28}
-                    height={28}
-                    color={COLORS.white}
-                  />
-                </TouchableOpacity>
-                <View style={headerStyles.iconsContainer}>
-                  <TouchableOpacity
-                    onPress={handleProfilePress}
-                    style={headerStyles.profileContainer}>
-                    <Icons.RefreshIcon
-                      width={28}
-                      height={28}
-                      color={COLORS.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <View style={headerStyles.absoluteLogoContainer}>
-                  <Icons.AppLogo width={28} height={28} />
-                </View>
-              </View>
-            </Animated.View>
-          </SafeAreaView>
-        )}
+        {/* ================= HEADER (UNCHANGED) ================= */}
+        <SafeAreaView edges={['top']}>
+          <Animated.View style={[styles.header, {padding: 16, height: 80}]}>
+            <View style={headerStyles.container}>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('FiltersScreen' as never)
+                }
+                style={headerStyles.profileContainer}>
+                <Icons.SettingsIcon width={28} height={28} color={COLORS.white} />
+              </TouchableOpacity>
 
-        {/* Tabs */}
+              <View style={headerStyles.iconsContainer}>
+                <TouchableOpacity
+                  onPress={handleProfilePress}
+                  style={headerStyles.profileContainer}>
+                  <Icons.RefreshIcon width={28} height={28} color={COLORS.white} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={headerStyles.absoluteLogoContainer}>
+                <Icons.AppLogo width={28} height={28} />
+              </View>
+            </View>
+          </Animated.View>
+        </SafeAreaView>
+
+        {/* ================= TABS (UNCHANGED UI) ================= */}
         <View style={styles.tabsContainer}>
           {TABS.map(tab => {
             const IconComp = activeTab === tab.key ? tab.icon : tab.darkIcon;
+
             return (
               <TouchableOpacity
                 key={tab.key}
                 style={[styles.tab, activeTab === tab.key && styles.activeTab]}
                 onPress={() => setActiveTab(tab.key as typeof activeTab)}>
-                <View
-                  style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
                   <IconComp width={15} height={15} />
                   <Text
                     style={[
@@ -175,8 +198,8 @@ export const TokensScreen: React.FC = () => {
           })}
         </View>
 
-        {/* List */}
-        {loading ? (
+        {/* ================= TOKEN LIST ================= */}
+        {tabLoading ? (
           <ActivityIndicator
             style={{marginTop: 20}}
             size="large"
@@ -201,7 +224,7 @@ export const TokensScreen: React.FC = () => {
           />
         )}
 
-        {/* Fixed Button */}
+        {/* ================= FLOATING BUTTON (UNCHANGED) ================= */}
         <TouchableOpacity
           style={styles.launchButton}
           activeOpacity={0.8}
@@ -213,6 +236,8 @@ export const TokensScreen: React.FC = () => {
   );
 };
 
+// ================== STYLES (UNCHANGED) ==================
+
 const styles = StyleSheet.create({
   container: {flex: 1},
   header: {
@@ -220,7 +245,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     alignItems: 'center',
   },
-
   tabsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -249,7 +273,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-
   launchButton: {
     position: 'absolute',
     bottom: 63,
@@ -283,12 +306,7 @@ export const headerStyles = StyleSheet.create({
     borderRadius: 18,
     overflow: 'hidden',
   },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
-    backgroundColor: COLORS.greyDark,
-  },
+  iconsContainer: {flexDirection: 'row', alignItems: 'center'},
   absoluteLogoContainer: {
     position: 'absolute',
     left: 0,
@@ -297,6 +315,4 @@ export const headerStyles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: -1,
   },
-  iconsContainer: {flexDirection: 'row', alignItems: 'center'},
-  iconButton: {paddingHorizontal: 4},
 });

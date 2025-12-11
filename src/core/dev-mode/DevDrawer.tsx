@@ -324,7 +324,7 @@ const ServerStatus = () => {
     const { setServerStatus } = useDevMode();
     const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
     const [lastChecked, setLastChecked] = useState<Date | null>(null);
-    const [serverUrl, setServerUrl] = useState<string>(SERVER_URL || 'https://solana-bags-app-production.up.railway.app');
+    const [serverUrl, setServerUrl] = useState<string>(SERVER_URL || 'http://192.168.1.67:8080');
 
     console.log("server url: in dev: ", serverUrl);
     // Check server connection status

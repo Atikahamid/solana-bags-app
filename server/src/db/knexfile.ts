@@ -2,7 +2,7 @@ import * as path from "path";
 import type { Knex } from "knex";
 require("dotenv").config();
 
-console.log("supabase connection string: ", process.env.DATABASE_URL);
+// console.log("supabase connection string: ", process.env.DATABASE_URL);
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: "pg",

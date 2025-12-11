@@ -1,4 +1,4 @@
-import { fetchTokenDetailBatch } from "./utils/tokenRelatedUtils";
+import { fetchTokenDetailBatch, getCreationTimeAndSupplyBatch, getTokenHolderCount, timeAgo } from "./utils/tokenRelatedUtils";
 
 const tokens = [
     {
@@ -15,10 +15,22 @@ const tokens = [
     },
 ];
 
-async function main() {
-    const enrichedTokens = await fetchTokenDetailBatch(tokens);
+const mintAddresses = [
+    "s8obkxYJYBRZedZnmns1qAN9HrTko5dAP1fr9oxpump",
+    "EVJ5xPVNXdjfVKtPYP2V99vCAPDpUVAopSeTcZJ9pump"
+];
 
-    console.log(enrichedTokens);
+async function main() {
+    // const enrichedTokens = await fetchTokenDetailBatch(tokens);
+    // const result = await getCreationTimeAndSupplyBatch(mintAddresses);
+    // console.log("result: ", result);
+
+    const count = await getTokenHolderCount(
+        "HFmEXXj6o18osec91NaAkkxWGgJbe3tWE8FPUKGmmoon"
+    );
+
+    console.log("holderCount:", count);
+    // console.log(timeAgo("2025-12-06 16:00:06.525+00"));
 }
 
 main();

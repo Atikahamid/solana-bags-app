@@ -29,7 +29,7 @@ type LineGraphProps = {
 };
 
 const screenWidth = Dimensions.get('window').width;
-
+ 
 const staticDatasets: Record<string, OhlcPoint[]> = {
   '1H': [
     {time: 1696502400, open: 1.0, high: 1.2, low: 0.9, close: 1.1},

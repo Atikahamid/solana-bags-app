@@ -189,53 +189,6 @@ subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
   }
 }
 `;
-export const queryOne = `
-subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
-  dexTrades: Solana {
-    DEXTradeByTokens(
-      where: {
-        Transaction: {Result: {Success: true}},
-        Trade: {
-          Currency: {
-            Fungible: true,
-            MintAddress: {
-              notIn: [
-                "So11111111111111111111111111111111111111112", 
-                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 
-                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", 
-                "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"
-              ]
-            }
-          },
-          Amount: {gt: "0"}
-        },
-        any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]
-      }
-    ) {
-      Block {
-        Time
-      }
-      Trade {
-        Amount
-        Price
-        Side {
-          Type
-          Amount
-          Currency {
-            Name
-            Symbol
-            MintAddress
-            Uri
-          }
-        }
-        Account {
-          Address
-        }
-      }
-    }
-  }
-}
-`;
 // const previousDataQuery = `
 // query FilteredTokenTradesAggregated($walletAddresses: [String!], $limit: Int = 50) {
 //   Solana {
@@ -318,146 +271,28 @@ subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
 //   }
 // }`;
 
-
-export const NEWLY_CREATED_TOKENS_SUB = /* GraphQL */ `
-subscription NewlyCreatedTokensRealTime {
-  Solana {
-    Instructions(
-      where: {
-        Instruction: {
-          Program: { Address: { is: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" }, Method: { is: "CreateMetadataAccountV3" } }
-        }
-        Transaction: { Result: { Success: true } }
-      }
-      orderBy: { descending: Block_Time }
-    ) {
-      Block { Time Slot }
-      Instruction {
-        Accounts {
-          Address
-          Token { Mint Owner }
-        }
-        Program {
-          Address
-          Name
-          Method
-          Arguments {
-            Name
-            Type
-            Value {
-              ... on Solana_ABI_Json_Value_Arg { json }
-              ... on Solana_ABI_String_Value_Arg { string }
-              ... on Solana_ABI_Address_Value_Arg { address }
-              ... on Solana_ABI_Boolean_Value_Arg { bool }
-              ... on Solana_ABI_Integer_Value_Arg { integer }
-              ... on Solana_ABI_Float_Value_Arg { float }
-              ... on Solana_ABI_Bytes_Value_Arg { hex }
-              ... on Solana_ABI_BigInt_Value_Arg { bigInteger }
-            }
-          }
-          AccountNames
-        }
-      }
-      Transaction { Fee FeeInUSD FeePayer Index }
-    }
-  }
-}
-`;
-export const NEWLY_CREATED_TOKENS_QUERY = `
-query NewlyCreatedTokensLast10Minutes {
-  Solana {
-    Instructions(
-      where: {
-        Block: { Time: { since_relative: { minutes_ago: 10 } } }
-        Instruction: {
-          Program: { 
-            Address: { is: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" }, 
-            Method: { is: "CreateMetadataAccountV3" } 
-          }
-        }
-        Transaction: { Result: { Success: true } }
-      }
-      orderBy: { descending: Block_Time }
-      limit: { count: 25 }
-    ) {
-      Block { 
-        Time 
-        Slot 
-      }
-      Instruction {
-        Accounts {
-          Address
-          Token { 
-            Mint 
-            Owner 
-            ProgramId 
-          }
-        }
-        Program {
-          Arguments {
-            Name
-            Value {
-              ... on Solana_ABI_Json_Value_Arg { json }
-            }
-          }
-        }
-      }
-      Transaction { 
-        Fee 
-        FeeInUSD 
-        FeePayer 
-      }
-    }
-  }
-}`;
-
-export const GET_TOKEN_ANALYTICS_QUERY = /* GraphQL */ `
-query GetTokenAnalyticsSummary($tokenMint: String!) {
-  Solana {
-    # 1. HOLDER COUNT
-    holder_count: BalanceUpdates(
-      where: {
-        BalanceUpdate: {
-          Currency: { MintAddress: { is: $tokenMint } }
-          PostBalance: { gt: "0" }
-        }
-      }
-    ) {
-      total_holders: uniq(of: BalanceUpdate_Account_Owner)
-    }
-
-    # 2. ALL-TIME TRADING STATS
-    all_time_trading_stats: DEXTradeByTokens(
-      where: {
-        Trade: { Currency: { MintAddress: { is: $tokenMint } } }
-        Transaction: { Result: { Success: true } }
-      }
-    ) {
-      total_buys: count(if: { Trade: { Side: { Type: { is: buy } } } })
-      total_sells: count(if: { Trade: { Side: { Type: { is: sell } } } })
-      total_trades: count
-    }
-
-    # 3. CURRENT TRADING STATS (24H)
-    current_trading_stats: DEXTradeByTokens(
-      where: {
-        Trade: { Currency: { MintAddress: { is: $tokenMint } } }
-        Transaction: { Result: { Success: true } }
-        Block: { Time: { since: "2024-12-04T00:00:00Z" } } # last 24h
-      }
-    ) {
-      current_volume_usd: sum(of: Trade_Side_AmountInUSD)
-    }
-  }
-}
-`;
-export const SIMPLE_PAST_TRADES_QUERY = `
-query SimplePastTrades($walletAddresses: [String!]) {
-  Solana {
+export const queryOne = `
+subscription MemeTokenTradeMonitoring($walletAddresses: [String!]!) {
+  dexTrades: Solana {
     DEXTradeByTokens(
-      limit: {count: 20}
-      orderBy: {descending: Block_Time}
-      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, MintAddress: {notIn: ["So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"]}}, Amount: {gt: "0"}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
+      where: {
+        Transaction: {Result: {Success: true}},
+        Trade: {
+          Currency: {
+            Fungible: true,
+            MintAddress: {
+              notIn: [
+                "So11111111111111111111111111111111111111112", 
+                "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 
+                "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", 
+                "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"
+              ]
+            }
+          },
+          Amount: {gt: "0"}
+        },
+        any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]
+      }
     ) {
       Block {
         Time
@@ -484,275 +319,9 @@ query SimplePastTrades($walletAddresses: [String!]) {
 }
 `;
 
-export const ALMOST_BONDED_QUERY = `
-query GetTokensByBondingCurveAndAge {
-  Solana {
-    DEXPools(
-      where: {Pool: {Base: {PostAmount: {ge: "230693000", le: "801725000"}}, 
-        Dex: {ProgramAddress: {
-          in: [
-            "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", 
-            "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG", 
-            "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1", 
-            "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
-            "virEFLZsQm1iFAs8py1XnziJ67gTzW2bfCWhxNPfccD"
-            ]}}, 
-        Market: {QuoteCurrency: {
-          MintAddress: {
-            in: [
-              "11111111111111111111111111111111", 
-              "So11111111111111111111111111111111111111112"
-            ]}}}}, 
-        Transaction: {
-          Result: {Success: true}}, Block: {Time: {since_relative: {hours_ago: 10}}}}
-          limitBy: {by: Pool_Market_BaseCurrency_MintAddress, count: 1}
-          orderBy: {descending: Block_Time}
-          limit: {count: 25}
-    ) {
-      Bonding_Curve_Progress_Percentage: calculate(
-        expression: "100 - ((($Pool_Base_Balance - 206900000) * 100) / 793100000)"
-      )
-      Pool {
-        Market {
-          BaseCurrency {
-            MintAddress
-            Name
-            Symbol
-            Decimals
-            Uri
-          }
-          MarketAddress
-        }
-        Dex {
-          ProtocolName
-          ProtocolFamily
-          ProgramAddress
-        }
-        Base {
-          Balance: PostAmount
-        }
-        Quote {
-          PostAmount
-          PriceInUSD
-          PostAmountInUSD
-        }
-      }
-      Block {
-        Time
-        Slot
-        Hash
-      }
-    }
-  }
-}
-`;
-export const GET_SUB_ALMOST_BONDED = `
-subscription GetTokensByBondingCurveRealtime {
-  Solana {
-    DEXPools(
-      where: {
-        Pool: {
-          Base: {PostAmount: {ge: "230693000", le: "286210000"}}
-          Dex: {
-            ProgramAddress: {
-              in: [
-                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", 
-                "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG", 
-                "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1", 
-                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
-                "virEFLZsQm1iFAs8py1XnziJ67gTzW2bfCWhxNPfccD"
-              ]
-            }
-          }
-          Market: {
-            QuoteCurrency: {
-              MintAddress: {
-                in: [
-                  "11111111111111111111111111111111", 
-                  "So11111111111111111111111111111111111111112"
-                ]
-              }
-            }
-          }
-        }
-        Transaction: {Result: {Success: true}}
-      }
-    ) {
-      Bonding_Curve_Progress_Percentage: calculate(
-        expression: "100 - ((($Pool_Base_Balance - 206900000) * 100) / 793100000)"
-      )
-      Pool {
-        Market {
-          BaseCurrency {
-            MintAddress
-            Name
-            Symbol
-            Decimals
-            Uri
-          }
-          MarketAddress
-        }
-        Dex {
-          ProtocolName
-          ProtocolFamily
-          ProgramAddress
-        }
-        Base {
-          Balance: PostAmount
-        }
-        Quote {
-          PostAmount
-          PriceInUSD
-          PostAmountInUSD
-        }
-      }
-      Block {
-        Time
-        Slot
-        Hash
-      }
-    }
-  }
-}`;
-export const GET_MIGRATED_TOKENS_QUERY = `
-query GetMigratedTokensLast10Hours {
-  Solana {
-    Instructions(
-      where: {
-        Block: { Time: { since_relative: { hours_ago: 10 } } }
-        Transaction: { Result: { Success: true } }
-        Instruction: {
-          Program: {
-            Address: {
-              in: [
-                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
-                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
-                "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4",
-                "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"
-              ]
-            }
-            Method: {
-              in: ["withdraw", "migrate_meteora_damm", "migration_damm_v2", "graduate", "complete", "finalize"]
-            }
-          }
-        }
-      }
-      limit: { count: 25 }
-      orderBy: { descending: Block_Time }
-    ) {
-      Block {
-        Time
-        Slot
-        Hash
-      }
-      Transaction {
-        Signature
-        Signer
-        Fee
-        FeeInUSD
-      }
-      Instruction {
-        Accounts {
-          Address
-          Token {
-            Mint
-            Owner
-            ProgramId
-          }
-        }
-        Program {
-          Address
-          Name
-          Method
-        }
-      }
-    }
-  }
-}
-`;
 
-export const GET_SUB_MIGRATED_TOKENS = `
-subscription GetMigratedTokensRealtime {
-  Solana {
-    Instructions(
-      where: {
-        Transaction: { Result: { Success: true } }
-        Instruction: {
-          Program: {
-            Address: {
-              in: [
-                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
-                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
-                "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4",
-                "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"
-              ]
-            }
-            Method: {
-              in: ["withdraw", "migrate_meteora_damm", "migration_damm_v2", "graduate", "complete", "finalize"]
-            }
-          }
-        }
-      }
-    ) {
-      Block {
-        Time
-        Slot
-        Hash
-      }
-      Transaction {
-        Signature
-        Signer
-        Fee
-        FeeInUSD
-      }
-      Instruction {
-        Accounts {
-          Address
-          Token {
-            Mint
-            Owner
-            ProgramId
-          }
-        }
-        Program {
-          Address
-          Name
-          Method
-        }
-      }
-    }
-  }
-}`;
-
-export const metadataQuery = `
-query GetTokenMetadataByMintAddresses($mintAddresses: [String!]) {
-  Solana {
-    DEXPools(
-      where: {
-        Pool: {
-          Market: {
-            BaseCurrency: { MintAddress: { in: $mintAddresses } }
-          }
-        }
-      }
-      limitBy: { by: Pool_Market_BaseCurrency_MintAddress, count: 1 }
-      orderBy: { descending: Block_Time }
-    ) {
-      Pool {
-        Market {
-          BaseCurrency {
-            MintAddress
-            Name
-            Symbol
-            Uri
-          }
-        }
-      }
-    }
-  }
-}
- `;
-
+// +++++++++++++++++ discovery tokens queries+++++++++++++++++++++
+ 
 export const xSTOCK_TOKENS_QUERY = `
 query XStockTokenizedAssets {
   Solana {
@@ -1080,6 +649,532 @@ query BlueChipMemes {
 }
 `;
 
+// +++++++++++++++launchpads tokens query++++++++++++++++++
+
+export const NEWLY_CREATED_TOKENS_SUB = /* GraphQL */ `
+subscription NewlyCreatedTokensRealTime {
+  Solana {
+    Instructions(
+      where: {
+        Instruction: {
+          Program: { Address: { is: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" }, Method: { is: "CreateMetadataAccountV3" } }
+        }
+        Transaction: { Result: { Success: true } }
+      }
+      orderBy: { descending: Block_Time }
+    ) {
+      Block { Time Slot }
+      Instruction {
+        Accounts {
+          Address
+          Token { Mint Owner }
+        }
+        Program {
+          Address
+          Name
+          Method
+          Arguments {
+            Name
+            Type
+            Value {
+              ... on Solana_ABI_Json_Value_Arg { json }
+              ... on Solana_ABI_String_Value_Arg { string }
+              ... on Solana_ABI_Address_Value_Arg { address }
+              ... on Solana_ABI_Boolean_Value_Arg { bool }
+              ... on Solana_ABI_Integer_Value_Arg { integer }
+              ... on Solana_ABI_Float_Value_Arg { float }
+              ... on Solana_ABI_Bytes_Value_Arg { hex }
+              ... on Solana_ABI_BigInt_Value_Arg { bigInteger }
+            }
+          }
+          AccountNames
+        }
+      }
+      Transaction { Fee FeeInUSD FeePayer Index }
+    }
+  }
+}
+`;
+export const NEWLY_CREATED_TOKENS_QUERY = `
+query NewlyCreatedTokensLast10Minutes {
+  Solana {
+    Instructions(
+      where: {
+        Block: { Time: { since_relative: { minutes_ago: 10 } } }
+        Instruction: {
+          Program: { 
+            Address: { is: "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" }, 
+            Method: { is: "CreateMetadataAccountV3" } 
+          }
+        }
+        Transaction: { Result: { Success: true } }
+      }
+      orderBy: { descending: Block_Time }
+      limit: { count: 25 }
+    ) {
+      Block { 
+        Time 
+        Slot 
+      }
+      Instruction {
+        Accounts {
+          Address
+          Token { 
+            Mint 
+            Owner 
+            ProgramId 
+          }
+        }
+        Program {
+          Arguments {
+            Name
+            Value {
+              ... on Solana_ABI_Json_Value_Arg { json }
+            }
+          }
+        }
+      }
+      Transaction { 
+        Fee 
+        FeeInUSD 
+        FeePayer 
+      }
+    }
+  }
+}`;
+
+export const ALMOST_BONDED_QUERY = `
+query GetTokensByBondingCurveAndAge {
+  Solana {
+    DEXPools(
+      where: {Pool: {Base: {PostAmount: {ge: "230693000", le: "801725000"}}, 
+        Dex: {ProgramAddress: {
+          in: [
+            "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", 
+            "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG", 
+            "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1", 
+            "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
+            "virEFLZsQm1iFAs8py1XnziJ67gTzW2bfCWhxNPfccD"
+            ]}}, 
+        Market: {QuoteCurrency: {
+          MintAddress: {
+            in: [
+              "11111111111111111111111111111111", 
+              "So11111111111111111111111111111111111111112"
+            ]}}}}, 
+        Transaction: {
+          Result: {Success: true}}, Block: {Time: {since_relative: {hours_ago: 10}}}}
+          limitBy: {by: Pool_Market_BaseCurrency_MintAddress, count: 1}
+          orderBy: {descending: Block_Time}
+          limit: {count: 25}
+    ) {
+      Bonding_Curve_Progress_Percentage: calculate(
+        expression: "100 - ((($Pool_Base_Balance - 206900000) * 100) / 793100000)"
+      )
+      Pool {
+        Market {
+          BaseCurrency {
+            MintAddress
+            Name
+            Symbol
+            Decimals
+            Uri
+          }
+          MarketAddress
+        }
+        Dex {
+          ProtocolName
+          ProtocolFamily
+          ProgramAddress
+        }
+        Base {
+          Balance: PostAmount
+        }
+        Quote {
+          PostAmount
+          PriceInUSD
+          PostAmountInUSD
+        }
+      }
+      Block {
+        Time
+        Slot
+        Hash
+      }
+    }
+  }
+}
+`;
+export const GET_SUB_ALMOST_BONDED = `
+subscription GetTokensByBondingCurveRealtime {
+  Solana {
+    DEXPools(
+      where: {
+        Pool: {
+          Base: {PostAmount: {ge: "230693000", le: "286210000"}}
+          Dex: {
+            ProgramAddress: {
+              in: [
+                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", 
+                "MoonCVVNZFSYkqNXP6bxHLPL6QQJiMagDL3qcqUQTrG", 
+                "FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1", 
+                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
+                "virEFLZsQm1iFAs8py1XnziJ67gTzW2bfCWhxNPfccD"
+              ]
+            }
+          }
+          Market: {
+            QuoteCurrency: {
+              MintAddress: {
+                in: [
+                  "11111111111111111111111111111111", 
+                  "So11111111111111111111111111111111111111112"
+                ]
+              }
+            }
+          }
+        }
+        Transaction: {Result: {Success: true}}
+      }
+    ) {
+      Bonding_Curve_Progress_Percentage: calculate(
+        expression: "100 - ((($Pool_Base_Balance - 206900000) * 100) / 793100000)"
+      )
+      Pool {
+        Market {
+          BaseCurrency {
+            MintAddress
+            Name
+            Symbol
+            Decimals
+            Uri
+          }
+          MarketAddress
+        }
+        Dex {
+          ProtocolName
+          ProtocolFamily
+          ProgramAddress
+        }
+        Base {
+          Balance: PostAmount
+        }
+        Quote {
+          PostAmount
+          PriceInUSD
+          PostAmountInUSD
+        }
+      }
+      Block {
+        Time
+        Slot
+        Hash
+      }
+    }
+  }
+}`;
+export const GET_MIGRATED_TOKENS_QUERY = `
+query GetMigratedTokensLast10Hours {
+  Solana {
+    Instructions(
+      where: {
+        Block: { Time: { since_relative: { hours_ago: 10 } } }
+        Transaction: { Result: { Success: true } }
+        Instruction: {
+          Program: {
+            Address: {
+              in: [
+                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
+                "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4",
+                "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"
+              ]
+            }
+            Method: {
+              in: ["withdraw", "migrate_meteora_damm", "migration_damm_v2", "graduate", "complete", "finalize"]
+            }
+          }
+        }
+      }
+      limit: { count: 25 }
+      orderBy: { descending: Block_Time }
+    ) {
+      Block {
+        Time
+        Slot
+        Hash
+      }
+      Transaction {
+        Signature
+        Signer
+        Fee
+        FeeInUSD
+      }
+      Instruction {
+        Accounts {
+          Address
+          Token {
+            Mint
+            Owner
+            ProgramId
+          }
+        }
+        Program {
+          Address
+          Name
+          Method
+        }
+      }
+    }
+  }
+}
+`;
+
+export const GET_SUB_MIGRATED_TOKENS = `
+subscription GetMigratedTokensRealtime {
+  Solana {
+    Instructions(
+      where: {
+        Transaction: { Result: { Success: true } }
+        Instruction: {
+          Program: {
+            Address: {
+              in: [
+                "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+                "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
+                "boop8hVGQGqehUK2iVEMEnMrL5RbjywRzHKBmBE7ry4",
+                "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj"
+              ]
+            }
+            Method: {
+              in: ["withdraw", "migrate_meteora_damm", "migration_damm_v2", "graduate", "complete", "finalize"]
+            }
+          }
+        }
+      }
+    ) {
+      Block {
+        Time
+        Slot
+        Hash
+      }
+      Transaction {
+        Signature
+        Signer
+        Fee
+        FeeInUSD
+      }
+      Instruction {
+        Accounts {
+          Address
+          Token {
+            Mint
+            Owner
+            ProgramId
+          }
+        }
+        Program {
+          Address
+          Name
+          Method
+        }
+      }
+    }
+  }
+}`;
+
+
+// ++++++++++++++++++ token analytics queries++++++++++++++++++++++++
+ const SINGLE_CREATION_TIME_OF_TOKEN = `
+ {
+ Solana(dataset: combined) {
+  DEXTradeByTokens(
+   where: {Trade: {Currency: {MintAddress: {is: "EVJ5xPVNXdjfVKtPYP2V99vCAPDpUVAopSeTcZJ9pump"}}}}
+  ) {
+   Block {
+    Time(minimum: Block_Time)
+   }
+  }
+ }
+}`;
+
+export const BATCH_CREATION_TIME_OF_TOKEN = `
+query GetTokenCreationTimes($mintAddresses: [String!]) {
+  Solana(dataset: combined) {
+    DEXTradeByTokens(
+      limitBy: { by: Trade_Currency_MintAddress, count: 1 }
+      where: {Trade: {Currency: {MintAddress: {in: $mintAddresses}}}}
+    ) {
+      Trade {
+        Currency {
+          MintAddress
+          Name
+          Symbol
+        }
+      }
+      Block {
+        Time(minimum: Block_Time)
+      }
+    }
+  }
+}`;
+
+const SINGLE_GET_TOTAL_SUPPLY_OF_TOKEN = `
+{
+  Solana {
+    TokenSupplyUpdates(
+      limit: { count: 1 }
+      orderBy: { descending: Block_Time }
+      where: {
+        TokenSupplyUpdate: {
+          Currency: { MintAddress: { is: "CivEAsPbbUdbvj1oh7iVKVwJjsa6gSKi3icokPnWpump" } }
+        }
+      }
+    ) {
+      TokenSupplyUpdate {
+        Amount
+        Currency {
+          MintAddress
+          Name
+        }
+        PreBalance
+        PostBalance
+      }
+    }
+  }
+}`;
+
+export const BATCH_GET_TOTAL_SUPPLY_OF_TOKEN = `
+query GetTokenSupplies($mintAddresses: [String!]) {
+  Solana {
+    TokenSupplyUpdates(
+      limitBy: { by: TokenSupplyUpdate_Currency_MintAddress, count: 1 }
+      orderBy: { descending: Block_Time }
+      where: {
+        TokenSupplyUpdate: {
+          Currency: { MintAddress: { in: $mintAddresses } }
+        }
+      }
+    ) {
+      TokenSupplyUpdate {
+        Amount
+        Currency {
+          MintAddress
+          Name
+        }
+        PreBalance
+        PostBalance
+      }
+    }
+  }
+}`;
+
+
+export const GET_TOKEN_ANALYTICS_QUERY = /* GraphQL */ `
+query GetTokenAnalyticsSummary($tokenMint: String!) {
+  Solana {
+    # 1. HOLDER COUNT
+    holder_count: BalanceUpdates(
+      where: {
+        BalanceUpdate: {
+          Currency: { MintAddress: { is: $tokenMint } }
+          PostBalance: { gt: "0" }
+        }
+      }
+    ) {
+      total_holders: uniq(of: BalanceUpdate_Account_Owner)
+    }
+
+    # 2. ALL-TIME TRADING STATS
+    all_time_trading_stats: DEXTradeByTokens(
+      where: {
+        Trade: { Currency: { MintAddress: { is: $tokenMint } } }
+        Transaction: { Result: { Success: true } }
+      }
+    ) {
+      total_buys: count(if: { Trade: { Side: { Type: { is: buy } } } })
+      total_sells: count(if: { Trade: { Side: { Type: { is: sell } } } })
+      total_trades: count
+    }
+
+    # 3. CURRENT TRADING STATS (24H)
+    current_trading_stats: DEXTradeByTokens(
+      where: {
+        Trade: { Currency: { MintAddress: { is: $tokenMint } } }
+        Transaction: { Result: { Success: true } }
+        Block: { Time: { since: "2024-12-04T00:00:00Z" } } # last 24h
+      }
+    ) {
+      current_volume_usd: sum(of: Trade_Side_AmountInUSD)
+    }
+  }
+}
+`;
+export const SIMPLE_PAST_TRADES_QUERY = `
+query SimplePastTrades($walletAddresses: [String!]) {
+  Solana {
+    DEXTradeByTokens(
+      limit: {count: 20}
+      orderBy: {descending: Block_Time}
+      where: {Transaction: {Result: {Success: true}}, Trade: {Currency: {Fungible: true, MintAddress: {notIn: ["So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R"]}}, Amount: {gt: "0"}}, any: [{Trade: {Account: {Address: {in: $walletAddresses}}}}]}
+    ) {
+      Block {
+        Time
+      }
+      Trade {
+        Amount
+        Price
+        Side {
+          Type
+          Amount
+          Currency {
+            Name
+            Symbol
+            MintAddress
+            Uri
+          }
+        }
+        Account {
+          Address
+        }
+      }
+    }
+  }
+}
+`;
+
+
+export const metadataQuery = `
+query GetTokenMetadataByMintAddresses($mintAddresses: [String!]) {
+  Solana {
+    DEXPools(
+      where: {
+        Pool: {
+          Market: {
+            BaseCurrency: { MintAddress: { in: $mintAddresses } }
+          }
+        }
+      }
+      limitBy: { by: Pool_Market_BaseCurrency_MintAddress, count: 1 }
+      orderBy: { descending: Block_Time }
+    ) {
+      Pool {
+        Market {
+          BaseCurrency {
+            MintAddress
+            Name
+            Symbol
+            Uri
+          }
+        }
+      }
+    }
+  }
+}
+ `;
+
+
+
 
 export const TOKEN_DETAIL = `
 query TokenMarketCapAndPriceChange($mintAddresses: [String!]) {
@@ -1203,74 +1298,74 @@ query CombinedTokenMetrics($mintAddresses: [String!]) {
       )
     }
 
-    # --- 1 Hour Volume (using mint addresses only) ---
-    VolumeMetrics: DEXTradeByTokens(
-      where: {
-        Trade: {
-          Currency: { MintAddress: { in: $mintAddresses } }
-        }
-        Block: { Time: { since_relative: { hours_ago: 1 } } }
-        Transaction: { Result: { Success: true } }
-      }
-    ) {
-      Trade {
-        Currency {
-          MintAddress
-          Name
-          Symbol
-        }
-      }
-      # CORRECT USD VOLUME CALCULATION (same as your original)
-      volume_usd_1h: sum(of: Trade_Side_AmountInUSD)
+    # # --- 1 Hour Volume (using mint addresses only) ---
+    # VolumeMetrics: DEXTradeByTokens(
+    #   where: {
+    #     Trade: {
+    #       Currency: { MintAddress: { in: $mintAddresses } }
+    #     }
+    #     Block: { Time: { since_relative: { hours_ago: 1 } } }
+    #     Transaction: { Result: { Success: true } }
+    #   }
+    # ) {
+    #   Trade {
+    #     Currency {
+    #       MintAddress
+    #       Name
+    #       Symbol
+    #     }
+    #   }
+    #   # CORRECT USD VOLUME CALCULATION (same as your original)
+    #   volume_usd_1h: sum(of: Trade_Side_AmountInUSD)
       
-      # ADDITIONAL USEFUL METRICS
-      token_amount_traded: sum(of: Trade_Amount)
-      average_price_usd: average(of: Trade_PriceInUSD)
-      trades_1h: count
+    #   # ADDITIONAL USEFUL METRICS
+    #   token_amount_traded: sum(of: Trade_Amount)
+    #   average_price_usd: average(of: Trade_PriceInUSD)
+    #   trades_1h: count
       
-      # BUY/SELL BREAKDOWN
-      buy_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: buy}}}})
-      sell_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: sell}}}})
-    }
+    #   # BUY/SELL BREAKDOWN
+    #   buy_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: buy}}}})
+    #   sell_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: sell}}}})
+    # }
 
     # --- Latest Liquidity (ONLY this uses market addresses) ---
-    LiquidityMetrics: DEXPools(
-      where: {
-        Pool: {
-          Market: {
-            BaseCurrency: {MintAddress:{ in: $mintAddresses } },
-            # QuoteCurrency: {MintAddress: {is: "So11111111111111111111111111111111111111112"}}
-          }
-        }
-        Transaction: { Result: { Success: true } }
-      }
-      orderBy: { descending: Block_Slot }
-     limitBy: { by: [Pool_Market_BaseCurrency_MintAddress], count: 1 }  # Allow multiple results for multiple market addresses
-    ) {
-      Pool {
-        Market {
-          MarketAddress
-          BaseCurrency {
-            MintAddress
-            Symbol
-            Name
-          }
-          QuoteCurrency {
-            MintAddress
-            Symbol
-            Name
-          }
-        }
-        Quote {
-          PostAmount
-          PostAmountInUSD
-        }
-        Base {
-          PostAmount
-          PostAmountInUSD
-        }
-      }
-    }
+    # LiquidityMetrics: DEXPools(
+    #   where: {
+    #     Pool: {
+    #       Market: {
+    #         BaseCurrency: {MintAddress:{ in: $mintAddresses } },
+    #         # QuoteCurrency: {MintAddress: {is: "So11111111111111111111111111111111111111112"}}
+    #       }
+    #     }
+    #     Transaction: { Result: { Success: true } }
+    #   }
+    #   orderBy: { descending: Block_Slot }
+    #  limitBy: { by: [Pool_Market_BaseCurrency_MintAddress], count: 1 }  # Allow multiple results for multiple market addresses
+    # ) { 
+    #   Pool {
+    #     Market {
+    #       MarketAddress
+    #       BaseCurrency {
+    #         MintAddress
+    #         Symbol
+    #         Name
+    #       }
+    #       QuoteCurrency {
+    #         MintAddress
+    #         Symbol
+    #         Name
+    #       }
+    #     }
+    #     Quote {
+    #       PostAmount
+    #       PostAmountInUSD
+    #     }
+    #     Base {
+    #       PostAmount
+    #       PostAmountInUSD
+    #     }
+    #   }
+    # }
   }
 }`;
 export const LIVE_MARKETCAP = `
@@ -1391,37 +1486,7 @@ query MyQuery($mintAddress: String!) {
   }
 }
 `;
-const lastCorrectVolumeQuery = `
-query MyQuery {
-  Solana {
-    DEXTradeByTokens(
-      where: {
-        Trade: {Currency: {MintAddress: {is: "CEZo2ekEP6g3RrJyK27CqbirDPQfRT7XYEv6DWp8pump"}}}
-        Block: {Time: {since_relative: {hours_ago: 1}}}
-        Transaction: {Result: {Success: true}}
-      }
-    ) {
-      Trade {
-        Currency {
-          MintAddress
-          Name
-          Symbol
-        }
-      }
-      # CORRECT USD VOLUME CALCULATION
-      volume_usd_24h: sum(of: Trade_Side_AmountInUSD)
-      
-      # ADDITIONAL USEFUL METRICS
-      token_amount_traded: sum(of: Trade_Amount)
-      average_price_usd: average(of: Trade_PriceInUSD)
-      trades_24h: count
-      
-      # BUY/SELL BREAKDOWN
-      buy_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: buy}}}})
-      sell_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: sell}}}})
-    }
-  }
-}`;
+
 const getLatestLiquiditybymarketaddress = `
 query GetLatestLiquidityForPool {
   Solana(dataset: realtime) {
@@ -1522,6 +1587,30 @@ query GetTopTokenHolders($mintAddress: String!) {
     }
   }
 }`;
+
+export const GET_TOKEN_HOLDERS_COUNT = `
+query GetTokenHolders($mintAddress: String!) {
+  Solana {
+    BalanceUpdates(
+      orderBy: {descendingByField: "BalanceUpdate_Holding_maximum"}
+      where: {BalanceUpdate: {Currency: {MintAddress: {is: $mintAddress}}}}
+    ) {
+      BalanceUpdate {
+        Currency {
+          MintAddress
+        }
+        Account {
+          Address
+          Token {
+            Owner
+          }
+        }
+        Holding: PostBalance(maximum: Block_Slot, selectWhere: {gt: "0"})
+      }
+    }
+  }
+}
+`;
 const toptokenHolders = `
 query GetTopTokenHolders($mintAddress: String!) {
   Solana(dataset: realtime) {
@@ -2009,6 +2098,77 @@ query MyQuery {
   }
 }
 `;
+
+const TOKEN_TRADES_COUNT = `
+query GetTokenSOLTradeStats($tokens: [String!]!) {
+  Solana {
+    DEXTradeByTokens(
+      where: {
+        Trade: {
+          Currency: {MintAddress: {in: $tokens}}
+          Side: {
+            Currency: {
+             MintAddress: {in: [
+      "11111111111111111111111111111111",     # Native SOL
+      "So11111111111111111111111111111111111111112"  # Wrapped SOL
+    ]}
+            }
+          }
+        }
+        Transaction: {Result: {Success: true}}
+      }
+    ) {
+      Trade {
+        Currency {
+          Name
+          Symbol
+          MintAddress
+        }
+        Side {
+          Currency {
+            Name
+            Symbol
+            MintAddress
+          }
+        }
+      }
+      totalTrades: count
+      buyTrades: count(if: {Trade: {Side: {Type: {is: buy}}}})
+      sellTrades: count(if: {Trade: {Side: {Type: {is: sell}}}})
+    }
+  }
+}`;
+const lastCorrectVolumeQuery = `
+query MyQuery($mintAddresses: [String!]!) {
+  Solana {
+    DEXTradeByTokens(
+      where: {
+        Trade: {Currency: {MintAddress: {in: $mintAddresses}}}
+        Block: {Time: {since_relative: {hours_ago: 1}}}
+        Transaction: {Result: {Success: true}}
+      }
+    ) {
+      Trade {
+        Currency {
+          MintAddress
+          Name
+          Symbol
+        }
+      }
+      # CORRECT USD VOLUME CALCULATION
+      volume_usd_24h: sum(of: Trade_Side_AmountInUSD)
+      
+      # ADDITIONAL USEFUL METRICS
+      token_amount_traded: sum(of: Trade_Amount)
+      average_price_usd: average(of: Trade_PriceInUSD)
+      trades_24h: count
+      
+      # BUY/SELL BREAKDOWN
+      buy_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: buy}}}})
+      sell_volume_usd: sum(of: Trade_Side_AmountInUSD, if: {Trade: {Side: {Type: {is: sell}}}})
+    }
+  }
+}`;
 
 // ✅ New route for fetching BlueChip Meme tokens
 export const blacklist = [
