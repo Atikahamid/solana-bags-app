@@ -32,8 +32,21 @@ if (Platform.OS === "android") {
         UIManager.setLayoutAnimationEnabledExperimental(true);
     }
 }
-
-const PROTOCOLS = [
+// signer for bags tokens
+//  Accounts: {
+//             includes: {
+//               Address: { is: "BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv" }
+//             }
+//           }
+const PROTOCOLS_ADDRESS = [
+    "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", //pumpfun
+    "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj", //letsbonk
+    "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN", //meteora dynamic boonding curve
+    // "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN",
+    // "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj", //Radium launch pad
+    "",
+]
+export const PROTOCOLS = [
     { name: "Pump", image: PumpFunImg, color: "#11aa6dff" },
     { name: "Bonk", image: BonkImg, color: "#F4A261" },
     { name: "Bags", image: BagsImg, color: "#08c608ff" },
@@ -43,7 +56,7 @@ const PROTOCOLS = [
     { name: "Believe", image: BelieveImg, color: "#11892bff" },
      { name: "Boop", image: BoopImg, color: "#108eeeff" },
     { name: "Jupiter Studio", image: JupiterImg, color: "#b4aa27ff" },
-    { name: "Moonit", image: MoonitImg, color: "#d8df14ff" },
+    // { name: "Moonit", image: MoonitImg, color: "#d8df14ff" },
     { name: "LaunchLab", image: launchlabImg, color: "#0d4cb1ff" },
     { name: "Dynamic BC", image: DBCImg, color: "#d66006ff" },
 ];

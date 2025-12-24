@@ -34,7 +34,10 @@ import {
   CoinbaseOnrampScreen,
   DeleteAccountConfirmationScreen,
   IntroScreen,
+  LeaderBoardScreen,
+  LeaderBoardUserDetailScreen,
   LoginScreen,
+  ReferralCodeScreen,
   TokenDetailScreen,
   TradeScreen,
   WebViewScreen,
@@ -56,10 +59,12 @@ export type RootStackParamList = {
   GlobalSearchScreen: undefined;
   TokenDetailScreen: undefined;
   FiltersScreen: undefined;
+  LeaderBoardUserDetailScreen: undefined;
   ExportWalletScreen: undefined;
   TradeScreen: undefined;
   CoinDetailPage: undefined;
   AddCashScreen: undefined;
+  RefferralCodeScreen: undefined;
   Blink: undefined;
   Pumpfun: undefined;
   PerpetualsScreen: undefined;
@@ -69,6 +74,7 @@ export type RootStackParamList = {
     amount: number;
   };
   NftScreen: undefined;
+  SwapForm: undefined;
   SettingsScreen: undefined;
   ChatListScreen: undefined;
   ChatScreen: {
@@ -80,6 +86,7 @@ export type RootStackParamList = {
   PumpSwap: undefined;
   MercuroScreen: undefined;
   onRampScreen: undefined;
+  LeaderBoardScreen: undefined;
   walletScreenMoonPay: undefined;
   luloRebalancingYield: undefined;
   LaunchlabsScreen: undefined;
@@ -241,6 +248,9 @@ export default function RootNavigator() {
           <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
           <Stack.Screen name="ProfileScreenNew" component={ProfileScreenNew} />
           <Stack.Screen name="PerpetualsScreen" component={PerpetualsScreen} />
+          <Stack.Screen name="LeaderBoardScreen" component={LeaderBoardScreen} />
+          <Stack.Screen name="LeaderBoardUserDetailScreen" component={LeaderBoardUserDetailScreen} />
+          <Stack.Screen name="RefferralCodeScreen" component={ReferralCodeScreen} />
 
           <Stack.Screen name="TradeScreen" component={TradeScreen} />
           {/* <Stack.Screen name="positionSection" component={PositionsSection} /> */}

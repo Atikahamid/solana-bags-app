@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">crypto-public-files-bucket.s3.ap-southeast-1.amazonaws.com</domain>
+        <domain includeSubdomains="true">arweave.net</domain>
+        <domain includeSubdomains="true">cloudflare-ipfs.com</domain>
+        <domain includeSubdomains="true">ipfs.io</domain>
+        <domain includeSubdomains="true">gateway.pinata.cloud</domain>
+    </domain-config>
+</network-security-config>

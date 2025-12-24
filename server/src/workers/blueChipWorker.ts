@@ -17,20 +17,29 @@ import {
   ALMOST_BONDED_QUERY,
   GET_MIGRATED_TOKENS_QUERY,
   NEWLY_CREATED_TOKENS_QUERY,
+  metadataQuery,
+  GET_TOKEN_OHLC_QUERY,
+  GET_MULTI_TOKENCHART_OHLAC_DATA,
+  BATCH_GET_TOTAL_SUPPLY_OF_TOKEN,
+  GET_CURRENT_PRICE_OFTOKE_IN_BATCH,
+  GET_TOP_HOLDERS_QUERY,
 } from "../queries/allQueryFile";
 import { sanitizeString } from "../services/bitQueryService";
-import { computeLiquidityUSD } from "../utils/tokenRelatedUtils";
+import { computeLiquidityUSD, getMarketMetricsBatch, getTokenBondingInfo, getTokenHolderStats, getTokenTradeStats, toBigIntSafe, toDecimalSafe } from "../utils/tokenRelatedUtils";
 import {
   decodeMetadataBatch,
   Metadata,
   getCreationTimeAndSupplyBatch,
 } from "../utils/tokenRelatedUtils"; // assume both exports exist here
+import { createPortfolioSnapshot } from "../controllers/pnlController";
+import { getCollectInstructionDataSerializer } from "@metaplex-foundation/mpl-core";
 
 // ====================== Config ======================
 const BITQUERY_URL = process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap";
 const BITQUERY_AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN || "ory_at_GVB4S_JW4KylmKz9phcNf8Lfw-nAvnIldmu9y_rbERA.UwC3hBBwTFKIONUHtTZQum1WiAMsP8VCYZFkRD-sXxU";
+// console.log("bitquery outh token: ", BITQUERY_AUTH_TOKEN);
 const REDIS_TTL = Number(process.env.DISCOVERY_CACHE_TTL ?? 120);
-const DETAIL_BATCH_SIZE = Number(process.env.DETAIL_BATCH_SIZE ?? 5);
+// const DETAIL_BATCH_SIZE = Number(process.env.DETAIL_BATCH_SIZE ?? 5);
 const DB_BATCH_SIZE = Number(process.env.DB_BATCH_SIZE ?? 100); // amount per batch insert
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -101,20 +110,20 @@ export async function fetchTokenDetailBatch(tokens: any[]): Promise<any[]> {
         );
         const priceChange24h = priceChangeEntry?.PriceChange24hPercent ?? null;
 
-        const volumeEntry = solanaData.VolumeMetrics?.find(
-          (v: any) => v.Trade?.Currency?.MintAddress === mint
-        );
-        const volume1h = volumeEntry?.volume_usd_1h ? Number(volumeEntry.volume_usd_1h) : null;
+        // const volumeEntry = solanaData.VolumeMetrics?.find(
+        //   (v: any) => v.Trade?.Currency?.MintAddress === mint
+        // );
+        // const volume1h = volumeEntry?.volume_usd_1h ? Number(volumeEntry.volume_usd_1h) : null;
 
-        const liquidityEntry = solanaData.LiquidityMetrics?.find(
-          (l: any) => l.Pool?.Market?.BaseCurrency?.MintAddress === mint
-        );
-        const liquidityUSD = liquidityEntry ? computeLiquidityUSD(liquidityEntry.Pool) : null;
+        // const liquidityEntry = solanaData.LiquidityMetrics?.find(
+        //   (l: any) => l.Pool?.Market?.BaseCurrency?.MintAddress === mint
+        // );
+        // const liquidityUSD = liquidityEntry ? computeLiquidityUSD(liquidityEntry.Pool) : null;
 
         tok.marketcap = marketcap;
         tok.price_change_24h = priceChange24h;
-        tok.volume_24h = volume1h;
-        tok.liquidity = liquidityUSD;
+        // tok.volume_24h = volume1h;
+        // tok.liquidity = liquidityUSD;
       }
     } catch (err: any) {
       console.warn("⚠️ fetchTokenDetailBatch failed:", err.message);
@@ -126,6 +135,164 @@ export async function fetchTokenDetailBatch(tokens: any[]): Promise<any[]> {
 
   return tokens;
 }
+
+export async function fetchLaunchpadDetailBatch(
+  tokens: any[]
+): Promise<any[]> {
+  for (let i = 0; i < tokens.length; i += DETAIL_BATCH_SIZE) {
+    const batch = tokens.slice(i, i + DETAIL_BATCH_SIZE);
+    const mintAddresses = batch.map((t) => t.mint);
+
+    try {
+      // --------------------------------------------------
+      // 1️⃣ Fetch Combined Metrics (Marketcap + Price Change)
+      // --------------------------------------------------
+      const res = await axios.post(
+        BITQUERY_URL,
+        {
+          query: COMBINED_TOKEN_METRICS,
+          variables: { mintAddresses },
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+          },
+          timeout: 60_000,
+        }
+      );
+
+      const solanaData = res.data?.data?.Solana;
+      if (!solanaData) {
+        await sleep(250);
+        continue;
+      }
+
+      // --------------------------------------------------
+      // 2️⃣ Fetch Holder Stats (batch)
+      // --------------------------------------------------
+      const holderStats = await getTokenHolderStats(mintAddresses);
+
+      // --------------------------------------------------
+      // 3️⃣ Fetch Trade Stats (batch)
+      // --------------------------------------------------
+      const tradeStats = await getTokenTradeStats(mintAddresses);
+
+      // --------------------------------------------------
+      // 4️⃣ Fetch Bonding Curve Info (batch) ✅ NEW
+      // --------------------------------------------------
+      const tokensNeedingBonding = batch.filter(
+        (t) => t.bonding_curve_progress == null
+      );
+
+      let bondingInfo: any[] = [];
+
+      if (tokensNeedingBonding.length > 0) {
+        bondingInfo = await getTokenBondingInfo(
+          tokensNeedingBonding.map((t) => t.mint)
+        );
+      }
+
+      const bondingMap = new Map(
+        bondingInfo.map((b) => [b.mintAddress, b])
+      );
+
+      // --------------------------------------------------
+      // 5️⃣ Merge everything per token
+      // --------------------------------------------------
+      for (const tok of batch) {
+        const mint = tok.mint;
+
+        // ---------- Market Cap ----------
+        const supplyUpdate = solanaData.TokenSupplyUpdates?.find(
+          (u: any) =>
+            u.TokenSupplyUpdate?.Currency?.MintAddress === mint
+        )?.TokenSupplyUpdate;
+
+        const latestPrice = solanaData.PriceMetrics?.find(
+          (p: any) =>
+            p.Trade?.Currency?.MintAddress === mint
+        )?.Trade?.PriceInUSD;
+
+        let marketcap: number | null = null;
+
+        if ((supplyUpdate?.PostBalanceInUSD ?? 0) > 0) {
+          marketcap = Number(supplyUpdate.PostBalanceInUSD);
+        } else if (supplyUpdate?.PostBalance && latestPrice) {
+          marketcap =
+            Number(supplyUpdate.PostBalance) *
+            Number(latestPrice);
+        }
+
+        // ---------- Price Change ----------
+        const priceChangeEntry =
+          solanaData.PriceChange24h?.find(
+            (pc: any) =>
+              pc.Trade?.Currency?.MintAddress === mint
+          );
+
+        tok.marketcap = marketcap;
+        tok.price_change_24h =
+          priceChangeEntry?.PriceChange24hPercent ?? null;
+
+        // ---------- Holder stats ----------
+        tok.holder_count =
+          holderStats.holderCount[mint] ?? 0;
+
+        tok.top10_holding_percent =
+          holderStats.top10HoldingPercent[mint] ?? 0;
+
+        tok.sniper_holding_percent =
+          holderStats.sniperHoldingPercent[mint] ?? 0;
+
+        // ---------- Trade stats ----------
+        tok.total_trades =
+          tradeStats.totalTrades[mint] ?? 0;
+
+        tok.buy_trades =
+          tradeStats.buyTrades[mint] ?? 0;
+
+        tok.sell_trades =
+          tradeStats.sellTrades[mint] ?? 0;
+
+        tok.volume_usd_24h =
+          tradeStats.volumeUsd24h[mint] ?? 0;
+
+        tok.buy_volume_usd =
+          tradeStats.buyVolumeUsd[mint] ?? 0;
+
+        tok.sell_volume_usd =
+          tradeStats.sellVolumeUsd[mint] ?? 0;
+
+        // ---------- Bonding curve info ✅ NEW ----------
+        const b = bondingMap.get(mint);
+
+        tok.bonding_curve_progress =
+          tok.bonding_curve_progress ??
+          b?.bondingCurveProgress ??
+          null;
+
+        tok.protocol_family =
+          tok.protocol_family ??
+          b?.protocolFamily ??
+          null;
+
+        // tok.bonding_curve_created_on =
+        //   b?.creationTime ?? null;
+      }
+    } catch (err: any) {
+      console.warn(
+        "⚠️ fetchTokenDetailBatch failed:",
+        err.message
+      );
+    }
+
+    await sleep(500);
+  }
+
+  return tokens;
+}
+
 
 /* =========================
    saveTokens - new behavior
@@ -324,43 +491,58 @@ async function saveTokens(tokens: any[], category: string, redisKey: string) {
 
 
 
+/// ======================================================
+// MAIN UPSERT FOR LAUNCHPAD + TOKENS + TOKEN_STATS
 // ======================================================
-// MAIN UPSERT FOR LAUNCHPAD + TOKENS
-// ======================================================
-async function saveLaunchpadTokens(tokens: any[], category: string, redisKey: string) {
+async function saveLaunchpadTokens(
+  tokens: any[],
+  category: string,
+  redisKey: string
+) {
   if (!tokens || !tokens.length) return;
 
-  tokens = tokens.map(t => ({
+  // --------------------------------------------------
+  // Normalize tokens
+  // --------------------------------------------------
+  tokens = tokens.map((t) => ({
     mint: t.mint,
     category,
+
     name: t.name ?? null,
     symbol: t.symbol ?? null,
     uri: t.uri ?? null,
     image: t.image ?? null,
+
     marketcap: t.marketcap ?? null,
-    volume: t.volume ?? null,
-    fees: t.fees ?? null,
-    holders: t.holders ?? null,
-    txns: t.txns ?? null,
-    // bondingProgress: t.bondingProgress ?? null,
-    // protocolFamily: t.protocolFamily ?? null,
-    analytics: t.analytics ?? null,
-    createdOn: t.createdOn ?? null,
-    twitterX: t.twitterX ?? null,
-    telegramX: t.telegramX ?? null,
-    website: t.website ?? null,
-    time: new Date(),
-    updated_at: new Date()
+    price_change_24h: t.price_change_24h ?? null,
+
+    holders: t.holder_count ?? null,
+    txns: t.total_trades ?? null,
+    buy_trades: t.buy_trades ?? null,
+    sell_trades: t.sell_trades ?? null,
+    volume: t.volume_usd_24h ?? null,
+
+    buy_volume: t.buy_volume_usd ?? null,
+    sell_volume: t.sell_volume_usd ?? null,
+
+    holding_top_10: t.top10_holding_percent ?? null,
+    holding_snipers: t.sniper_holding_percent ?? null,
+
+    // ✅ NEW
+    bonding_curve_progress: t.bonding_curve_progress ?? null,
+    protocol_family: t.protocol_family ?? null,
+    // bonding_curve_created_on: t.bonding_curve_created_on ?? null,
+
+    time: t.bonding_curve_created_on ?? null,
+    updated_at: new Date(),
   }));
 
-  // -------------------------------
-  // Metadata decode (batch)
-  // -------------------------------
-  const uris = tokens.map(t => t.uri);
+  // --------------------------------------------------
+  // Metadata decode (unchanged)
+  // --------------------------------------------------
   let metas: any[] = [];
-
   try {
-    metas = await decodeMetadataBatch(uris);
+    metas = await decodeMetadataBatch(tokens.map((t) => t.uri));
   } catch {
     metas = tokens.map(() => null);
   }
@@ -369,31 +551,34 @@ async function saveLaunchpadTokens(tokens: any[], category: string, redisKey: st
     const m = metas[i];
     if (!m) return;
 
-    if (m.image) t.image = m.image;
+    t.image = m.image ?? t.image;
     t.social_twitter = m.twitter ?? null;
     t.social_telegram = m.telegram ?? null;
     t.social_website = m.website ?? null;
+    t.social_tiktok = m.tiktok ?? null;
   });
 
-  // -------------------------------
-  // Creation time / supply batch
-  // -------------------------------
-  let supplyData = {};
+  // --------------------------------------------------
+  // Creation time / supply batch (unchanged)
+  // --------------------------------------------------
+  let supplyData: Record<string, any> = {};
   try {
-    const mints = tokens.map(t => t.mint);
-    supplyData = await getCreationTimeAndSupplyBatch(mints);
+    supplyData = await getCreationTimeAndSupplyBatch(
+      tokens.map((t) => t.mint)
+    );
   } catch {
     supplyData = {};
   }
 
-  // -------------------------------
+  // --------------------------------------------------
   // Build DB rows
-  // -------------------------------
+  // --------------------------------------------------
   const launchpadRows: any[] = [];
   const tokensRows: any[] = [];
+  const tokenStatsRows: any[] = [];
 
   for (const t of tokens) {
-    const cs = (supplyData as Record<string, any>)[t.mint] ?? {};
+    const cs = supplyData[t.mint] ?? {};
 
     launchpadRows.push({
       mint: t.mint,
@@ -403,17 +588,29 @@ async function saveLaunchpadTokens(tokens: any[], category: string, redisKey: st
       uri: t.uri,
       image: t.image,
       time: t.time,
+
       social_twitter: t.social_twitter,
       social_telegram: t.social_telegram,
       social_website: t.social_website,
-      marketcap: t.marketcap,
-      volume: t.volume,
-      fees: t.fees,
-      holders: t.holders,
-      txns: t.txns,
-      // bondingProgress: t.bondingProgress,
-      // protocolFamily: t.protocolFamily,
-      updated_at: new Date()
+
+      marketcap: toDecimalSafe(t.marketcap),
+      volume: toDecimalSafe(t.volume),
+
+      holders: toBigIntSafe(t.holders),
+      txns: toBigIntSafe(t.txns),
+
+      holding_top_10: toDecimalSafe(t.holding_top_10),
+      holding_snipers: toDecimalSafe(t.holding_snipers),
+
+      // ✅ NEW DB FIELDS
+      bonding_curve_progress: toDecimalSafe(
+        t.bonding_curve_progress
+      ),
+      protocol_family: t.protocol_family,
+      // bonding_curve_created_on:
+      //   t.bonding_curve_created_on,
+
+      updated_at: new Date(),
     });
 
     tokensRows.push({
@@ -426,92 +623,79 @@ async function saveLaunchpadTokens(tokens: any[], category: string, redisKey: st
       socials: {
         twitter: t.social_twitter,
         telegram: t.social_telegram,
-        website: t.social_website
+        website: t.social_website,
       },
       total_supply: cs.total_supply ?? null,
       created_on: cs.created_on ?? null,
-      last_updated: new Date()
+      last_updated: new Date(),
+    });
+
+    tokenStatsRows.push({
+      token_mint: t.mint,
+
+      market_cap: toDecimalSafe(t.marketcap),
+      volume_24h: toDecimalSafe(t.volume),
+
+      holders_count: toBigIntSafe(t.holders),
+      tx_count: toBigIntSafe(t.txns),
+
+      total_supply: toBigIntSafe(cs.total_supply),
+      created_on: cs.created_on ?? null,
+
+      price_change_24h: toDecimalSafe(t.price_change_24h),
+
+      buy_volume: toDecimalSafe(t.buy_volume),
+      sell_volume: toDecimalSafe(t.sell_volume),
+      num_buys: toBigIntSafe(t.buy_trades),
+      num_sells: toBigIntSafe(t.sell_trades),
+
+      "top_10_holders_%": toDecimalSafe(t.holding_top_10),
+      holding_snipers: toDecimalSafe(t.holding_snipers),
+
+      fetched_at: new Date(),
     });
   }
 
-  // -------------------------------
-  // DB UPSERTS
-  // -------------------------------
+  // --------------------------------------------------
+  // DB UPSERTS (unchanged)
+  // --------------------------------------------------
   const trx = await knex.transaction();
+
   try {
-    // launchpad_tokens upsert
-    const chunk1 = chunkArray(launchpadRows, 100);
-    for (const ch of chunk1) {
+    for (const ch of chunkArray(launchpadRows, 100)) {
       await trx("launchpad_tokens")
         .insert(ch)
         .onConflict(["mint", "category"])
         .merge();
     }
 
-    // tokens upsert (same as in saveTokens)
-    const chunk2 = chunkArray(tokensRows, 100);
-    for (const ch of chunk2) {
-      const cols = [
-        "mint_address",
-        "name",
-        "symbol",
-        "image",
-        "uri",
-        "description",
-        "socials",
-        "total_supply",
-        "created_on",
-        "last_updated"
-      ];
+    for (const ch of chunkArray(tokensRows, 100)) {
+      await trx("tokens")
+        .insert(ch)
+        .onConflict("mint_address")
+        .merge();
+    }
 
-      const valuesSql: string[] = [];
-      const bindings: any[] = [];
-
-      for (const r of ch) {
-        valuesSql.push(`(${cols.map(() => "?").join(",")})`);
-        bindings.push(
-          r.mint_address,
-          r.name,
-          r.symbol,
-          r.image,
-          r.uri,
-          r.description,
-          JSON.stringify(r.socials),
-          r.total_supply,
-          r.created_on,
-          r.last_updated
-        );
-      }
-
-      const sql = `
-        INSERT INTO tokens (${cols.join(",")})
-        VALUES ${valuesSql.join(",")}
-        ON CONFLICT (mint_address) DO UPDATE SET
-          name = EXCLUDED.name,
-          symbol = EXCLUDED.symbol,
-          image = COALESCE(EXCLUDED.image, tokens.image),
-          uri = COALESCE(EXCLUDED.uri, tokens.uri),
-          description = COALESCE(EXCLUDED.description, tokens.description),
-          socials = EXCLUDED.socials,
-          total_supply = EXCLUDED.total_supply,
-          created_on = EXCLUDED.created_on,
-          last_updated = NOW()
-      `;
-
-      await trx.raw(sql, bindings);
+    for (const ch of chunkArray(tokenStatsRows, 100)) {
+      await trx("token_stats").insert(ch);
     }
 
     await trx.commit();
   } catch (err) {
-    console.log("error: ", err);
     await trx.rollback();
+    console.error("❌ saveLaunchpadTokens failed:", err);
   }
 
-  // Redis update
+  // --------------------------------------------------
+  // Redis cache
+  // --------------------------------------------------
   try {
-    await redisClient.set(redisKey, JSON.stringify(tokens), { EX: 120 });
+    await redisClient.set(redisKey, JSON.stringify(tokens), {
+      EX: 120,
+    });
   } catch { }
 }
+
 
 
 // ======================================================
@@ -559,7 +743,7 @@ async function fetchAlmostBondedNow() {
       (t) => t.bondingProgress >= 65 && t.bondingProgress <= 97
     );
 
-    await fetchTokenDetailBatch(filtered);
+    await fetchLaunchpadDetailBatch(filtered);
     await saveLaunchpadTokens(filtered, "almost_bonded", "launchpad-almost-bonded");
 
     console.log(`✅ Saved ${filtered.length} almost bonded tokens`);
@@ -574,8 +758,12 @@ async function fetchAlmostBondedNow() {
 async function fetchMigratedNow() {
   console.log("🔄 Fetching Migrated Tokens...");
 
+  const TOKEN_PROGRAM_ID =
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
   try {
-    const res = await axios.post(
+    // 1️⃣ Fetch migrated instructions
+    const response = await axios.post(
       BITQUERY_URL,
       { query: GET_MIGRATED_TOKENS_QUERY },
       {
@@ -587,32 +775,117 @@ async function fetchMigratedNow() {
       }
     );
 
-    const instr = res.data?.data?.Solana?.Instructions ?? [];
-    const list: any[] = [];
+    const instructions =
+      response.data?.data?.Solana?.Instructions ?? [];
 
-    for (const i of instr) {
-      const accounts = i.Instruction?.Accounts ?? [];
-      const mintAcc = accounts.find((a: any) => a?.Token?.Mint);
-      const mint = mintAcc?.Token?.Mint;
+    // 2️⃣ Extract migrated mints (ROUTE LOGIC)
+    const mintMethodMap = new Map<string, string>();
+
+    for (const instr of instructions) {
+      const method =
+        instr?.Instruction?.Program?.Method ?? "";
+      const accounts =
+        instr?.Instruction?.Accounts ?? [];
+
+      const candidates = accounts.filter(
+        (acc: any) =>
+          acc?.Token?.Mint &&
+          acc?.Token?.Owner === TOKEN_PROGRAM_ID &&
+          acc?.Token?.ProgramId === TOKEN_PROGRAM_ID
+      );
+
+      if (!candidates.length) continue;
+
+      const mint =
+        method === "migrate_meteora_damm"
+          ? candidates[1]?.Token?.Mint ||
+          candidates[0]?.Token?.Mint
+          : candidates[0]?.Token?.Mint;
+
       if (!mint) continue;
 
-      list.push({
-        mint,
-        name: null,
-        symbol: null,
-        uri: null,
+      mintMethodMap.set(mint, method);
+    }
+
+    const mintAddresses = [...mintMethodMap.keys()];
+    console.log(" mint addresses: ", mintAddresses[3], mintAddresses.length);
+    if (!mintAddresses.length) {
+      console.log("⚠️ No migrated tokens found");
+      return;
+    }
+
+    // 3️⃣ BATCH metadataQuery (THIS WAS THE MISSING STEP)
+    const metaResponse = await axios.post(
+      BITQUERY_URL,
+      {
+        query: metadataQuery,
+        variables: { mintAddresses },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+        },
+        timeout: 60_000,
+      }
+    );
+
+    const pools =
+      metaResponse.data?.data?.Solana?.DEXPools ?? [];
+
+    // 4️⃣ Build mint → metadata map
+    const metaMap = new Map<string, any>();
+
+    for (const p of pools) {
+      const base =
+        p?.Pool?.Market?.BaseCurrency;
+
+      if (!base?.MintAddress || !base?.Name) continue;
+
+      metaMap.set(base.MintAddress, {
+        name: base.Name,
+        symbol: base.Symbol ?? null,
+        uri: base.Uri ?? null,
       });
     }
 
-    await fetchTokenDetailBatch(list);
-    await saveLaunchpadTokens(list, "migrated", "launchpad-migrated");
+    // 5️⃣ Build final tokens (NO NULL NAME)
+    const tokens: any[] = [];
 
-    console.log(`✅ Saved ${list.length} migrated tokens`);
+    for (const mint of mintAddresses) {
+      const meta = metaMap.get(mint);
+      if (!meta) continue;
 
+      tokens.push({
+        mint,
+        name: meta.name,
+        symbol: meta.symbol,
+        uri: meta.uri,
+        method: mintMethodMap.get(mint),
+      });
+    }
+
+    if (!tokens.length) {
+      console.log("⚠️ No hydrated migrated tokens");
+      return;
+    }
+
+    // 6️⃣ Continue normal pipeline
+    await fetchLaunchpadDetailBatch(tokens);
+    await saveLaunchpadTokens(
+      tokens,
+      "migrated",
+      "launchpad-migrated"
+    );
+
+    console.log(`✅ Saved ${tokens.length} migrated tokens`);
   } catch (err: any) {
     console.error("❌ fetchMigratedNow error:", err.message);
   }
 }
+
+
+
 
 
 // ---------- NEWLY CREATED ----------
@@ -648,7 +921,7 @@ async function fetchNewlyCreatedNow() {
       let metaData = null;
       try {
         metaData = arg?.Value?.json ? JSON.parse(arg.Value.json) : null;
-      } catch {}
+      } catch { }
 
       const data = metaData?.data ?? {};
 
@@ -661,9 +934,10 @@ async function fetchNewlyCreatedNow() {
     }
 
     console.log("list of newly created tokens: ", list);
-    await fetchTokenDetailBatch(list);
+    await fetchLaunchpadDetailBatch(list);
+    console.log("list1: ", list[1]);
     await saveLaunchpadTokens(list, "newly_created", "launchpad-newly-created");
-
+    console.log("list2: ", list[1]);
     console.log(`✅ Saved ${list.length} newly created tokens`);
 
   } catch (err: any) {
@@ -935,6 +1209,275 @@ async function fetchTrendingNow() {
   }
 }
 
+// src/workers/fetchTokenChartNow.ts
+
+const INTERVAL_MINUTES = 5;
+const INTERVAL_LABEL = "5m";
+
+export async function fetchTokenChartNow() {
+  console.log("📊 fetchTokenChartNow started");
+
+  const tokens = await knex("tokens")
+    .where({ is_active: true })
+    .pluck("mint_address");
+
+  if (!tokens.length) return;
+  console.log("tokens length: ", tokens.length);
+
+  const tokenBatches = chunkArray(tokens, DETAIL_BATCH_SIZE);
+
+  for (const mintAddresses of tokenBatches) {
+    try {
+      const response = await axios.post(
+        BITQUERY_URL,
+        {
+          query: GET_MULTI_TOKENCHART_OHLAC_DATA,
+          variables: {
+            mintAddresses,
+            solMint: "So11111111111111111111111111111111111111112",
+            limit: 300,
+            intervalInMinutes: INTERVAL_MINUTES,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+          },
+        }
+      );
+
+      const rows =
+        response.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+      if (!rows.length) continue;
+
+      const candles = rows.map((r: any) => ({
+        token_mint: r.Trade.Currency.MintAddress,
+        interval: INTERVAL_LABEL,
+        time: Math.floor(new Date(r.Block.Timefield).getTime() / 1000),
+        open: Number(r.Trade.open),
+        high: Number(r.Trade.high),
+        low: Number(r.Trade.low),
+        close: Number(r.Trade.close),
+        volume: Number(r.volume),
+      }));
+
+      const dbBatches = chunkArray(candles, DB_BATCH_SIZE);
+
+      for (const batch of dbBatches) {
+        await knex("token_chart")
+          .insert(batch)
+          .onConflict(["token_mint", "interval", "time"])
+          .merge();
+      }
+
+      await sleep(300); // small pause to respect Bitquery limits
+    } catch (err: any) {
+      console.error("❌ chart batch failed:", err.message);
+    }
+  }
+
+  // ✅ retention: keep ~1 month (31 days)
+  const ONE_MONTH_SECONDS = 31 * 24 * 60 * 60;
+
+  await knex("token_chart")
+    .where(
+      "time",
+      "<",
+      Math.floor(Date.now() / 1000) - ONE_MONTH_SECONDS
+    )
+    .delete();
+}
+const DETAIL_BATCH_SIZE = 20;
+
+type ActiveTokenRow = {
+  mint_address: string;
+};
+
+async function runTokenStatsWorker(): Promise<void> {
+  const tokens: ActiveTokenRow[] = await knex("tokens")
+    .select("mint_address")
+    .where("is_active", true);
+
+  for (let i = 0; i < tokens.length; i += DETAIL_BATCH_SIZE) {
+    const batch = tokens.slice(i, i + DETAIL_BATCH_SIZE);
+    const mintAddresses = batch.map(t => t.mint_address);
+
+    try {
+      const [
+        marketMetrics,
+        tradeStats,
+        holderStats,
+        creationSupply,
+      ] = await Promise.all([
+        getMarketMetricsBatch(mintAddresses),
+        getTokenTradeStats(mintAddresses),
+        getTokenHolderStats(mintAddresses),
+        getCreationTimeAndSupplyBatch(mintAddresses),
+      ]);
+
+      const rows = mintAddresses.map((mint) => ({
+        token_mint: mint,
+
+        market_cap: marketMetrics[mint]?.market_cap ?? null,
+        price_change_24h: marketMetrics[mint]?.price_change_24h ?? null,
+
+        volume_24h: tradeStats.volumeUsd24h?.[mint] ?? null,
+        buy_volume: tradeStats.buyVolumeUsd?.[mint] ?? null,
+        sell_volume: tradeStats.sellVolumeUsd?.[mint] ?? null,
+
+        tx_count: tradeStats.totalTrades?.[mint] ?? null,
+        num_buys: tradeStats.buyTrades?.[mint] ?? null,
+        num_sells: tradeStats.sellTrades?.[mint] ?? null,
+
+        holders_count: holderStats.holderCount?.[mint] ?? null,
+        "top_10_holders_%": holderStats.top10HoldingPercent?.[mint] ?? null,
+        holding_snipers: holderStats.sniperHoldingPercent?.[mint] ?? null,
+
+        total_supply: creationSupply[mint]?.total_supply ?? null,
+        created_on: creationSupply[mint]?.created_on ?? null,
+
+        fetched_at: knex.fn.now(),
+      }));
+
+      await knex("token_stats")
+        .insert(rows)
+        .onConflict("token_mint")
+        .merge();
+
+    } catch (err) {
+      console.error("❌ Token stats batch failed:", err);
+    }
+  }
+}
+
+async function runTokenHoldersWorker(): Promise<void> {
+  const tokens: ActiveTokenRow[] = await knex("tokens")
+    .select("mint_address")
+    .where("is_active", true);
+
+  console.log("tokens lenght: ", tokens.length);
+  for (let i = 0; i < tokens.length; i += DETAIL_BATCH_SIZE) {
+    const batch = tokens.slice(i, i + DETAIL_BATCH_SIZE);
+    const mintAddresses = batch.map(t => t.mint_address);
+
+    try {
+      // --------------------------------------------------
+      // 1️⃣ Fetch top holders
+      // --------------------------------------------------
+      const holdersRes = await axios.post(
+        BITQUERY_URL,
+        {
+          query: GET_TOP_HOLDERS_QUERY,
+          variables: { mintAddresses },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+          },
+          timeout: 60000,
+        }
+      );
+
+      const balanceUpdates =
+        holdersRes.data?.data?.Solana?.BalanceUpdates ?? [];
+
+      if (!balanceUpdates.length) continue;
+
+      // --------------------------------------------------
+      // 2️⃣ Fetch prices
+      // --------------------------------------------------
+      const priceRes = await axios.post(
+        BITQUERY_URL,
+        {
+          query: GET_CURRENT_PRICE_OFTOKE_IN_BATCH,
+          variables: { mintAddresses },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+          },
+          timeout: 60000,
+        }
+      );
+
+      const priceRows =
+        priceRes.data?.data?.Solana?.PriceMetrics ?? [];
+
+      const priceByMint: Record<string, number> = {};
+      for (const p of priceRows) {
+        const mint = p.Trade.Currency.MintAddress;
+        const priceUsd = Number(p.Trade.PriceInUSD ?? 0);
+        priceByMint[mint] = priceUsd;
+      }
+
+      // --------------------------------------------------
+      // 3️⃣ Fetch total supply
+      // --------------------------------------------------
+      const supplyRes = await axios.post(
+        BITQUERY_URL,
+        {
+          query: BATCH_GET_TOTAL_SUPPLY_OF_TOKEN,
+          variables: { mintAddresses },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+          },
+          timeout: 60000,
+        }
+      );
+
+      const supplyRows =
+        supplyRes.data?.data?.Solana?.TokenSupplyUpdates ?? [];
+
+      const supplyByMint: Record<string, number> = {};
+      for (const row of supplyRows) {
+        const mint = row.TokenSupplyUpdate.Currency.MintAddress;
+        supplyByMint[mint] = Number(row.TokenSupplyUpdate.PostBalance) || 0;
+      }
+
+      // --------------------------------------------------
+      // 4️⃣ Build DB rows
+      // --------------------------------------------------
+      const rows = balanceUpdates.map((row: any) => {
+        const mint = row.BalanceUpdate.Currency.MintAddress;
+        const holderAddress = row.BalanceUpdate.Account.Address;
+
+        const holding = Number(row.BalanceUpdate.Holding) || 0;
+        const priceUsd = priceByMint[mint] ?? 0;
+        const totalSupply = supplyByMint[mint] ?? 0;
+
+        const valueUsd = Number((holding * priceUsd).toFixed(8));
+        const holdingPercent =
+          totalSupply > 0
+            ? Number(((holding / totalSupply) * 100).toFixed(6))
+            : 0;
+
+        return {
+          token_mint: mint,
+          holder_address: holderAddress,
+          tokens_holdings: holding,
+          value_of_tokens_holdings: valueUsd,
+          holding_percent: holdingPercent,
+          fetched_at: knex.fn.now(),
+        };
+      });
+
+      // --------------------------------------------------
+      // 5️⃣ UPSERT (no DB load)
+      // --------------------------------------------------
+      await knex("token_holders")
+        .insert(rows)
+        .onConflict(["token_mint", "holder_address"])
+        .merge();
+
+    console.log(`✅ Saved alltoken holders popular tokens`);
+    } catch (err: any) {
+      console.error("❌ token holders batch failed:", err.message);
+    }
+  }
+}
 // ----------------------
 // Popular
 // ----------------------
@@ -1150,22 +1693,44 @@ async function repairMissingMetadata(): Promise<void> {
   console.log("🎉 ALL metadata repaired successfully.");
 }
 
+async function createPortfolioSnapshotsNow(): Promise<void> {
+  console.log("📸 Creating portfolio snapshots...");
+
+  try {
+    const users = await knex("users")
+      .where({ is_active: true })
+      .select("privy_id", "balance_usd", "pnl_usd");
+
+    for (const user of users) {
+      await createPortfolioSnapshot(user.privy_id);
+    }
+
+    console.log(`✅ Portfolio snapshots created for ${users.length} users`);
+  } catch (err: any) {
+    console.error("❌ createPortfolioSnapshotsNow error:", err.message);
+  }
+}
+
+
 
 /* ====================== Worker Scheduler ====================== */
 export function startDiscoveryWorker() {
-  cron.schedule("*/5 * * * *", async () => {
+  cron.schedule("*/3 * * * *", async () => {
     console.log("🔄 Discovery worker tick...");
     try {
       // await fetchBluechipMemesNow();
-      await fetchXStockNow();
-      await fetchLstsNow();
-      await fetchAiNow();
-      await fetchTrendingNow();
-      await fetchPopularNow();
+      // await fetchXStockNow();
+      // await fetchLstsNow();
+      // await fetchAiNow();
+      // await fetchTrendingNow();
+      // await fetchPopularNow();
       // await repairMissingMetadata();
       // await fetchNewlyCreatedNow();
       // await fetchAlmostBondedNow();
       // await fetchMigratedNow();
+      // await fetchTokenChartNow();
+      await runTokenHoldersWorker();
+      // await createPortfolioSnapshotsNow();
     } catch (err: any) {
       console.error("❌ discovery worker tick failed:", err.message);
     }

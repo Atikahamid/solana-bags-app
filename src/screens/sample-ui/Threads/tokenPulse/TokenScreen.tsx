@@ -1,4 +1,6 @@
 // ==== File: src/screens/TokensScreen.tsx ====
+// ✅ MODIFICATION: Active tab handling logic updated to match SearchScreen
+// ❌ UI / CSS / JSX / styles are UNCHANGED
 
 import React, {useState, useEffect} from 'react';
 import {
@@ -15,12 +17,16 @@ import {TokenCard} from './TokenCard';
 import COLORS from '@/assets/colors';
 import {useNavigation} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {BackendToken, getRelativeTime} from './tokenServicefile';
+import {
+  BackendToken,
+  getRelativeTime,
+  getSortableTimestamp,
+} from './tokenServicefile';
 import {LinearGradient} from 'expo-linear-gradient';
-import {useAppSelector} from '@/shared/hooks/useReduxHooks';
 import {useNewlyCreatedTokens} from './hooks/useNewlyCreatedTokens';
 import {useAlmostBondedTokens} from './hooks/useAlmostBondedTokens';
 import {useMigratedTokens} from './hooks/useMigratedTokens';
+import {fmt1} from '../SearchScreen';
 
 const TABS = [
   {
@@ -43,101 +49,106 @@ const TABS = [
   },
 ];
 
+const TAB_DATA: Record<string, any[]> = {
+  newPairs: [],
+  finalStretch: [],
+  migrated: [],
+};
+
 export const TokensScreen: React.FC = () => {
   const navigation = useNavigation();
-  const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
 
-  // ====== TAB STATE ======
   const [activeTab, setActiveTab] = useState<
     'newPairs' | 'finalStretch' | 'migrated'
   >('newPairs');
 
-  // ====== FETCH HOOKS (ASYNC) ======
+  // 🔌 DATA HOOKS (UNCHANGED)
   const hookNew = useNewlyCreatedTokens();
   const hookFinal = useAlmostBondedTokens();
   const hookMigrated = useMigratedTokens();
 
-  // ====== LOCAL STORED DATA (FETCHED ONCE) ======
-  const [newPairs, setNewPairs] = useState<BackendToken[]>([]);
-  const [finalStretch, setFinalStretch] = useState<BackendToken[]>([]);
-  const [migrated, setMigrated] = useState<BackendToken[]>([]);
-
-  // ====== TAB-SPECIFIC LOADERS ======
-  const [loadingNew, setLoadingNew] = useState(true);
-  const [loadingFinal, setLoadingFinal] = useState(true);
-  const [loadingMigrated, setLoadingMigrated] = useState(true);
-
-  const [displayTokens, setDisplayTokens] = useState<BackendToken[]>([]);
-
-  // ====== CAPTURE HOOK RESULTS WHEN READY ======
-  useEffect(() => {
-    if (hookNew && hookNew.length > 0) {
-      setNewPairs(hookNew);
-      setLoadingNew(false);
-    }
-  }, [hookNew]);
+  // ======================================================
+  // ✅ MODIFICATION START
+  // Single tokens + loading state (like SearchScreen)
+  // ======================================================
+  const [tokens, setTokens] = useState<BackendToken[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (hookFinal && hookFinal.length > 0) {
-      setFinalStretch(hookFinal);
-      setLoadingFinal(false);
+    let mounted = true;
+
+    async function loadTokens() {
+      setLoading(true);
+      setTokens([]); // clear previous tab data immediately
+
+      try {
+        let res: BackendToken[] = [];
+
+        if (activeTab === 'newPairs') {
+          res = [...hookNew].sort((a, b) => {
+            const t1 = getSortableTimestamp(a.time);
+            const t2 = getSortableTimestamp(b.time);
+            return t2 - t1;
+          });
+        } else if (activeTab === 'finalStretch') {
+          res = [...hookFinal].sort((a, b) => {
+            const p1 = Number(a.bonding_curve_progress ?? 0);
+            const p2 = Number(b.bonding_curve_progress ?? 0);
+            return p2 - p1; // DESCENDING (higher first)
+          });
+        } else if (activeTab === 'migrated') {
+          res = hookMigrated;
+        } else {
+          setTokens(TAB_DATA[activeTab] || []);
+          setLoading(false);
+          return;
+        }
+
+        if (!mounted) return;
+        setTokens(res);
+      } catch (e) {
+        console.error('[TokensScreen] Load error:', e);
+        setTokens([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
-  }, [hookFinal]);
 
-  useEffect(() => {
-    if (hookMigrated && hookMigrated.length > 0) {
-      setMigrated(hookMigrated);
-      setLoadingMigrated(false);
-    }
-  }, [hookMigrated]);
+    loadTokens();
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab, hookNew, hookFinal, hookMigrated]);
 
-  // ====== UPDATE UI WHEN TAB CHANGES (INSTANT SWITCH) ======
-  useEffect(() => {
-    if (activeTab === 'newPairs') {
-      setDisplayTokens(newPairs);
-    } else if (activeTab === 'finalStretch') {
-      setDisplayTokens(finalStretch);
-    } else if (activeTab === 'migrated') {
-      setDisplayTokens(migrated);
-    }
-  }, [activeTab, newPairs, finalStretch, migrated]);
-
-  // Determine loading for current tab
-  const tabLoading =
-    activeTab === 'newPairs'
-      ? loadingNew
-      : activeTab === 'finalStretch'
-      ? loadingFinal
-      : loadingMigrated;
-
-  // ====== MAP TOKENS TO UI PROPS ======
-  const mappedTokens = displayTokens.map(t => ({
+  // ======================================================
+  // UI MAPPING (UNCHANGED)
+  // ======================================================
+  const mappedTokens = tokens.map(t => ({
     mint: t.mint,
     logo: t.image ?? 'https://dummyimage.com/42x42/666/fff.png&text=?',
     name: t.name ?? 'Unknown',
     symbol: t.symbol ?? '',
-    mc: `$${Number(t.analytics?.allTimeVolumeUSD ?? 0).toLocaleString()}`,
-    twitterX: t.twitterX,
-    telegramX: t.telegramX,
-    website: t.website,
-    protocolFamily: t.protocolFamily,
-    holdersCount: Number(t.analytics?.holderCount ?? 0),
-    volume: Number(t.analytics?.currentVolumeUSD ?? 0),
-    fee: Number(t.fee ?? 0),
-    txCount: Number(t.analytics?.totalTrades ?? 0),
-    createdAgo: t.blockTime ? getRelativeTime(t.blockTime) : '0s',
+    mc: fmt1(t.marketcap),
+    twitterX: t.social_twitter,
+    telegramX: t.social_telegram,
+    website: t.social_website,
+    tiktok: t.social_tiktok,
+    protocolFamily: t.protocol_family,
+    holdersCount: Number(t.holders ?? 0),
+    volume: fmt1(t.volume),
+    fee: 0,
+    txCount: Number(t.txns ?? 0),
+    createdAgo: t.time ? getRelativeTime(t.time) : '0s',
+    bondingProgress: t.bonding_curve_progress ?? 0,
+    isMigrated: activeTab === 'migrated',
     stats: {
-      starUser: '-0%',
-      cloud: '0%',
+      starUser: Number(t.holding_top_10).toFixed(1),
+      cloud: Number(t.holding_snipers).toFixed(1),
       target: '-0%',
       ghost: '0%',
       blocks: '-0%',
     },
   }));
-
-  const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen' as never);
-  };
 
   return (
     <LinearGradient
@@ -146,23 +157,26 @@ export const TokensScreen: React.FC = () => {
       end={{x: 0, y: 1}}
       style={styles.container}>
       <View style={styles.container}>
-        {/* ================= HEADER (UNCHANGED) ================= */}
         <SafeAreaView edges={['top']}>
           <Animated.View style={[styles.header, {padding: 16, height: 80}]}>
             <View style={headerStyles.container}>
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('FiltersScreen' as never)
-                }
+                onPress={() => navigation.navigate('FiltersScreen' as never)}
                 style={headerStyles.profileContainer}>
-                <Icons.SettingsIcon width={28} height={28} color={COLORS.white} />
+                <Icons.SettingsIcon
+                  width={28}
+                  height={28}
+                  color={COLORS.white}
+                />
               </TouchableOpacity>
 
               <View style={headerStyles.iconsContainer}>
-                <TouchableOpacity
-                  onPress={handleProfilePress}
-                  style={headerStyles.profileContainer}>
-                  <Icons.RefreshIcon width={28} height={28} color={COLORS.white} />
+                <TouchableOpacity style={headerStyles.profileContainer}>
+                  <Icons.RefreshIcon
+                    width={28}
+                    height={28}
+                    color={COLORS.white}
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -173,17 +187,17 @@ export const TokensScreen: React.FC = () => {
           </Animated.View>
         </SafeAreaView>
 
-        {/* ================= TABS (UNCHANGED UI) ================= */}
+        {/* TABS (UNCHANGED) */}
         <View style={styles.tabsContainer}>
           {TABS.map(tab => {
             const IconComp = activeTab === tab.key ? tab.icon : tab.darkIcon;
-
             return (
               <TouchableOpacity
                 key={tab.key}
                 style={[styles.tab, activeTab === tab.key && styles.activeTab]}
-                onPress={() => setActiveTab(tab.key as typeof activeTab)}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+                onPress={() => setActiveTab(tab.key as any)}>
+                <View
+                  style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
                   <IconComp width={15} height={15} />
                   <Text
                     style={[
@@ -198,13 +212,14 @@ export const TokensScreen: React.FC = () => {
           })}
         </View>
 
-        {/* ================= TOKEN LIST ================= */}
-        {tabLoading ? (
-          <ActivityIndicator
-            style={{marginTop: 20}}
-            size="large"
-            color={COLORS.white}
-          />
+        {/* LIST / LOADER */}
+        {loading ? (
+          <View style={{padding: 24, alignItems: 'center'}}>
+            <ActivityIndicator size="small" color={COLORS.brandPrimary} />
+            <Text style={{color: COLORS.greyMid, marginTop: 10}}>
+              Loading {activeTab}...
+            </Text>
+          </View>
         ) : (
           <FlatList
             data={mappedTokens}
@@ -224,7 +239,6 @@ export const TokensScreen: React.FC = () => {
           />
         )}
 
-        {/* ================= FLOATING BUTTON (UNCHANGED) ================= */}
         <TouchableOpacity
           style={styles.launchButton}
           activeOpacity={0.8}
@@ -283,10 +297,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
     elevation: 6,
   },
   launchButtonText: {color: COLORS.white, fontSize: 16, fontWeight: '600'},

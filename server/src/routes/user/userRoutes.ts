@@ -155,7 +155,7 @@ profileImageRouter.get('/', async (req: any, res: any) => {
       return res.status(400).json({success: false, error: 'Missing userId'});
     }
 
-    const user = await knex('users').where({id: userId}).first();
+    const user = await knex('users').where({privy_id: userId}).first();
     if (!user) {
       return res.status(404).json({success: false, error: 'User not found'});
     }

@@ -1,5 +1,5 @@
-import { fetchTokenDetailBatch, getCreationTimeAndSupplyBatch, getTokenHolderCount, timeAgo } from "./utils/tokenRelatedUtils";
-
+import { fetchTokenDetailBatch, getCreationTimeAndSupplyBatch, getCurrentTokenPriceUsd, getMarketMetricsBatch, getTokenHolderStats, getTokenTradeStats, timeAgo } from "./utils/tokenRelatedUtils";
+import Decimal from "decimal.js";
 const tokens = [
     {
         mint: "4ikwYoNvoGEwtMbziUyYBTz1zRM6nmxspsfw9G7Bpump",
@@ -25,12 +25,19 @@ async function main() {
     // const result = await getCreationTimeAndSupplyBatch(mintAddresses);
     // console.log("result: ", result);
 
-    const count = await getTokenHolderCount(
-        "HFmEXXj6o18osec91NaAkkxWGgJbe3tWE8FPUKGmmoon"
-    );
+    // const count = await getTokenTradeStats([
+    //     "5VwhTtRXBdgwwLG5otSq62jdNDm62VC9J72dhC3rpump",
+    //     "7tAWbTqpvcrwUkky36SvXwThBTnbV5uP6nhUbCpMQWtW"
+    // ]
+    // );
 
-    console.log("holderCount:", count);
-    // console.log(timeAgo("2025-12-06 16:00:06.525+00"));
+    // console.log("holderCount:", count);
+    // console.log(timeAgo("2025-12-13 18:59:00+00"));
+    // const price = new Decimal( await getCurrentTokenPriceUsd('23iUeVHjLCeSMkuL45ksq5UCpwJMBnTMdF97YKZVDZU9'));
+    // console.log("price: ", price);
+
+    // const result = await getMarketMetricsBatch(['2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv', ]);
+    // console.log("result ", result);
 }
 
 main();

@@ -19,7 +19,7 @@ import {DEFAULT_IMAGES} from '@/shared/config/constants';
 import {useAppSelector} from '@/shared/hooks/useReduxHooks';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {headerStyles} from '../tokenPulse/TokenScreen';
-import {LinearGradient} from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient'; 
 import TokenStats from './TokenStats';
 import TokenStats2 from './TokenStats2';
 import TokenStats3 from './TokenStats3';
@@ -89,7 +89,7 @@ const TokenDetailScreen: React.FC = () => {
             <TouchableOpacity onPress={handleBack} style={styles.leftButton}>
               <Icons.ArrowLeft width={24} height={24} color={COLORS.white} />
             </TouchableOpacity>
-            <View style={headerStyles.iconsContainer}>
+            {/* <View style={headerStyles.iconsContainer}>
               <TouchableOpacity
                 onPress={handleProfilePress}
                 style={headerStyles.profileContainer}>
@@ -111,7 +111,7 @@ const TokenDetailScreen: React.FC = () => {
             </View>
             <View style={headerStyles.absoluteLogoContainer}>
               <Icons.AppLogo width={28} height={28} />
-            </View>
+            </View> */}
           </View>
         </Animated.View>
 
@@ -157,11 +157,11 @@ const TokenDetailScreen: React.FC = () => {
 
           {/* Chart Component */}
           <Chart mintAddress={token.mint}/>
-          <TokenStats />
-          <TokenStats2 />
+          {/* <TokenStats /> */}
+          {/* <TokenStats2 /> */}
           {/* <Text>{token.mint}</Text> */}
           {/* <TokenStats3 mintAddress={token.mintAddress}/> */}
-          <TokenStats3 mintAddress={token.mint} />
+          {/* <TokenStats3 mintAddress={token.mint} /> */}
         </ScrollView>
 
         {/* Bottom Buttons */}

@@ -1,9 +1,19 @@
 // ==== File: components/TokenCard.tsx ====
 import COLORS from '@/assets/colors';
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import FastImage from 'react-native-fast-image';
+
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import SolanaIconIMage from '@/assets/images/solana-icon image.png';
 import Icons from '@/assets/svgs';
+import {IPFSAwareImage} from '@/shared/utils/IPFSImage';
 
 interface TokenCardProps {
   name: string;
@@ -16,18 +26,52 @@ interface TokenCardProps {
   onPress?: () => void; // ✅ new
 }
 
-export default function TokenCard({ name, symbol, logo, mc, liq, vol, change, onPress }: TokenCardProps) {
+export const resolveImageUrl = (url: string) => {
+  if (!url) return null;
+
+  // Case 1: ipfs://CID
+  if (url.startsWith('ipfs://')) {
+    const cid = url.replace('ipfs://', '');
+    return `https://cloudflare-ipfs.com/ipfs/${cid}`;
+  }
+
+  // Case 2: https://ipfs.io/ipfs/CID or any other gateway
+  if (url.includes('/ipfs/')) {
+    const parts = url.split('/ipfs/');
+    const cid = parts[1];
+    return `https://cloudflare-ipfs.com/ipfs/${cid}`;
+  }
+
+  // Case 3: Any normal HTTP URL → leave unchanged
+  return url;
+};
+
+export default function TokenCard({
+  name,
+  symbol,
+  logo,
+  mc,
+  liq,
+  vol,
+  change,
+  onPress,
+}: TokenCardProps) {
   const isPositive = change >= 0;
   const changeColor = isPositive ? '#4CAF50' : '#FF4C4C';
-  const formattedChange = `${isPositive ? '+' : ''}${change.toFixed(2)}%`;
-  const arrow = isPositive ?  <Icons.UpArrowIcon width={11} height={10} /> : <Icons.DownArrowIcon width={11} height={10} />;
+  const formattedChange = `${Math.abs(change).toFixed(1)}%`;
+
+  const arrow = isPositive ? (
+    <Icons.UpArrowIcon width={11} height={10} />
+  ) : (
+    <Icons.DownArrowIcon width={11} height={10} />
+  );
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       {/* Logo */}
       <View style={styles.logoContainer}>
         {logo ? (
-          <Image source={{ uri: logo }} style={styles.logo} />
+          <Image source={{uri: resolveImageUrl(logo)}} style={styles.logo} />
         ) : (
           <View style={styles.logoPlaceholder}>
             <Text style={styles.logoText}>{symbol[0]}</Text>
@@ -49,7 +93,7 @@ export default function TokenCard({ name, symbol, logo, mc, liq, vol, change, on
 
       {/* Change */}
       <View style={styles.rightSide}>
-        <Text style={[styles.change, { color: changeColor }]}>
+        <Text style={[styles.change, {color: changeColor}]}>
           {arrow} {formattedChange}
         </Text>
         <View style={styles.solanaOne}>
@@ -107,7 +151,7 @@ const styles = StyleSheet.create({
   },
   solanaOneText: {
     color: COLORS.white,
-    fontSize: 10
+    fontSize: 10,
   },
   logoContainer: {
     width: 50,
@@ -147,7 +191,7 @@ const styles = StyleSheet.create({
   name: {
     color: '#AAA',
     fontSize: 11,
-    marginTop: 3
+    marginTop: 3,
   },
   stats: {
     color: '#777',

@@ -40,8 +40,10 @@
 
 
 // File: backend/routes/authRoutes.js
-import express, {Request, Response } from "express";
+import express, { Request, Response } from "express";
 import knex from "../../db/knex"; // import configured knex instance
+import { generateReferralCode } from "../../utils/tokenRelatedUtils";
+
 // import {PrivyClient} from '@privy-io/node';
 // import dotenv from "dotenv";
 
@@ -63,34 +65,49 @@ const userRoutess = express.Router();
  * POST /api/auth/syncUser
  * Store or update user + wallet info after successful login
  */
-userRoutess.post("/syncUser", async (req: Request, res: Response): Promise<any> => {
+
+
+userRoutess.post("/syncUser", async (req: Request, res: Response) => {
   const { user, wallet } = req.body;
 
   if (!user?.id || !wallet?.address) {
-    return res.status(400).json({ success: false, message: "Missing required user or wallet data." });
+    return res.status(400).json({
+      success: false,
+      message: "Missing required user or wallet data.",
+    });
   }
 
   try {
-    // 1️⃣ Check if user exists
-    let existingUser = await knex("users").where({ privy_id: user.id }).first();
+    let existingUser = await knex("users")
+      .where({ privy_id: user.id })
+      .first();
 
     if (!existingUser) {
-      const username = user.linked_accounts?.[0]?.name
-        ? `$${user.linked_accounts[0].name.replace(/\s+/g, "").toUpperCase()}${Math.floor(Math.random() * 1000)}`
-        : `user_${Math.floor(Math.random() * 100000)}`;
+      const baseUsername = user.linked_accounts?.[0]?.name
+        ? user.linked_accounts[0].name.replace(/\s+/g, "").toLowerCase()
+        : `user${Math.floor(Math.random() * 100000)}`;
+
+      const username = `${baseUsername}_${Math.floor(Math.random() * 1000)}`;
+      const referralCode = generateReferralCode(username, user.id);
 
       const [newUser] = await knex("users")
         .insert({
           privy_id: user.id,
           username,
+          referral_code: referralCode,
+
           display_name: user.linked_accounts?.[0]?.name || null,
-          email: user.linked_accounts?.find((a: { type: string; email?: string }) => a.type === "google_oauth")?.email || null,
-          profile_image_url: user.linked_accounts?.[0]?.profile_image_url || null,
-          has_accepted_terms: user.has_accepted_terms || false,
-          is_guest: user.is_guest || false,
+          email:
+            user.linked_accounts?.find((a: any) => a.type === "google_oauth")
+              ?.email || null,
+
+          profile_image_url:
+            user.linked_accounts?.[0]?.profile_image_url || null,
+
           linked_accounts: JSON.stringify(user.linked_accounts || []),
           mfa_methods: JSON.stringify(user.mfa_methods || []),
           primary_oauth_type: user.linked_accounts?.[0]?.type || null,
+
           primary_wallet_address: wallet.address,
           chain_type: wallet.chain_type || "solana",
         })
@@ -99,32 +116,166 @@ userRoutess.post("/syncUser", async (req: Request, res: Response): Promise<any> 
       existingUser = newUser;
     }
 
-    // 2️⃣ Check if wallet exists
-    const existingWallet = await knex("wallets").where({ address: wallet.address }).first();
+    const existingWallet = await knex("wallets")
+      .where({ address: wallet.address })
+      .first();
 
     if (!existingWallet) {
       await knex("wallets").insert({
-        user_id: existingUser.id,
+        user_id: existingUser.privy_id,
         address: wallet.address,
         public_key: wallet.publicKey,
         chain_type: wallet.chain_type || "solana",
-        chain_id: wallet.chain_id || null,
-        wallet_client: wallet.wallet_client || "privy",
-        wallet_client_type: wallet.wallet_client_type || "privy",
-        recovery_method: wallet.recovery_method || null,
-        wallet_index: wallet.wallet_index || 0,
-        delegated: wallet.delegated || false,
-        imported: wallet.imported || false,
-        status: wallet.status || "connected",
       });
     }
 
-    res.json({ success: true, userId: existingUser.id });
+    res.json({
+      success: true,
+      userPrivyId: existingUser.privy_id,
+      referralCode: existingUser.referral_code,
+      needsReferral: !existingUser.referred_by, // 👈 key line
+    });
   } catch (err: any) {
     console.error("[syncUser] Error:", err);
-    res.status(500).json({ success: false, message: "Internal server error", error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
+
+userRoutess.post(
+  "/referral/accept",
+  async (req: Request, res: Response): Promise<any> => {
+    const { userPrivyId, referralCode } = req.body;
+
+    if (!userPrivyId || !referralCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing userPrivyId or referralCode",
+      });
+    }
+
+    try {
+      await knex.transaction(async (trx) => {
+        const user = await trx("users")
+          .where({ privy_id: userPrivyId })
+          .first();
+
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        if (user.referred_by) {
+          throw new Error("Referral already used");
+        }
+
+        const referrer = await trx("users")
+          .where({ referral_code: referralCode })
+          .first();
+
+        if (!referrer) {
+          throw new Error("Invalid referral code");
+        }
+
+        if (referrer.privy_id === userPrivyId) {
+          throw new Error("Self-referral is not allowed");
+        }
+
+        // ✅ NEW: check if referral row already exists
+        const existingReferral = await trx("referrals")
+          .where({
+            referrer_privy_id: referrer.privy_id,
+            referee_privy_id: userPrivyId,
+          })
+          .first();
+
+        if (existingReferral) {
+          throw new Error("Referral already used");
+        }
+
+        // Update user
+        await trx("users")
+          .where({ privy_id: userPrivyId })
+          .update({
+            referred_by: referralCode,
+            referral_accepted_at: trx.fn.now(),
+          });
+
+        // Insert referral
+        await trx("referrals").insert({
+          referrer_privy_id: referrer.privy_id,
+          referee_privy_id: userPrivyId,
+          referral_code: referralCode,
+          status: "PENDING",
+        });
+      });
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("[referral/accept] Error:", err);
+
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Failed to accept referral code",
+      });
+    }
+  }
+);
+
+
+userRoutess.post("/referral/skip", (_, res: Response) => {
+  res.json({ success: true });
+});
+
+userRoutess.get("/referrals/:userPrivyId", async (req, res) => {
+  const { userPrivyId } = req.params;
+
+  try {
+    /* ---------------- STATS ---------------- */
+    const stats = await knex("referrals")
+      .where({ referrer_privy_id: userPrivyId })
+      .select(
+        knex.raw("count(*)::int as friends_referred"),
+        knex.raw("coalesce(sum(reward_usd), 0)::numeric as total_rewards"),
+        knex.raw(`
+          coalesce(
+            sum(reward_usd) filter (
+              where created_at >= now() - interval '7 days'
+            ),
+            0
+          )::numeric as earned_last_7d
+        `)
+      )
+      .first();
+
+    /* ---------------- REFERRED USERS LIST ---------------- */
+    const referrals = await knex("referrals as r")
+      .join("users as u", "u.privy_id", "r.referee_privy_id") // ✅ CORRECT COLUMN
+      .where("r.referrer_privy_id", userPrivyId)
+      .orderBy("r.created_at", "desc")
+      .select(
+        "u.username",
+        "u.profile_image_url",
+        "r.status",
+        knex.raw("coalesce(r.reward_usd, 0)::numeric as fees_earned")
+      );
+
+    res.json({
+      success: true,
+      stats: {
+        friendsReferred: stats.friends_referred,
+        earnedLast7d: stats.earned_last_7d,
+        totalRewards: stats.total_rewards,
+      },
+      referrals,
+    });
+  } catch (err) {
+    console.error("Referral API error:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
+
+
+
 /**
  * GET /api/auth/user/:privyId
  * Fetch full user info for profile page
@@ -137,7 +288,7 @@ userRoutess.get("/user/:privyId", async (req: Request, res: Response): Promise<a
 
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    const wallets = await knex("wallets").where({ user_id: user.id });
+    const wallets = await knex("wallets").where({ user_id: user.privy_id });
 
     res.json({ success: true, user, wallets });
   } catch (err: any) {

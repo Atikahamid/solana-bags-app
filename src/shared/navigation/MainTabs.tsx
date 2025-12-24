@@ -17,7 +17,7 @@ import {
   Image,
   Text,
 } from 'react-native';
-import {useNavigation, ParamListBase} from '@react-navigation/native';
+import {useNavigation, ParamListBase, useRoute} from '@react-navigation/native';
 import {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {BlurView} from 'expo-blur';
 import {
@@ -46,7 +46,7 @@ import {ProfileScreen} from '@/screens/sample-ui/Threads/profile-screen';
 // import { TradesFeedScreen } from '@/screens/sample-ui/Threads/feed-screen';
 import {IPFSAwareImage} from '../utils/IPFSImage';
 import {TokensScreen} from '@/screens/sample-ui/Threads/tokenPulse/TokenScreen';
-import {CoinDetailPage, TokenDetailScreen} from '@/screens';
+import {CoinDetailPage, LeaderBoardScreen, TokenDetailScreen} from '@/screens';
 import ProfilescreenNew from '@/screens/sample-ui/Threads/profile-screen/ProfileScreennew';
 import {useSelector} from 'react-redux';
 import {RootState} from '../state/store';
@@ -95,6 +95,11 @@ const iconStyle = {
 export default function MainTabs() {
   const navigation = useNavigation<BottomTabNavigationProp<ParamListBase>>();
   const [expandedMenu, setExpandedMenu] = useState(false);
+  const route = useRoute<any>();
+  const referralSuccess = route?.params?.referralSuccess;
+  const referralMessage = route?.params?.referralMessage;
+  const [showReferralBanner, setShowReferralBanner] = useState(false);
+
   const [currentPlatform, setCurrentPlatform] = useState<
     'threads' | 'insta' | 'chats'
   >('threads');
@@ -162,6 +167,18 @@ export default function MainTabs() {
     }),
     [],
   );
+
+  useEffect(() => {
+    if (referralSuccess) {
+      setShowReferralBanner(true);
+
+      const timer = setTimeout(() => {
+        setShowReferralBanner(false);
+      }, 4000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [referralSuccess]);
 
   // Create a stable component that doesn't rerender on menu toggle
   const StableFeedComponent = () => {
@@ -243,6 +260,11 @@ export default function MainTabs() {
           </TouchableOpacity> */}
         </View>
       </Animated.View>
+      {showReferralBanner && (
+        <View style={platformStyles.referralBanner}>
+          <Text style={platformStyles.referralBannerText}>{referralMessage}</Text>
+        </View>
+      )}
 
       <Tab.Navigator
         initialRouteName="Feed"
@@ -389,7 +411,7 @@ export default function MainTabs() {
         <Tab.Screen
           name="perpetuals"
           // component={PerpetualsScreen}
-          component={GlobalSearchScreen}
+          component={LeaderBoardScreen}
           options={{
             tabBarIcon: ({focused, size}) => (
               <AnimatedTabIcon
@@ -506,5 +528,22 @@ const platformStyles = StyleSheet.create({
       Platform.OS === 'android'
         ? '#17274ff7' // Much higher opacity for Android
         : 'rgba(12, 16, 26, 0.75)', // Original opacity for iOS
+  },
+  referralBanner: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 30,
+    left: 16,
+    right: 16,
+    backgroundColor: '#22c55e',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    zIndex: 9999,
+  },
+  referralBannerText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

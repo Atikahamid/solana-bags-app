@@ -83,7 +83,7 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
   const {state} = useLoginWithOAuth();
   const {isReady} = usePrivy();
   console.log('isReady: ', isReady);
-  console.log("user: ", user);
+  console.log('user: ', user);
   const {monitorSolanaWallet} = usePrivyWalletLogic();
   // const {user} = usePrivy();
   const {auth: authConfig} = useCustomization();
@@ -109,7 +109,7 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
       onWalletConnected: async walletInfo => {
         console.log('Wallet connected after user available:', walletInfo);
         if (user && walletInfo?.address) {
-          await syncUserToBackend(user, {
+          const res = await syncUserToBackend(user, {
             ...walletInfo,
             publicKey: walletInfo.address,
             chain_type: 'solana',
@@ -141,7 +141,11 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
           }),
         );
         setIsLoading(false);
-        navigation.navigate('MainTabs');
+        if (res?.needsReferral) {
+          navigation.replace('RefferralCodeScreen');
+        } else {
+          navigation.replace('MainTabs');
+        }
       },
     });
   };
@@ -283,6 +287,7 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
       <Text style={styles.arrowText}>›</Text>
     </View>
   );
+
   if (isLoading) {
     return <LoadingScreen />;
   }

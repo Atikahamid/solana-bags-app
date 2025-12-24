@@ -56,6 +56,8 @@ import CandleStiks from './candlestick-icon.svg';
 import Trophy from './trophy-icon.svg';
 import Crown from './crown-icon.svg';
 import TiktokIcon from './tiktok-icon.svg';
+import TelegramIcon from './telegram-cion.svg';
+// import Twittericon from './x-twitter-icon.svg';
 import KickIcon from './kick-icon.svg';
 import GithubIcon from './github-icon.svg';
 import GoogleIcon from './google-icon.svg';
@@ -72,7 +74,7 @@ import GhostGreen from './ghost-green.svg';
 import GhostRed from './ghost-red.svg';
 import BlcoksGreen from './block-green.svg';
 import BlocksRed from './block-red.svg';
-
+import ShareIcon from './share-icon.svg';
 import TrendingIcon from './trending-icon.svg';
 import TrendingDark from './trending-icon-dark.svg';
 import PopularIcon from './popular-icon.svg';
@@ -132,6 +134,8 @@ import FinalStretchDark from './final-stretch-dark.svg';
 import MigratedDark from './migrated-dark.svg';
 import PencilIcon from './pencil-icon.svg';
 import UpArrowIcon from './up-arrow-icon.svg';
+import GreenArrowUp from './arrow-up.svg';
+import RedArrowDown from './arrow-down.svg';
 import DownArrowIcon from './down-arrow-icon.svg';
 import profileSettingsIcon from './profile-settings-icon.svg';
 import DepositeIcon from './deposie-icon.svg';
@@ -148,7 +152,8 @@ import HelpIcon from './help-icon.svg';
 import LogoutIcon from './logout-icon.svg';
 import DeleteIcon from './delete-icon.svg';
 import EyeIcon from './eye-close.svg';
-
+import ArrowUp from './u-arrow-icon.svg';
+import DownArrowKey from './down-arrow-keyy.svg';
 // Login elements right
 import RightRectangle from './login-elements-right/rectangle-right.svg';
 import RightSwap from './login-elements-right/swap-right.svg';
@@ -163,12 +168,17 @@ import SettingsIcon from './settings-icon.svg';
 import MyWalletIcon from './wallet-icon-my.svg';
 import BarsBTN from './bars-btn-swap.svg';
 import ThunderBtn from './thunder-btn-swap.svg';
+import GiftIcon from './gift-icon.svg';
+import { Share } from 'react-native';
 export default {
   SolanaDot,
   SplashText,
   GettingStartedButton,
   SmileFace,
   Google,
+  GreenArrowUp,
+  RedArrowDown,
+  ShareIcon,
   Apple,
   Device,
   infoIcon,
@@ -223,6 +233,7 @@ export default {
   PumpFun,
   GreenPumpfun,
   WebIcon,  // Login elements left
+  GiftIcon,
   DepositeIcon,
   SendIcon,
   WithdrawIcon,
@@ -251,6 +262,7 @@ export default {
   StocksDark,
   AiIcon,
   TiktokIcon,
+  TelegramIcon,
   KickIcon,
   GithubIcon,
   GoogleIcon,
@@ -315,6 +327,8 @@ export default {
   UpArrowIcon,
   DownArrowIcon,
   profileSettingsIcon,
+  ArrowUp,
+  DownArrowKey,
   // Login elements right
   RightRectangle,
   RightSwap,

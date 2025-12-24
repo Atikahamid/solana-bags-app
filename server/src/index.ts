@@ -267,8 +267,8 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
     await testDbConnection();
     await runMigrationsAndStartServer();
     await connectRedis();
-    startDiscoveryWorker();   // <-- ADD THIS
-    console.log('🔄 Discovery worker started from index.ts');
+    // startDiscoveryWorker();   // <-- ADD THIS
+    // console.log('🔄 Discovery worker started from index.ts');
     console.log('✅ Database and migrations completed successfully');
 
     // await startIndexer(webSocketService.io);

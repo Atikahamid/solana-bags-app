@@ -121,6 +121,7 @@ export function useAuth() {
     const fetchUserProfile = useCallback(async (privyId: string) => {
       if (!privyId) return null;
       try {
+        console.log('privy id in useauth: ', privyId);
         const res = await axios.get(
           `${SERVER_URL}${GET_USER_RELATIVE}/${encodeURIComponent(privyId)}`,
         );

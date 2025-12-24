@@ -165,7 +165,7 @@ export default function SettingsScreen() {
         Alert.alert('Success', 'Profile updated successfully!');
         setProfileImage(imageUrl);
         setShowEditModal(false);
-        navigation.navigate('ProfileScreenNew');
+        navigation.goBack();
       } else {
         Alert.alert('Error', data.message || 'Failed to update profile');
       }

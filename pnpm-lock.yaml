@@ -111,6 +111,9 @@ importers:
       '@reduxjs/toolkit':
         specifier: ^2.5.1
         version: 2.7.0(react-redux@9.2.0(@types/react@18.3.20)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
+      '@shopify/react-native-skia':
+        specifier: ^2.4.14
+        version: 2.4.14(react-native-reanimated@3.16.7(@babel/core@7.26.10)(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1))(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)
       '@solana-agent-kit/plugin-token':
         specifier: ^2.0.2
         version: 2.0.2(@noble/hashes@1.8.0)(@solana/web3.js@1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(solana-agent-kit@2.0.2(bufferutil@4.0.9)(react@18.3.1)(typescript@5.8.3)(utf-8-validate@5.0.10))(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -273,6 +276,9 @@ importers:
       react-native-dotenv:
         specifier: ^3.4.11
         version: 3.4.11(@babel/runtime@7.27.0)
+      react-native-fast-image:
+        specifier: ^8.6.3
+        version: 8.6.3(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)
       react-native-gesture-handler:
         specifier: ^2.20.2
         version: 2.20.2(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)
@@ -345,6 +351,12 @@ importers:
       text-encoding:
         specifier: ^0.7.0
         version: 0.7.0
+      victory-core:
+        specifier: 36.6.8
+        version: 36.6.8(react@18.3.1)
+      victory-native:
+        specifier: 36.6.8
+        version: 36.6.8(react@18.3.1)
       viem:
         specifier: ^2.22.23
         version: 2.28.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.25.57)
@@ -2990,6 +3002,19 @@ packages:
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
 
+  '@shopify/react-native-skia@2.4.14':
+    resolution: {integrity: sha512-zFxjAQbfrdOxoNJoaOCZQzZliuAWXjFkrNZv2PtofG2RAUPWIxWmk2J/oOROpTwXgkmh1JLvFp3uONccTXUthQ==}
+    hasBin: true
+    peerDependencies:
+      react: '>=19.0'
+      react-native: '>=0.78'
+      react-native-reanimated: '>=3.19.1'
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+      react-native-reanimated:
+        optional: true
+
   '@shopify/restyle@2.4.5':
     resolution: {integrity: sha512-xV970ytoX0oLac9+fMOMxcXcV9nv5BtwdNk50ZoyhqSLyiGamLJMpL/lMZIQHsmfDT8sksbUx94zQnZBztMgww==}
     peerDependencies:
@@ -3675,6 +3700,33 @@ packages:
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
 
+  '@types/d3-array@3.2.2':
+    resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
+
+  '@types/d3-color@3.1.3':
+    resolution: {integrity: sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==}
+
+  '@types/d3-ease@3.0.2':
+    resolution: {integrity: sha512-NcV1JjO5oDzoK26oMzbILE6HW7uVXOHLQvHshBUW4UMdZGfiY6v5BeQwh9a9tCzv+CeefZQHJt5SRgK154RtiA==}
+
+  '@types/d3-interpolate@3.0.4':
+    resolution: {integrity: sha512-mgLPETlrpVV1YRJIglr4Ez47g7Yxjl1lj7YKsiMCb27VJH9W8NVM6Bb9d8kkpG/uAQS5AmbA48q2IAolKKo1MA==}
+
+  '@types/d3-path@3.1.1':
+    resolution: {integrity: sha512-VMZBYyQvbGmWyWVea0EHs/BwLgxc+MKi1zLDCONksozI4YJMcTt8ZEuIR4Sb1MMTE8MMW49v0IwI5+b7RmfWlg==}
+
+  '@types/d3-scale@4.0.9':
+    resolution: {integrity: sha512-dLmtwB8zkAeO/juAMfnV+sItKjlsw2lKdZVVy6LRr0cBmegxSABiLEpGVmSJJ8O08i4+sGR6qQtb6WtuwJdvVw==}
+
+  '@types/d3-shape@3.1.7':
+    resolution: {integrity: sha512-VLvUQ33C+3J+8p+Daf+nYSOsjB4GXp19/S/aGo60m9h1v6XaxjiT82lKVWJCfzhtuZ3yD7i/TPeC/fuKLLOSmg==}
+
+  '@types/d3-time@3.0.4':
+    resolution: {integrity: sha512-yuzZug1nkAAaBlBBikKZTgzCeA+k1uy4ZFwWANOfKw5z5LRhV0gNA7gNkKm7HoK+HRN0wX3EkxGk0fpbWhmB7g==}
+
+  '@types/d3-timer@3.0.2':
+    resolution: {integrity: sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==}
+
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
 
@@ -4013,6 +4065,9 @@ packages:
 
   '@walletconnect/window-metadata@1.0.1':
     resolution: {integrity: sha512-9koTqyGrM2cqFRW517BPY/iEtUDx2r1+Pwwu5m7sJ7ka79wi3EyqhqcICk/yDmv6jAS1rjKgTKXlEhanYjijcA==}
+
+  '@webgpu/types@0.1.21':
+    resolution: {integrity: sha512-pUrWq3V5PiSGFLeLxoGqReTZmiiXwY3jRkIG5sLLKjyqNxrwm/04b4nw7LSmGWJcKk59XOM/YRTUwOzo4MMlow==}
 
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
@@ -4547,6 +4602,9 @@ packages:
   caniuse-lite@1.0.30001715:
     resolution: {integrity: sha512-7ptkFGMm2OAOgvZpwgA4yjQ5SQbrNVGdRjzH0pBdy1Fasvcr+KAeECmbCAECzTuDuoX0FCY8KzUxjf9+9kfZEw==}
 
+  canvaskit-wasm@0.40.0:
+    resolution: {integrity: sha512-Od2o+ZmoEw9PBdN/yCGvzfu0WVqlufBPEWNG452wY7E9aT8RBE+ChpZF526doOlg7zumO4iCS+RAeht4P0Gbpw==}
+
   chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
     engines: {node: '>=4'}
@@ -4834,11 +4892,19 @@ packages:
   d3-array@1.2.4:
     resolution: {integrity: sha512-KHW6M86R+FUPYGb3R5XiYjXPq7VzwxZ22buHhAEVG5ztoEcZZMLov530mmccaqA1GghZArjQV46fuc8kUqhhHw==}
 
+  d3-array@3.2.4:
+    resolution: {integrity: sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==}
+    engines: {node: '>=12'}
+
   d3-collection@1.0.7:
     resolution: {integrity: sha512-ii0/r5f4sjKNTfh84Di+DpztYwqKhEyUlKoPrzUFfeSkWxjW49xU2QzO9qrPrNkpdI0XJkfzvmTu8V2Zylln6A==}
 
   d3-color@1.4.1:
     resolution: {integrity: sha512-p2sTHSLCJI2QKunbGb7ocOh7DgTAn8IrLx21QRc/BSnodXM4sv6aLQlnfpvehFMLZEfBc6g9pH9SWQccFYfJ9Q==}
+
+  d3-ease@3.0.1:
+    resolution: {integrity: sha512-wR/XK3D3XcLIZwpbvQwQ5fK+8Ykds1ip7A2Txe0yxncXSdq1L9skcG7blcedkOX+ZcgxGAmLX1FrRGbADwzi0w==}
+    engines: {node: '>=12'}
 
   d3-format@1.4.5:
     resolution: {integrity: sha512-J0piedu6Z8iB6TbIGfZgDzfXxUFN3qQRMofy2oPdXzQibYGqPB/9iMcxr/TGalU+2RsyDO+U4f33id8tbnSRMQ==}
@@ -4849,20 +4915,47 @@ packages:
   d3-interpolate@1.4.0:
     resolution: {integrity: sha512-V9znK0zc3jOPV4VD2zZn0sDhZU3WAE2bmlxdIwwQPPzPjvyLkd8B3JUVdS1IDUFDkWZ72c9qnv1GK2ZagTZ8EA==}
 
+  d3-interpolate@3.0.1:
+    resolution: {integrity: sha512-3bYs1rOD33uo8aqJfKP3JWPAibgw8Zm2+L9vBKEHJ2Rg+viTR7o5Mmv5mZcieN+FRYaAOWX5SJATX6k1PWz72g==}
+    engines: {node: '>=12'}
+
   d3-path@1.0.9:
     resolution: {integrity: sha512-VLaYcn81dtHVTjEHd8B+pbe9yHWpXKZUC87PzoFmsFrJqgFwDe/qxfp5MlfsfM1V5E/iVt0MmEbWQ7FVIXh/bg==}
+
+  d3-path@3.1.0:
+    resolution: {integrity: sha512-p3KP5HCf/bvjBSSKuXid6Zqijx7wIfNW+J/maPs+iwR35at5JCbLUT0LzF1cnjbCHWhqzQTIN2Jpe8pRebIEFQ==}
+    engines: {node: '>=12'}
 
   d3-scale@1.0.7:
     resolution: {integrity: sha512-KvU92czp2/qse5tUfGms6Kjig0AhHOwkzXG0+PqIJB3ke0WUv088AHMZI0OssO9NCkXt4RP8yju9rpH8aGB7Lw==}
 
+  d3-scale@4.0.2:
+    resolution: {integrity: sha512-GZW464g1SH7ag3Y7hXjf8RoUuAFIqklOAq3MRl4OaWabTFJY9PN/E1YklhXLh+OQ3fM9yS2nOkCoS+WLZ6kvxQ==}
+    engines: {node: '>=12'}
+
   d3-shape@1.3.7:
     resolution: {integrity: sha512-EUkvKjqPFUAZyOlhY5gzCxCeI0Aep04LwIRpsZ/mLFelJiUfnK56jo5JMDSE7yyP2kLSb6LtF+S5chMk7uqPqw==}
+
+  d3-shape@3.2.0:
+    resolution: {integrity: sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA==}
+    engines: {node: '>=12'}
 
   d3-time-format@2.3.0:
     resolution: {integrity: sha512-guv6b2H37s2Uq/GefleCDtbe0XZAuy7Wa49VGkPVPMfLL9qObgBST3lEHJBMUp8S7NdLQAGIvr2KXk8Hc98iKQ==}
 
   d3-time@1.1.0:
     resolution: {integrity: sha512-Xh0isrZ5rPYYdqhAVk8VLnMEidhz5aP7htAADH6MfzgmmicPkTo8LhkLxci61/lCB7n7UmE3bN0leRt+qvkLxA==}
+
+  d3-time@3.1.0:
+    resolution: {integrity: sha512-VqKjzBLejbSMT4IgbmVgDjpkYrNWUYJnbCGo874u7MMKIWsILRX+OpX/gTk8MqjpT1A/c6HY2dCA77ZN0lkQ2Q==}
+    engines: {node: '>=12'}
+
+  d3-timer@3.0.1:
+    resolution: {integrity: sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==}
+    engines: {node: '>=12'}
+
+  d3-voronoi@1.1.4:
+    resolution: {integrity: sha512-dArJ32hchFsrQ8uMiTBLq256MpnZjeuBtdHpaDlYuQyjU0CVzCJl/BVW+SkszaAeH95D/8gxqAhgx0ouAWAfRg==}
 
   data-view-buffer@1.0.2:
     resolution: {integrity: sha512-EmKO5V3OLXh1rtK2wgXRansaK1/mtVdTUEiEI0W8RkvgT05kfxaH29PliLnpLP73yYO6142Q72QNa8Wx/A5CqQ==}
@@ -4988,6 +5081,12 @@ packages:
   del@6.1.1:
     resolution: {integrity: sha512-ua8BhapfP0JUJKC/zV9yHHDW/rDoDxP4Zhn3AkA6/xT6gY7jYXJiaeyBZznYVujhZZET+UgcbZiQ7sN3WqcImg==}
     engines: {node: '>=10'}
+
+  delaunator@4.0.1:
+    resolution: {integrity: sha512-WNPWi1IRKZfCt/qIDMfERkDp93+iZEmOxN2yy4Jg+Xhv8SLk2UTqqbe1sfiipn0and9QrE914/ihdx82Y/Giag==}
+
+  delaunay-find@0.0.6:
+    resolution: {integrity: sha512-1+almjfrnR7ZamBk0q3Nhg6lqSe6Le4vL0WJDSMx4IDbQwTpUTXPjxC00lqLBT8MYsJpPCbI16sIkw9cPsbi7Q==}
 
   delay@5.0.0:
     resolution: {integrity: sha512-ReEBKkIfe4ya47wlPYf/gu5ib6yUG0/Aez0JQZQz94kiWtRQvZIQbTiehsnwHvLSWJnQdhVeqYue7Id1dKr0qw==}
@@ -6027,6 +6126,10 @@ packages:
   internal-slot@1.1.0:
     resolution: {integrity: sha512-4gd7VpWNQNB4UKKCFFVcp1AVv+FMOgs9NKzjHKusc8jTMhd5eL1NqQqOpE0KzMds804/yHlglp3uxgluOqAPLw==}
     engines: {node: '>= 0.4'}
+
+  internmap@2.0.3:
+    resolution: {integrity: sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg==}
+    engines: {node: '>=12'}
 
   invariant@2.2.4:
     resolution: {integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==}
@@ -7568,6 +7671,12 @@ packages:
     peerDependencies:
       '@babel/runtime': ^7.20.6
 
+  react-native-fast-image@8.6.3:
+    resolution: {integrity: sha512-Sdw4ESidXCXOmQ9EcYguNY2swyoWmx53kym2zRsvi+VeFCHEdkO+WG1DK+6W81juot40bbfLNhkc63QnWtesNg==}
+    peerDependencies:
+      react: ^17 || ^18
+      react-native: '>=0.60.0'
+
   react-native-fit-image@1.5.5:
     resolution: {integrity: sha512-Wl3Vq2DQzxgsWKuW4USfck9zS7YzhvLNPpkwUUCF90bL32e1a0zOVQ3WsJILJOwzmPdHfzZmWasiiAUNBkhNkg==}
 
@@ -7722,6 +7831,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-reconciler@0.31.0:
+    resolution: {integrity: sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ==}
+    engines: {node: '>=0.10.0'}
+    peerDependencies:
+      react: ^19.0.0
 
   react-redux@9.2.0:
     resolution: {integrity: sha512-ROY9fvHhwOD9ySfrF0wmvu//bKCQ6AeZZq1nJNtbDC+kk5DuSuNX/n6YWYF/SYy7bSba4D4FSz8DJeKY/S/r+g==}
@@ -7984,6 +8099,9 @@ packages:
 
   scheduler@0.24.0-canary-efb381bbf-20230505:
     resolution: {integrity: sha512-ABvovCDe/k9IluqSh4/ISoq8tIJnW8euVAWYt5j/bg6dRnqwQwiGO1F/V4AyK96NGF/FB04FhOUDuWj8IKfABA==}
+
+  scheduler@0.25.0:
+    resolution: {integrity: sha512-xFVuu11jh+xcO7JOAGJNOXld8/TcEHK/4CituBUeUb5hqxJLj9YuemAEuvm9gQ/+pgXYfbQuqAkiYu+u7YEsNA==}
 
   scrypt-js@3.0.1:
     resolution: {integrity: sha512-cdwTTnqPu0Hyvf5in5asVdZocVDTNRmR7XEcJuIzMjJeSHybHl7vpB66AzwTaIg6CLSbtjcxc8fqcySfnTkccA==}
@@ -8802,6 +8920,159 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  victory-area@36.9.2:
+    resolution: {integrity: sha512-32aharvPf2RgdQB+/u1j3/ajYFNH/7ugLX9ZRpdd65gP6QEbtXL+58gS6CxvFw6gr/y8a0xMlkMKkpDVacXLpw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-axis@36.9.2:
+    resolution: {integrity: sha512-4Odws+IAjprJtBg2b2ZCxEPgrQ6LgIOa22cFkGghzOSfTyNayN4M3AauNB44RZyn2O/hDiM1gdBkEg1g9YDevQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-bar@36.9.2:
+    resolution: {integrity: sha512-R3LFoR91FzwWcnyGK2P8DHNVv9gsaWhl5pSr2KdeNtvLbZVEIvUkTeVN9RMBMzterSFPw0mbWhS1Asb3sV6PPw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-box-plot@36.9.2:
+    resolution: {integrity: sha512-nUD45V/YHDkAKZyak7YDsz+Vk1F9N0ica3jWQe0AY0JqD9DleHa8RY/olSVws26kLyEj1I+fQqva6GodcLaIqQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-brush-container@36.9.2:
+    resolution: {integrity: sha512-KcQjzFeo40tn52cJf1A02l5MqeR9GKkk3loDqM3T2hfi1PCyUrZXEUjGN5HNlLizDRvtcemaAHNAWlb70HbG/g==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-brush-line@36.9.2:
+    resolution: {integrity: sha512-/ncj8HEyl73fh8bhU4Iqe79DL62QP2rWWoogINxsGvndrhpFbL9tj7IPSEawi+riOh/CmohgI/ETu/V7QU9cJw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-candlestick@36.9.2:
+    resolution: {integrity: sha512-hbStzF61GHkkflJWFgLTZSR8SOm8siJn65rwApLJBIA283yWOlyPjdr/kIQtO/h5QkIiXIuLb7RyiUAJEnH9WA==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-canvas@36.9.2:
+    resolution: {integrity: sha512-ImHJ7JQCpQ9aGCsh37EeVAmqJc7R0gl2CLM99gP9GfuJuZeoZ/GVfX6QFamfr19rYQOD2m9pVbecySBzdYI1zQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-chart@36.9.2:
+    resolution: {integrity: sha512-dMNcS0BpqL3YiGvI4BSEmPR76FCksCgf3K4CSZ7C/MGyrElqB6wWwzk7afnlB1Qr71YIHXDmdwsPNAl/iEwTtA==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-core@36.6.8:
+    resolution: {integrity: sha512-SkyEszZKGyxjqfptfFWYdI22CvCuE9LhkaDpikzIhT2gcE3SuOBO5fk/740XMYE2ZUsJ4Fu/Vy4+8jZi17y44A==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-core@36.9.2:
+    resolution: {integrity: sha512-AzmMy+9MYMaaRmmZZovc/Po9urHne3R3oX7bbXeQdVuK/uMBrlPiv11gVJnuEH2SXLVyep43jlKgaBp8ef9stQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-create-container@36.9.2:
+    resolution: {integrity: sha512-uA0dh1R0YDzuXyE/7StZvq4qshet+WYceY7R1UR5mR/F9079xy+iQsa2Ca4h97/GtVZoLO6r1eKLWBt9TN+U7A==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-cursor-container@36.9.2:
+    resolution: {integrity: sha512-jidab4j3MaciF3fGX70jTj4H9rrLcY8o2LUrhJ67ZLvEFGGmnPtph+p8Fe97Umrag7E/DszjNxQZolpwlgUh3g==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-errorbar@36.9.2:
+    resolution: {integrity: sha512-i/WPMN6/7F55FpEpN9WcwiWwaFJ+2ymfTgfBDLkUD3XJ52HGen4BxUt1ouwDA3FXz9kLa/h6Wbp/fnRhX70row==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-group@36.9.2:
+    resolution: {integrity: sha512-wBmpsjBTKva8mxHvHNY3b8RE58KtnpLLItEyyAHaYkmExwt3Uj8Cld3sF3vmeuijn2iR64NPKeMbgMbfZJzycw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-histogram@36.9.2:
+    resolution: {integrity: sha512-w0ipFwWZ533qyqduRacr5cf+H4PGAUTdWNyGvZbWyu4+GtYYjGdoOolfUcO1ee8VJ1kZodpG8Z7ud6I/GWIzjQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-legend@36.9.2:
+    resolution: {integrity: sha512-cucFJpv6fty+yXp5pElQFQnHBk1TqA4guGUMI+XF/wLlnuM4bhdAtASobRIIBkz0mHGBaCAAV4PzL9azPU/9dg==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-line@36.9.2:
+    resolution: {integrity: sha512-kmYFZUo0o2xC8cXRsmt/oUBRQSZJVT2IJnAkboUepypoj09e6CY5tRH4TSdfEDGkBk23xQkn7d4IFgl4kAGnSA==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-native@36.6.8:
+    resolution: {integrity: sha512-nqf4mGIj5VGKr1q6GKmYwMVXjU5MRcDilw+dpBkD/HFzYvEput5IyFp9vjXevriYkjz7MQcqkMTfDrjUaXjBsw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-pie@36.9.2:
+    resolution: {integrity: sha512-i3zWezvy5wQEkhXKt4rS9ILGH7Vr9Q5eF9fKO4GMwDPBdYOTE3Dh2tVaSrfDC8g9zFIc0DKzOtVoJRTb+0AkPg==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-polar-axis@36.9.2:
+    resolution: {integrity: sha512-HBR90FF4M56yf/atXjSmy3DMps1vSAaLXmdVXLM/A5g+0pUS7HO719r5x6dsR3I6Rm+8x6Kk8xJs0qgpnGQIEw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-scatter@36.9.2:
+    resolution: {integrity: sha512-hK9AtbJQfaW05i8BH7Lf1HK7vWMAfQofj23039HEQJqTKbCL77YT+Q0LhZw1a1BRCpC/5aSg9EuqblhfIYw2wg==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-selection-container@36.9.2:
+    resolution: {integrity: sha512-chboroEwqqVlMB60kveXM2WznJ33ZM00PWkFVCoJDzHHlYs7TCADxzhqet2S67SbZGSyvSprY2YztSxX8kZ+XQ==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-shared-events@36.9.2:
+    resolution: {integrity: sha512-W/atiw3Or6MnpBuhluFv6007YrixIRh5NtiRvtFLGxNuQJLYjaSh6koRAih5xJer5Pj7YUx0tL9x67jTRcJ6Dg==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-stack@36.9.2:
+    resolution: {integrity: sha512-imR6FniVlDFlBa/B3Est8kTryNhWj2ZNpivmVOebVDxkKcVlLaDg3LotCUOI7NzOhBQaro0UzeE9KmZV93JcYA==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-tooltip@36.9.2:
+    resolution: {integrity: sha512-76seo4TWD1WfZHJQH87IP3tlawv38DuwrUxpnTn8+uW6/CUex82poQiVevYdmJzhataS9jjyCWv3w7pOmLBCLg==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-vendor@36.9.2:
+    resolution: {integrity: sha512-PnpQQMuxlwYdocC8fIJqVXvkeViHYzotI+NJrCuav0ZYFoq912ZHBk3mCeuj+5/VpodOjPe1z0Fk2ihgzlXqjQ==}
+
+  victory-voronoi-container@36.9.2:
+    resolution: {integrity: sha512-NIVYqck9N4OQnEz9mgQ4wILsci3OBWWK7RLuITGHyoD7Ne/+WH1i0Pv2y9eIx+f55rc928FUTugPPhkHvXyH3A==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-voronoi@36.9.2:
+    resolution: {integrity: sha512-50fq0UBTAFxxU+nabOIPE5P2v/2oAbGAX+Ckz6lu8LFwwig4J1DSz0/vQudqDGjzv3JNEdqTD4FIpyjbxLcxiA==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory-zoom-container@36.9.2:
+    resolution: {integrity: sha512-pXa2Ji6EX/pIarKT6Hcmmu2n7IG/x8Vs0D2eACQ/nbpvZa+DXWIxCRW4hcg2Va35fmXcDIEpGaX3/soXzZ+pbw==}
+    peerDependencies:
+      react: '>=16.6.0'
+
+  victory@36.9.2:
+    resolution: {integrity: sha512-kgVgiSno4KpD0HxmUo5GzqWI4P/eILLOM6AmJfAlagCnOzrtYGsAw+N1YxOcYvTiKsh/zmWawxHlpw3TMenFDQ==}
+    peerDependencies:
+      react: '>=16.6.0'
 
   viem@2.23.2:
     resolution: {integrity: sha512-NVmW/E0c5crMOtbEAqMF0e3NmvQykFXhLOc/CkLIXOlzHSA6KXVz3CYVmaKqBF8/xtjsjHAGjdJN3Ru1kFJLaA==}
@@ -13232,6 +13503,15 @@ snapshots:
 
   '@shikijs/vscode-textmate@10.0.2': {}
 
+  '@shopify/react-native-skia@2.4.14(react-native-reanimated@3.16.7(@babel/core@7.26.10)(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1))(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)':
+    dependencies:
+      canvaskit-wasm: 0.40.0
+      react: 18.3.1
+      react-reconciler: 0.31.0(react@18.3.1)
+    optionalDependencies:
+      react-native: 0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10)
+      react-native-reanimated: 3.16.7(@babel/core@7.26.10)(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)
+
   '@shopify/restyle@2.4.5(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1)':
     dependencies:
       react: 18.3.1
@@ -14486,6 +14766,30 @@ snapshots:
     dependencies:
       '@types/node': 12.20.55
 
+  '@types/d3-array@3.2.2': {}
+
+  '@types/d3-color@3.1.3': {}
+
+  '@types/d3-ease@3.0.2': {}
+
+  '@types/d3-interpolate@3.0.4':
+    dependencies:
+      '@types/d3-color': 3.1.3
+
+  '@types/d3-path@3.1.1': {}
+
+  '@types/d3-scale@4.0.9':
+    dependencies:
+      '@types/d3-time': 3.0.4
+
+  '@types/d3-shape@3.1.7':
+    dependencies:
+      '@types/d3-path': 3.1.1
+
+  '@types/d3-time@3.0.4': {}
+
+  '@types/d3-timer@3.0.2': {}
+
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 2.1.0
@@ -15390,6 +15694,8 @@ snapshots:
       tslib: 1.14.1
     optional: true
 
+  '@webgpu/types@0.1.21': {}
+
   '@xmldom/xmldom@0.7.13': {}
 
   '@xmldom/xmldom@0.8.10': {}
@@ -16027,6 +16333,10 @@ snapshots:
 
   caniuse-lite@1.0.30001715: {}
 
+  canvaskit-wasm@0.40.0:
+    dependencies:
+      '@webgpu/types': 0.1.21
+
   chalk@2.4.2:
     dependencies:
       ansi-styles: 3.2.1
@@ -16370,9 +16680,15 @@ snapshots:
 
   d3-array@1.2.4: {}
 
+  d3-array@3.2.4:
+    dependencies:
+      internmap: 2.0.3
+
   d3-collection@1.0.7: {}
 
   d3-color@1.4.1: {}
+
+  d3-ease@3.0.1: {}
 
   d3-format@1.4.5: {}
 
@@ -16384,7 +16700,13 @@ snapshots:
     dependencies:
       d3-color: 1.4.1
 
+  d3-interpolate@3.0.1:
+    dependencies:
+      d3-color: 1.4.1
+
   d3-path@1.0.9: {}
+
+  d3-path@3.1.0: {}
 
   d3-scale@1.0.7:
     dependencies:
@@ -16396,15 +16718,35 @@ snapshots:
       d3-time: 1.1.0
       d3-time-format: 2.3.0
 
+  d3-scale@4.0.2:
+    dependencies:
+      d3-array: 3.2.4
+      d3-format: 1.4.5
+      d3-interpolate: 3.0.1
+      d3-time: 3.1.0
+      d3-time-format: 2.3.0
+
   d3-shape@1.3.7:
     dependencies:
       d3-path: 1.0.9
+
+  d3-shape@3.2.0:
+    dependencies:
+      d3-path: 3.1.0
 
   d3-time-format@2.3.0:
     dependencies:
       d3-time: 1.1.0
 
   d3-time@1.1.0: {}
+
+  d3-time@3.1.0:
+    dependencies:
+      d3-array: 3.2.4
+
+  d3-timer@3.0.1: {}
+
+  d3-voronoi@1.1.4: {}
 
   data-view-buffer@1.0.2:
     dependencies:
@@ -16506,6 +16848,12 @@ snapshots:
       p-map: 4.0.0
       rimraf: 3.0.2
       slash: 3.0.0
+
+  delaunator@4.0.1: {}
+
+  delaunay-find@0.0.6:
+    dependencies:
+      delaunator: 4.0.1
 
   delay@5.0.0: {}
 
@@ -17806,6 +18154,8 @@ snapshots:
       es-errors: 1.3.0
       hasown: 2.0.2
       side-channel: 1.1.0
+
+  internmap@2.0.3: {}
 
   invariant@2.2.4:
     dependencies:
@@ -19703,6 +20053,11 @@ snapshots:
       '@babel/runtime': 7.27.0
       dotenv: 16.5.0
 
+  react-native-fast-image@8.6.3(react-native@0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-native: 0.76.9(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@18.3.20)(bufferutil@4.0.9)(react@18.3.1)(utf-8-validate@5.0.10)
+
   react-native-fit-image@1.5.5:
     dependencies:
       prop-types: 15.8.1
@@ -19929,6 +20284,11 @@ snapshots:
       - encoding
       - supports-color
       - utf-8-validate
+
+  react-reconciler@0.31.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      scheduler: 0.25.0
 
   react-redux@9.2.0(@types/react@18.3.20)(react@18.3.1)(redux@5.0.1):
     dependencies:
@@ -20221,6 +20581,8 @@ snapshots:
   scheduler@0.24.0-canary-efb381bbf-20230505:
     dependencies:
       loose-envify: 1.4.0
+
+  scheduler@0.25.0: {}
 
   scrypt-js@3.0.1: {}
 
@@ -21041,6 +21403,289 @@ snapshots:
     optional: true
 
   vary@1.1.2: {}
+
+  victory-area@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-axis@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-bar@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-box-plot@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-brush-container@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-brush-line@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-candlestick@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-canvas@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-bar: 36.9.2(react@18.3.1)
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-chart@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-axis: 36.9.2(react@18.3.1)
+      victory-core: 36.9.2(react@18.3.1)
+      victory-polar-axis: 36.9.2(react@18.3.1)
+      victory-shared-events: 36.9.2(react@18.3.1)
+
+  victory-core@36.6.8(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      prop-types: 15.8.1
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-vendor: 36.9.2
+
+  victory-core@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-vendor: 36.9.2
+
+  victory-create-container@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-brush-container: 36.9.2(react@18.3.1)
+      victory-core: 36.9.2(react@18.3.1)
+      victory-cursor-container: 36.9.2(react@18.3.1)
+      victory-selection-container: 36.9.2(react@18.3.1)
+      victory-voronoi-container: 36.9.2(react@18.3.1)
+      victory-zoom-container: 36.9.2(react@18.3.1)
+
+  victory-cursor-container@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-errorbar@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-group@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+      victory-shared-events: 36.9.2(react@18.3.1)
+
+  victory-histogram@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-bar: 36.9.2(react@18.3.1)
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-legend@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-line@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-native@36.6.8(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      prop-types: 15.8.1
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory: 36.9.2(react@18.3.1)
+      victory-area: 36.9.2(react@18.3.1)
+      victory-axis: 36.9.2(react@18.3.1)
+      victory-bar: 36.9.2(react@18.3.1)
+      victory-box-plot: 36.9.2(react@18.3.1)
+      victory-brush-container: 36.9.2(react@18.3.1)
+      victory-brush-line: 36.9.2(react@18.3.1)
+      victory-candlestick: 36.9.2(react@18.3.1)
+      victory-chart: 36.9.2(react@18.3.1)
+      victory-core: 36.6.8(react@18.3.1)
+      victory-create-container: 36.9.2(react@18.3.1)
+      victory-cursor-container: 36.9.2(react@18.3.1)
+      victory-errorbar: 36.9.2(react@18.3.1)
+      victory-group: 36.9.2(react@18.3.1)
+      victory-histogram: 36.9.2(react@18.3.1)
+      victory-legend: 36.9.2(react@18.3.1)
+      victory-line: 36.9.2(react@18.3.1)
+      victory-pie: 36.9.2(react@18.3.1)
+      victory-polar-axis: 36.9.2(react@18.3.1)
+      victory-scatter: 36.9.2(react@18.3.1)
+      victory-selection-container: 36.9.2(react@18.3.1)
+      victory-shared-events: 36.9.2(react@18.3.1)
+      victory-stack: 36.9.2(react@18.3.1)
+      victory-tooltip: 36.9.2(react@18.3.1)
+      victory-voronoi: 36.9.2(react@18.3.1)
+      victory-voronoi-container: 36.9.2(react@18.3.1)
+      victory-zoom-container: 36.9.2(react@18.3.1)
+
+  victory-pie@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+      victory-vendor: 36.9.2
+
+  victory-polar-axis@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-scatter@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-selection-container@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-shared-events@36.9.2(react@18.3.1):
+    dependencies:
+      json-stringify-safe: 5.0.1
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-stack@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+      victory-shared-events: 36.9.2(react@18.3.1)
+
+  victory-tooltip@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-vendor@36.9.2:
+    dependencies:
+      '@types/d3-array': 3.2.2
+      '@types/d3-ease': 3.0.2
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-scale': 4.0.9
+      '@types/d3-shape': 3.1.7
+      '@types/d3-time': 3.0.4
+      '@types/d3-timer': 3.0.2
+      d3-array: 3.2.4
+      d3-ease: 3.0.1
+      d3-interpolate: 3.0.1
+      d3-scale: 4.0.2
+      d3-shape: 3.2.0
+      d3-time: 3.1.0
+      d3-timer: 3.0.1
+
+  victory-voronoi-container@36.9.2(react@18.3.1):
+    dependencies:
+      delaunay-find: 0.0.6
+      lodash: 4.17.21
+      react: 18.3.1
+      react-fast-compare: 3.2.2
+      victory-core: 36.9.2(react@18.3.1)
+      victory-tooltip: 36.9.2(react@18.3.1)
+
+  victory-voronoi@36.9.2(react@18.3.1):
+    dependencies:
+      d3-voronoi: 1.1.4
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory-zoom-container@36.9.2(react@18.3.1):
+    dependencies:
+      lodash: 4.17.21
+      react: 18.3.1
+      victory-core: 36.9.2(react@18.3.1)
+
+  victory@36.9.2(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      victory-area: 36.9.2(react@18.3.1)
+      victory-axis: 36.9.2(react@18.3.1)
+      victory-bar: 36.9.2(react@18.3.1)
+      victory-box-plot: 36.9.2(react@18.3.1)
+      victory-brush-container: 36.9.2(react@18.3.1)
+      victory-brush-line: 36.9.2(react@18.3.1)
+      victory-candlestick: 36.9.2(react@18.3.1)
+      victory-canvas: 36.9.2(react@18.3.1)
+      victory-chart: 36.9.2(react@18.3.1)
+      victory-core: 36.9.2(react@18.3.1)
+      victory-create-container: 36.9.2(react@18.3.1)
+      victory-cursor-container: 36.9.2(react@18.3.1)
+      victory-errorbar: 36.9.2(react@18.3.1)
+      victory-group: 36.9.2(react@18.3.1)
+      victory-histogram: 36.9.2(react@18.3.1)
+      victory-legend: 36.9.2(react@18.3.1)
+      victory-line: 36.9.2(react@18.3.1)
+      victory-pie: 36.9.2(react@18.3.1)
+      victory-polar-axis: 36.9.2(react@18.3.1)
+      victory-scatter: 36.9.2(react@18.3.1)
+      victory-selection-container: 36.9.2(react@18.3.1)
+      victory-shared-events: 36.9.2(react@18.3.1)
+      victory-stack: 36.9.2(react@18.3.1)
+      victory-tooltip: 36.9.2(react@18.3.1)
+      victory-voronoi: 36.9.2(react@18.3.1)
+      victory-voronoi-container: 36.9.2(react@18.3.1)
+      victory-zoom-container: 36.9.2(react@18.3.1)
 
   viem@2.23.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.25.57):
     dependencies:

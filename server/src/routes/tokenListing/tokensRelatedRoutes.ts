@@ -380,7 +380,7 @@ async function serveTokens(
   cacheTTL: number = 120
 ) {
   try {
-    // 1) Try Redis
+    // Try Redis
     try {
       const cached = await redisClient.get(redisKey);
       if (cached) {
@@ -392,7 +392,7 @@ async function serveTokens(
       console.warn(`⚠️ Redis get failed for ${category}:`, err.message);
     }
 
-    // 2) Fallback: Postgres
+    // DB
     const rows = await knex("discovery_tokens")
       .select(
         "mint",
@@ -410,18 +410,28 @@ async function serveTokens(
       .orderBy("marketcap", "desc")
       .limit(200);
 
-    if (rows.length > 0) {
-      // Update Redis for next time
+    const tokens = rows.map(row => ({
+      mint: row.mint,
+      name: row.name,
+      symbol: row.symbol,
+      image: row.image,
+      marketcap: row.marketcap ?? null,
+      priceChange24h: row.price_change_24h ? Number(row.price_change_24h) : null,
+      volume: row.volume_24h ? Number(row.volume_24h) : null,
+      liquidity: row.liquidity ? Number(row.liquidity) : null,
+      updatedAt: row.updated_at,
+    }));
+
+    if (tokens.length > 0) {
       try {
-        await redisClient.set(redisKey, JSON.stringify(rows), { EX: cacheTTL });
+        await redisClient.set(redisKey, JSON.stringify(tokens), { EX: cacheTTL });
       } catch (err: any) {
         console.warn(`⚠️ Redis set failed for ${category}:`, err.message);
       }
       console.log(`✅ Serving ${category} from Postgres`);
-      return res.json({ source: "db", count: rows.length, tokens: rows });
+      return res.json({ source: "db", count: tokens.length, tokens });
     }
 
-    // 3) Nothing in cache or DB → fallback
     console.log(`⚠️ No data found for ${category}, returning fallback`);
     return res.json({ source: "fallback", count: 0, tokens: [] });
   } catch (err: any) {
@@ -429,6 +439,7 @@ async function serveTokens(
     res.status(500).json({ error: `Failed to fetch ${category}` });
   }
 }
+
 
 // ======================================================
 // SHARED SERVE FUNCTION (like serveTokens but for launchpad)
@@ -477,7 +488,7 @@ tokenRelatedRouter.get("/almost-bonded-tokens", (req,res) =>
 
 tokenRelatedRouter.get("/migrated-tokens", (req,res) =>
   serveLaunchpad(req,res,"migrated","launchpad-migrated")
-);
+); 
 
 tokenRelatedRouter.get("/newly-created-tokens", (req,res) =>
   serveLaunchpad(req,res,"newly_created","launchpad-newly-created")
@@ -492,7 +503,7 @@ tokenRelatedRouter.get("/bluechip-memes", (req: Request, res: Response): Promise
 tokenRelatedRouter.get("/xstock-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "xstock", "xstock-tokens", Number(process.env.XSTOCK_CACHE_TTL ?? 120))
 );
-
+ 
 tokenRelatedRouter.get("/lsts-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "lsts", "lsts-tokens", Number(process.env.LSTS_CACHE_TTL ?? 120))
 );
@@ -507,6 +518,165 @@ tokenRelatedRouter.get("/trending-tokens", (req: Request, res: Response): Promis
 
 tokenRelatedRouter.get("/popular-tokens", (req: Request, res: Response): Promise<any> =>
   serveTokens(req, res, "popular", "popular-tokens", Number(process.env.POPULAR_CACHE_TTL ?? 120))
+);
+
+// src/routes/chart.ts
+
+tokenRelatedRouter.get("/api/chart/:mint", async (req: Request, res:Response) => {
+  const { mint } = req.params;
+  const range = req.query.range ?? "1h";
+
+  const ranges: Record<string, number> = {
+    "1h": 12,
+    "6h": 72,
+    "1d": 288,
+    "30d": 8640,
+  };
+
+  const limit = ranges[range as string];
+  if (!limit) return res.status(400).json({ error: "Invalid range" });
+
+  const data = await knex("token_chart")
+    .where({
+      token_mint: mint,
+      interval: "5m",
+    })
+    .orderBy("time", "desc")
+    .limit(limit);
+
+  res.json(
+    data.reverse().map((c) => ({
+      time: c.time,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: c.volume,
+    }))
+  );
+});
+// routes/tokenRelatedRouter.ts
+
+tokenRelatedRouter.get("/tokenstats/:mint", async (req: Request, res: Response) => {
+  try {
+    const { mint } = req.params;
+
+    if (!mint) {
+      return res.status(400).json({ error: "mint address required" });
+    }
+
+    const row = await knex("token_stats as ts")
+      .join("tokens as t", "t.mint_address", "ts.token_mint")
+      .where("ts.token_mint", mint)
+      .orderBy("ts.fetched_at", "desc")
+      .select(
+        "ts.*",
+        knex.ref("t.mint_address").as("token_mint_address"),
+        "t.name",
+        "t.symbol",
+        "t.image",
+        "t.uri",
+        "t.description",
+        "t.socials",
+        "t.total_supply",
+        "t.created_on",
+        "t.last_updated",
+        "t.is_active"
+      )
+      .first();
+
+    if (!row) {
+      return res.status(404).json({ error: "token stats not found" });
+    }
+
+    return res.json({
+      tokenStats: {
+        id: row.id,
+        token_mint: row.token_mint,
+        fetched_at: row.fetched_at,
+        ...row,
+      },
+      token: {
+        mint_address: row.token_mint_address,
+        name: row.name,
+        symbol: row.symbol,
+        image: row.image,
+        uri: row.uri,
+        description: row.description,
+        socials: row.socials,
+        total_supply: row.total_supply,
+        created_on: row.created_on,
+        last_updated: row.last_updated,
+        is_active: row.is_active,
+      },
+    });
+  } catch (err) {
+    console.error("❌ fetch token stats failed:", err);
+    return res.status(500).json({ error: "internal server error" });
+  }
+});
+
+
+tokenRelatedRouter.get("/tokenholders/:mint", async (req: Request, res: Response) => {
+  try {
+    const { mint } = req.params;
+
+    if (!mint) {
+      return res.status(400).json({ error: "mint address is required" });
+    }
+
+    const holders = await knex("token_holders")
+      .where("token_mint", mint)
+      .orderBy("holding_percent", "desc");
+
+    if (!holders.length) {
+      return res.status(404).json({ error: "no holders found for this token" });
+    }
+
+    return res.json({
+      token_mint: mint,
+      holders,
+    });
+  } catch (err) {
+    console.error("❌ fetch token holders failed:", err);
+    return res.status(500).json({ error: "internal server error" });
+  }
+});
+tokenRelatedRouter.get(
+  "/activity/:mint",
+  async (req: Request, res: Response) => {
+    try {
+      const { mint } = req.params;
+
+      if (!mint) {
+        return res.status(400).json({ error: "mintAddress is required" });
+      }
+
+      const transactions = await knex("transactions as t")
+        .join("users as u", "u.privy_id", "t.user_privy_id")
+        .where("t.token_mint", mint)
+        .select([
+          "t.id",
+          "t.type",
+          "t.quantity",
+          "t.price_usd",
+          "t.price_sol",
+          "t.total_usd",
+          "t.marketcap_at_trade",
+          "t.tx_hash",
+          "t.slot",
+          "t.created_at",
+          "u.username",
+          "u.profile_image_url",
+        ])
+        .orderBy("t.created_at", "desc");
+
+      return res.json({ data: transactions });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
 );
 
 tokenRelatedRouter.post("/token-details", async (req: Request, res: Response) => {

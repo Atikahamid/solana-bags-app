@@ -1,11 +1,11 @@
 const AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN!;
-import { BATCH_CREATION_TIME_OF_TOKEN, BATCH_GET_TOTAL_SUPPLY_OF_TOKEN, COMBINED_TOKEN_METRICS, GET_TOKEN_ANALYTICS_QUERY, GET_TOKEN_HOLDERS_COUNT } from "../queries/allQueryFile";
+import { BATCH_CREATION_TIME_OF_TOKEN, BATCH_GET_TOTAL_SUPPLY_OF_TOKEN, COMBINED_TOKEN_METRICS, GET_B_C_P_PROTOCOL_FAMILY, GET_TOKEN_ANALYTICS_QUERY, GET_TOKEN_HOLDERS_COUNT, GET_TOKEN_SNIPERS_QUERY, TOKEN_TRADES_COUNT, TOTAL_VOLUME_BUY_SELL } from "../queries/allQueryFile";
 // import PQueue from "p-queue"; // lightweight concurrency limiter
 import PQueue from "p-queue";
-const BITQUERY_AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN || "ory_at_GVB4S_JW4KylmKz9phcNf8Lfw-nAvnIldmu9y_rbERA.UwC3hBBwTFKIONUHtTZQum1WiAMsP8VCYZFkRD-sXxU";
+const BITQUERY_AUTH_TOKEN = process.env.BITQUERY_AUTH_TOKEN || "ory_at_jomauf73mcnEblNEwdUaSaKsNKs_kQ1rr9D4y7K9L7M.uJBshg2v14sLk3GwMXzLkaojs58pl4UHlarooW2lWzQ";
 // Define cache at module level (shared across calls)
 const analyticsCache = new Map<string, any>();
-
+import crypto from "crypto";
 // utils/tokenRelatedUtils.ts
 import axios from "axios";
 
@@ -246,6 +246,7 @@ export interface Metadata {
   telegram?: string | null;
   twitter?: string | null;
   website?: string | null;
+  tiktok?: string | null;
   description?: string | null;
   [key: string]: any;        // allows additional metadata fields
 }
@@ -294,6 +295,7 @@ export async function decodeMetadata(uri?: string | null): Promise<Metadata | nu
               telegram: raw.telegram ?? null,
               twitter: raw.twitter ?? null,
               website: raw.website ?? null,
+              tiktok: raw.tiktok ?? null,
               ...raw
             };
 
@@ -324,6 +326,7 @@ export async function decodeMetadata(uri?: string | null): Promise<Metadata | nu
         telegram: raw.telegram ?? null,
         twitter: raw.twitter ?? null,
         website: raw.website ?? null,
+        tiktok: raw.tiktok ?? null,
         ...raw
       };
 
@@ -451,146 +454,766 @@ export async function getCreationTimeAndSupplyBatch(
     return result;
   }
 }
-type Holder = {
-  address: string;
-  balance: number;
-  owner: string;
-};
+export async function getMarketMetricsBatch(
+  mintAddresses: string[]
+): Promise<
+  Record<
+    string,
+    {
+      latest_price: number | null;
+      market_cap: number | null;
+      price_change_24h: number | null;
+    }
+  >
+> {
+  if (!mintAddresses.length) return {};
 
-type HoldingsResult = {
-  holding_top_10: number;
-  holding_dev: number;
-  holding_snipers: number;
-  holding_insiders: number;
-  holding_bundle: number;
-};
+  const result: Record<
+    string,
+    {
+      latest_price: number | null;
+      market_cap: number | null;
+      price_change_24h: number | null;
+    }
+  > = {};
 
-export function calculateHoldingsPercent(
-  response: any,
-  totalSupply: number
-): HoldingsResult {
-  if (!response?.Solana?.BalanceUpdates) {
-    return {
-      holding_top_10: 0,
-      holding_dev: 0,
-      holding_snipers: 0,
-      holding_insiders: 0,
-      holding_bundle: 0,
+  // initialize defaults
+  mintAddresses.forEach((mint) => {
+    result[mint] = {
+      latest_price: null,
+      market_cap: null,
+      price_change_24h: null,
     };
+  });
+
+  try {
+    const res = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      {
+        query: COMBINED_TOKEN_METRICS,
+        variables: { mintAddresses },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+        },
+        timeout: 120_000,
+      }
+    );
+
+    const solanaData = res.data?.data?.Solana;
+    if (!solanaData) return result;
+
+    const supplyUpdates = solanaData.TokenSupplyUpdates ?? [];
+    const priceMetrics = solanaData.PriceMetrics ?? [];
+    const priceChanges = solanaData.PriceChange24h ?? [];
+
+    for (const mint of mintAddresses) {
+      // -------- Latest Price --------
+      const latestPriceEntry = priceMetrics.find(
+        (p: any) => p?.Trade?.Currency?.MintAddress === mint
+      );
+
+      const latestPrice = latestPriceEntry?.Trade?.PriceInUSD
+        ? Number(latestPriceEntry.Trade.PriceInUSD)
+        : null;
+
+      // -------- Supply --------
+      const supplyEntry = supplyUpdates.find(
+        (u: any) =>
+          u?.TokenSupplyUpdate?.Currency?.MintAddress === mint
+      )?.TokenSupplyUpdate;
+
+      // -------- Market Cap --------
+      let marketCap: number | null = null;
+
+      if ((supplyEntry?.PostBalanceInUSD ?? 0) > 0) {
+        marketCap = Number(supplyEntry.PostBalanceInUSD);
+      } else if (supplyEntry?.PostBalance && latestPrice) {
+        marketCap =
+          Number(supplyEntry.PostBalance) * Number(latestPrice);
+      }
+
+      // -------- Price Change 24h --------
+      const priceChangeEntry = priceChanges.find(
+        (pc: any) => pc?.Trade?.Currency?.MintAddress === mint
+      );
+
+      const priceChange24h =
+        priceChangeEntry?.PriceChange24hPercent != null
+          ? Number(priceChangeEntry.PriceChange24hPercent)
+          : null;
+
+      result[mint] = {
+        latest_price: latestPrice,
+        market_cap: marketCap,
+        price_change_24h: priceChange24h,
+      };
+    }
+
+    return result;
+  } catch (err: any) {
+    console.error("❌ Error in getMarketMetricsBatch:", err.message);
+    return result;
   }
-
-  const rows = response.Solana.BalanceUpdates;
-
-  const holders: Holder[] = rows.map((row: any) => ({
-    address: row.BalanceUpdate.Account.Address,
-    balance: Number(row.BalanceUpdate.PostBalance) || 0,
-    owner: row.BalanceUpdate.Account.Token?.Owner || "",
-  }));
-
-  // guard: avoid NaN division if totalSupply is 0
-  if (!totalSupply || totalSupply <= 0) {
-    return {
-      holding_top_10: 0,
-      holding_dev: 0,
-      holding_snipers: 0,
-      holding_insiders: 0,
-      holding_bundle: 0,
-    };
-  }
-
-  const sorted = [...holders].sort((a, b) => b.balance - a.balance);
-
-  const top10 = sorted.slice(0, 10);
-  const holding_top_10 =
-    (top10.reduce((sum, h) => sum + h.balance, 0) / totalSupply) * 100;
-
-  const devWallets: string[] = [];
-  const sniperWallets: string[] = [];
-  const insiderWallets: string[] = [];
-  const bundleWallets: string[] = [];
-
-  function sumHoldingPercent(walletAddresses: string[]) {
-    const sum = holders
-      .filter((h) => walletAddresses.includes(h.address))
-      .reduce((s, h) => s + h.balance, 0);
-
-    return (sum / totalSupply) * 100;
-  }
-
-  const holding_dev = sumHoldingPercent(devWallets);
-  const holding_snipers = sumHoldingPercent(sniperWallets);
-  const holding_insiders = sumHoldingPercent(insiderWallets);
-  const holding_bundle = sumHoldingPercent(bundleWallets);
-
-  return {
-    holding_top_10: Number(holding_top_10.toFixed(4)),
-    holding_dev: Number(holding_dev.toFixed(4)),
-    holding_snipers: Number(holding_snipers.toFixed(4)),
-    holding_insiders: Number(holding_insiders.toFixed(4)),
-    holding_bundle: Number(holding_bundle.toFixed(4)),
-  };
 }
 
-// ---------------------------------------------------------------------------
-// getTokenHolderCount — now fetches correct TokenSupplyUpdates and passes it in
-// ---------------------------------------------------------------------------
-export async function getTokenHolderCount(
-  mintAddress: string
-): Promise<number> {
-  if (!mintAddress) throw new Error("mintAddress is required");
+export type Holder = {
+  address: string;
+  balance: number;
+  owner?: string;
+};
 
-  const url = process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap";
+export type HoldingsResult = {
+  holding_top_10: number;
+  holding_snipers: number;
+  holder_count: number;
+};
 
+export type HoldingsResultByToken = Record<string, HoldingsResult>;
+
+export async function calculateTop10HoldingPercent(
+  holdersResponse: any,
+  mintAddresses: string[]
+): Promise<Record<string, number>> {
+  try {
+    if (!holdersResponse?.Solana?.BalanceUpdates) return {};
+
+    // const url = process.env.BITQUERY_URL!;
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+    };
+
+    const supplyRes = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      {
+        query: BATCH_GET_TOTAL_SUPPLY_OF_TOKEN,
+        variables: { mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const supplyByToken: Record<string, number> = {};
+    for (const row of supplyRes.data?.data?.Solana?.TokenSupplyUpdates ?? []) {
+      supplyByToken[row.TokenSupplyUpdate.Currency.MintAddress] =
+        Number(row.TokenSupplyUpdate.PostBalance) || 0;
+    }
+
+    const holdersByToken: Record<string, number[]> = {};
+
+    for (const row of holdersResponse.Solana.BalanceUpdates) {
+      const mint = row.BalanceUpdate.Currency.MintAddress;
+      if (!mintAddresses.includes(mint)) continue;
+
+      holdersByToken[mint] ??= [];
+      holdersByToken[mint].push(
+        Number(row.BalanceUpdate.Holding) || 0
+      );
+    }
+
+    const result: Record<string, number> = {};
+
+    for (const mint of mintAddresses) {
+      const balances = holdersByToken[mint] ?? [];
+      const totalSupply = supplyByToken[mint];
+
+      if (!totalSupply || totalSupply <= 0) {
+        result[mint] = 0;
+        continue;
+      }
+
+      const top10Sum = [...balances]
+        .sort((a, b) => b - a)
+        .slice(0, 10)
+        .reduce((a, b) => a + b, 0);
+
+      result[mint] = Number(
+        ((top10Sum / totalSupply) * 100).toFixed(4)
+      );
+    }
+
+    return result;
+  } catch (err) {
+    console.error("Top10 holding calc failed", err);
+    return {};
+  }
+}
+
+export async function calculateSniperHoldingPercent(
+  holdersResponse: any,
+  mintAddresses: string[],
+  supplyByToken: Record<string, number>
+): Promise<Record<string, number>> {
+  try {
+    if (!holdersResponse?.Solana?.BalanceUpdates) return {};
+
+    // const url = process.env.BITQUERY_URL!;
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+    };
+
+    const sniperRes = await axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      {
+        query: GET_TOKEN_SNIPERS_QUERY,
+        variables: { tokens: mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const Sn = sniperRes.data?.data?.Solana;
+    if (!Sn) return {};
+
+    const sniperWalletsByToken: Record<string, Set<string>> = {};
+
+    for (const launch of Sn.launchMoment ?? []) {
+      const mint = launch.Trade.Currency.MintAddress;
+      sniperWalletsByToken[mint] ??= new Set();
+
+      const launchTime = new Date(launch.Block.Time).getTime();
+      const launchSlot = Number(launch.Block.Slot);
+
+      for (const b of Sn.earlyBuyers ?? []) {
+        if (b.Trade.Currency.MintAddress !== mint) continue;
+
+        const buyTime = new Date(b.Block.Time).getTime();
+        const buySlot = Number(b.Block.Slot);
+
+        if (
+          (buyTime - launchTime) / 1000 <= 3 ||
+          buySlot <= launchSlot + 2
+        ) {
+          sniperWalletsByToken[mint].add(
+            b.Trade.Account.Address
+          );
+        }
+      }
+    }
+
+    const balancesByToken: Record<string, Map<string, number>> = {};
+
+    for (const row of holdersResponse.Solana.BalanceUpdates) {
+      const mint = row.BalanceUpdate.Currency.MintAddress;
+      balancesByToken[mint] ??= new Map();
+      balancesByToken[mint].set(
+        row.BalanceUpdate.Account.Address,
+        Number(row.BalanceUpdate.Holding) || 0
+      );
+    }
+
+    const result: Record<string, number> = {};
+
+    for (const mint of mintAddresses) {
+      const snipers = sniperWalletsByToken[mint];
+      const supply = supplyByToken[mint];
+
+      if (!snipers || !supply || supply <= 0) {
+        result[mint] = 0;
+        continue;
+      }
+
+      let sum = 0;
+      for (const wallet of snipers) {
+        sum += balancesByToken[mint]?.get(wallet) ?? 0;
+      }
+
+      result[mint] = Number(
+        ((sum / supply) * 100).toFixed(4)
+      );
+    }
+
+    return result;
+  } catch (err) {
+    console.error("Sniper holding calc failed", err);
+    return {};
+  }
+}
+
+// export async function getTokenHolderCount(
+//   mintAddresses: string[]
+// ): Promise<Record<string, number>> {
+//   try {
+//     const headers = {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+//     };
+
+//     const res = await axios.post(
+//       process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+//       {
+//         query: GET_TOKEN_HOLDERS_COUNT,
+//         variables: { mintAddresses },
+//       },
+//       { headers, timeout: 60000 }
+//     );
+
+//     // ✅ handle both Bitquery response shapes
+//     const balanceUpdates =
+//       res.data?.data?.Solana?.BalanceUpdates ??
+//       res.data?.Solana?.BalanceUpdates ??
+//       [];
+
+//     const walletsByToken: Record<string, Set<string>> = {};
+
+//     for (const row of balanceUpdates) {
+//       const mint = row.BalanceUpdate.Currency.MintAddress;
+//       const balance = Number(row.BalanceUpdate.Holding);
+
+//       if (balance > 0) {
+//         walletsByToken[mint] ??= new Set();
+//         walletsByToken[mint].add(
+//           row.BalanceUpdate.Account.Address
+//         );
+//       }
+//     }
+
+//     const result: Record<string, number> = {};
+//     for (const mint of mintAddresses) {
+//       result[mint] = walletsByToken[mint]?.size ?? 0;
+//     }
+
+//     return result;
+//   } catch (err) {
+//     console.error("Holder count failed", err);
+//     return {};
+//   }
+// }
+
+export async function getTokenHolderStats(
+  mintAddresses: string[]
+): Promise<{
+  holderCount: Record<string, number>;
+  top10HoldingPercent: Record<string, number>;
+  sniperHoldingPercent: Record<string, number>;
+}> {
+  try {
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+    };
+
+    const url =
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap";
+
+    // --------------------------------------------------
+    // 1️⃣ Fetch holders snapshot
+    // --------------------------------------------------
+    const holdersRes = await axios.post(
+      url,
+      {
+        query: GET_TOKEN_HOLDERS_COUNT,
+        variables: { mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const balanceUpdates =
+      holdersRes.data?.data?.Solana?.BalanceUpdates ??
+      holdersRes.data?.Solana?.BalanceUpdates ??
+      [];
+
+    // --------------------------------------------------
+    // 2️⃣ Fetch total supply (batch)
+    // --------------------------------------------------
+    const supplyRes = await axios.post(
+      url,
+      {
+        query: BATCH_GET_TOTAL_SUPPLY_OF_TOKEN,
+        variables: { mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const supplyByToken: Record<string, number> = {};
+    for (const row of supplyRes.data?.data?.Solana?.TokenSupplyUpdates ?? []) {
+      supplyByToken[row.TokenSupplyUpdate.Currency.MintAddress] =
+        Number(row.TokenSupplyUpdate.PostBalance) || 0;
+    }
+
+    // --------------------------------------------------
+    // 3️⃣ Fetch sniper data (batch)
+    // --------------------------------------------------
+    const sniperRes = await axios.post(
+      url,
+      {
+        query: GET_TOKEN_SNIPERS_QUERY,
+        variables: { tokens: mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const Sn = sniperRes.data?.data?.Solana ?? {};
+
+    // --------------------------------------------------
+    // 4️⃣ Build sniper wallets per token
+    // --------------------------------------------------
+    const sniperWalletsByToken: Record<string, Set<string>> = {};
+
+    for (const launch of Sn.launchMoment ?? []) {
+      const mint = launch.Trade.Currency.MintAddress;
+      sniperWalletsByToken[mint] ??= new Set();
+
+      const launchTime = new Date(launch.Block.Time).getTime();
+      const launchSlot = Number(launch.Block.Slot);
+
+      for (const b of Sn.earlyBuyers ?? []) {
+        if (b.Trade.Currency.MintAddress !== mint) continue;
+
+        const buyTime = new Date(b.Block.Time).getTime();
+        const buySlot = Number(b.Block.Slot);
+
+        const isSniper =
+          (buyTime - launchTime) / 1000 <= 3 ||
+          buySlot <= launchSlot + 2;
+
+        if (isSniper) {
+          sniperWalletsByToken[mint].add(
+            b.Trade.Account.Address
+          );
+        }
+      }
+    }
+
+    // --------------------------------------------------
+    // 5️⃣ Aggregate balances
+    // --------------------------------------------------
+    const walletsByToken: Record<string, Set<string>> = {};
+    const balancesByToken: Record<string, number[]> = {};
+    const balanceLookup: Record<string, Map<string, number>> = {};
+
+    for (const row of balanceUpdates) {
+      const mint = row.BalanceUpdate.Currency.MintAddress;
+      const wallet = row.BalanceUpdate.Account.Address;
+      const balance = Number(row.BalanceUpdate.Holding) || 0;
+
+      if (!mintAddresses.includes(mint)) continue;
+
+      if (balance > 0) {
+        walletsByToken[mint] ??= new Set();
+        walletsByToken[mint].add(wallet);
+      }
+
+      balancesByToken[mint] ??= [];
+      balancesByToken[mint].push(balance);
+
+      balanceLookup[mint] ??= new Map();
+      balanceLookup[mint].set(wallet, balance);
+    }
+
+    // --------------------------------------------------
+    // 6️⃣ Compute metrics
+    // --------------------------------------------------
+    const holderCount: Record<string, number> = {};
+    const top10HoldingPercent: Record<string, number> = {};
+    const sniperHoldingPercent: Record<string, number> = {};
+
+    for (const mint of mintAddresses) {
+      const balances = balancesByToken[mint] ?? [];
+      const supply = supplyByToken[mint];
+
+      holderCount[mint] = walletsByToken[mint]?.size ?? 0;
+
+      if (!supply || supply <= 0) {
+        top10HoldingPercent[mint] = 0;
+        sniperHoldingPercent[mint] = 0;
+        continue;
+      }
+
+      // ---- Top 10 %
+      const top10Sum = [...balances]
+        .sort((a, b) => b - a)
+        .slice(0, 10)
+        .reduce((a, b) => a + b, 0);
+
+      top10HoldingPercent[mint] = Number(
+        ((top10Sum / supply) * 100).toFixed(4)
+      );
+
+      // ---- Sniper %
+      let sniperSum = 0;
+      for (const wallet of sniperWalletsByToken[mint] ?? []) {
+        sniperSum += balanceLookup[mint]?.get(wallet) ?? 0;
+      }
+
+      sniperHoldingPercent[mint] = Number(
+        ((sniperSum / supply) * 100).toFixed(4)
+      );
+    }
+
+    return {
+      holderCount,
+      top10HoldingPercent,
+      sniperHoldingPercent,
+    };
+  } catch (err) {
+    console.error("Token holder stats failed", err);
+    return {
+      holderCount: {},
+      top10HoldingPercent: {},
+      sniperHoldingPercent: {},
+    };
+  }
+}
+
+
+// src/solana/tradeStats.ts
+
+type MintAddress = string;
+
+// interface TradeStats {
+//   mintAddress: MintAddress;
+//   totalTrades: number;
+//   buyTrades: number;
+//   sellTrades: number;
+//   volumeUsd24h: number;
+//   buyVolumeUsd: number;
+//   sellVolumeUsd: number;
+// }
+
+// interface GraphQLResponse<T> {
+//   data?: T;
+//   errors?: { message: string }[];
+// }
+
+export async function getTokenTradeStats(
+  mintAddresses: string[]
+): Promise<{
+  totalTrades: Record<string, number>;
+  buyTrades: Record<string, number>;
+  sellTrades: Record<string, number>;
+  volumeUsd24h: Record<string, number>;
+  buyVolumeUsd: Record<string, number>;
+  sellVolumeUsd: Record<string, number>;
+}> {
+  try {
+    if (!mintAddresses.length) {
+      return {
+        totalTrades: {},
+        buyTrades: {},
+        sellTrades: {},
+        volumeUsd24h: {},
+        buyVolumeUsd: {},
+        sellVolumeUsd: {},
+      };
+    }
+
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
+    };
+
+    const url =
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap";
+
+    // --------------------------------------------------
+    // 1️⃣ Trade counts
+    // --------------------------------------------------
+    const tradesRes = await axios.post(
+      url,
+      {
+        query: TOKEN_TRADES_COUNT,
+        variables: { tokens: mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const tradeRows =
+      tradesRes.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+    const totalTrades: Record<string, number> = {};
+    const buyTrades: Record<string, number> = {};
+    const sellTrades: Record<string, number> = {};
+
+    for (const row of tradeRows) {
+      const mint = row.Trade.Currency.MintAddress;
+      totalTrades[mint] = row.totalTrades ?? 0;
+      buyTrades[mint] = row.buyTrades ?? 0;
+      sellTrades[mint] = row.sellTrades ?? 0;
+    }
+
+    // --------------------------------------------------
+    // 2️⃣ Volume stats
+    // --------------------------------------------------
+    const volumeRes = await axios.post(
+      url,
+      {
+        query: TOTAL_VOLUME_BUY_SELL,
+        variables: { mintAddresses },
+      },
+      { headers, timeout: 60000 }
+    );
+
+    const volumeRows =
+      volumeRes.data?.data?.Solana?.DEXTradeByTokens ?? [];
+
+    const volumeUsd24h: Record<string, number> = {};
+    const buyVolumeUsd: Record<string, number> = {};
+    const sellVolumeUsd: Record<string, number> = {};
+
+    for (const row of volumeRows) {
+      const mint = row.Trade.Currency.MintAddress;
+      volumeUsd24h[mint] = row.volume_usd_24h ?? 0;
+      buyVolumeUsd[mint] = row.buy_volume_usd ?? 0;
+      sellVolumeUsd[mint] = row.sell_volume_usd ?? 0;
+    }
+
+    return {
+      totalTrades,
+      buyTrades,
+      sellTrades,
+      volumeUsd24h,
+      buyVolumeUsd,
+      sellVolumeUsd,
+    };
+  } catch (err) {
+    console.error("Token trade stats failed", err);
+    return {
+      totalTrades: {},
+      buyTrades: {},
+      sellTrades: {},
+      volumeUsd24h: {},
+      buyVolumeUsd: {},
+      sellVolumeUsd: {},
+    };
+  }
+}
+export interface TokenBondingInfo {
+  mintAddress: string;
+  creationTime: string | null;
+  bondingCurveProgress: number | null;
+  protocolFamily: string | null;
+}
+
+export async function getTokenBondingInfo(
+  mintAddresses: string[]
+): Promise<TokenBondingInfo[]> {
+  if (!mintAddresses.length) return [];
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${BITQUERY_AUTH_TOKEN}`,
   };
+  const [bondingRes, creationRes] = await Promise.all([
+    axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      {
+        query: GET_B_C_P_PROTOCOL_FAMILY,
+        variables: { tokens: mintAddresses },
+      },
+      { headers, timeout: 60_000 }
+    ),
+    axios.post(
+      process.env.BITQUERY_URL || "https://streaming.bitquery.io/eap",
+      {
+        query: BATCH_CREATION_TIME_OF_TOKEN,
+        variables: { mintAddresses },
+      },
+      { headers, timeout: 60_000 }
+    ),
+  ]);
 
-  // 1️⃣ Fetch true total supply first
-  const supplyRes = await axios.post(
-    url,
-    {
-      query: BATCH_GET_TOTAL_SUPPLY_OF_TOKEN,
-      variables: { mintAddresses: [mintAddress] },
-    },
-    { headers, timeout: 60000 }
-  );
+  const bondingPools =
+    bondingRes.data?.data?.Solana?.DEXPools ?? [];
 
-  const supplyRows =
-    supplyRes.data?.data?.Solana?.TokenSupplyUpdates ?? [];
+  const creationTrades =
+    creationRes.data?.data?.Solana?.DEXTradeByTokens ?? [];
 
-  const totalSupply = Number(
-    supplyRows[0]?.TokenSupplyUpdate?.PostBalance || 0
-  );
+  const bondingMap = new Map<
+    string,
+    { progress: number; protocolFamily: string }
+  >();
 
-  // 2️⃣ Fetch holders (your existing query)
-  const holdersRes = await axios.post(
-    url,
-    {
-      query: GET_TOKEN_HOLDERS_COUNT,
-      variables: { mintAddress },
-    },
-    { headers, timeout: 60000 }
-  );
+  for (const pool of bondingPools) {
+    const mint =
+      pool.Pool?.Market?.BaseCurrency?.MintAddress;
 
-  // 3️⃣ Calculate % using correct supply
-  const holdingResponse = calculateHoldingsPercent(
-    holdersRes.data.data,
-    totalSupply
-  );
+    if (!mint) continue;
 
-  console.log("TOTAL SUPPLY:", totalSupply);
-  console.log("holding Response:", holdingResponse);
+    bondingMap.set(mint, {
+      progress: pool.PumpFun_BondingCurve_Progress ?? null,
+      protocolFamily:
+        pool.Pool?.Dex?.ProtocolFamily ?? null,
+    });
+  }
 
-  // 4️⃣ Return holder count
-  const data =
-    holdersRes.data?.data?.Solana?.BalanceUpdates ?? [];
+  const creationMap = new Map<string, string>();
 
-  const holders = data.filter((entry: any) => {
-    const raw = entry?.BalanceUpdate?.Holding;
-    const n = Number(raw);
-    return !isNaN(n) && n > 0;
-  });
+  for (const trade of creationTrades) {
+    const mint = trade.Trade?.Currency?.MintAddress;
+    const time = trade.Block?.Time;
 
-  return holders.length;
+    if (mint && time) {
+      creationMap.set(mint, time);
+    }
+  }
+
+  return mintAddresses.map((mint) => ({
+    mintAddress: mint,
+    creationTime: creationMap.get(mint) ?? null,
+    bondingCurveProgress:
+      bondingMap.get(mint)?.progress ?? null,
+    protocolFamily:
+      bondingMap.get(mint)?.protocolFamily ?? null,
+  }));
 }
+
+export const getCurrentTokenPriceUsd = async (
+  mintAddress: string
+): Promise<number> => {
+  try {
+    const response = await fetch(
+      `https://lite-api.jup.ag/price/v3?ids=${mintAddress}`
+    );
+
+    if (!response.ok) {
+      console.warn(
+        `[PricingService] Jupiter API status ${response.status} for mint ${mintAddress}`
+      );
+      return 0; // 🔧 CHANGE: do NOT throw
+    }
+
+    const data = await response.json();
+
+    const tokenData = data?.[mintAddress];
+    const price = tokenData?.usdPrice;
+
+    if (!price || Number(price) <= 0) {
+      console.warn(
+        `[PricingService] Invalid or missing price for mint ${mintAddress}`
+      );
+      return 0; // 🔧 CHANGE: do NOT throw
+    }
+
+    return Number(price);
+  } catch (err) {
+    console.error(
+      `[PricingService] Failed to fetch price for mint ${mintAddress}`,
+      err
+    );
+    return 0; // 🔧 CHANGE: swallow error
+  }
+};
+
+
+
+export function generateReferralCode(username: string, privyId: string): string {
+  const hash = crypto
+    .createHash("sha256")
+    .update(privyId)
+    .digest("hex")
+    .slice(0, 6);
+
+  return `${username.toLowerCase()}-${hash}`;
+}
+
+
+export const toBigIntSafe = (v: any) =>
+  v === null || v === undefined ? null : Math.floor(Number(v));
+
+export const toDecimalSafe = (v: any) =>
+  v === null || v === undefined ? null : Number(v);
+
+
+

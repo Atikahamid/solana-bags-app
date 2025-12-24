@@ -41,6 +41,9 @@ export default function ProfileScreenNew() {
   // console.log("userID: ", userId);
   const {address} = useWallet();
   const walletAddress = address;
+  const [pnlUsd, setPnlUsd] = useState<string>('0.00');
+  const [pnlPercent, setPnlPercent] = useState<string>('0.00');
+  const [pnlLoading, setPnlLoading] = useState<boolean>(false);
   const [isWalletAsset, setIsWalletAsset] = useState(false);
   const [walletAssets, setWalletAssets] = useState<TokenAccount[]>([]); // ✅ store wallet assets
   const [price, setprice] = useState('');
@@ -52,6 +55,13 @@ export default function ProfileScreenNew() {
   const storedUsername = useAppSelector(state => state.auth.username);
   // const privyId = useAppSelector(state => state.auth);
   console.log('privy id: ', privyId);
+  // 🔥 PnL color helper
+  const pnlColor =
+    Number(pnlUsd) > 0
+      ? '#00FF77'
+      : Number(pnlUsd) < 0
+      ? '#FF4D4F'
+      : '#f5f2f2ff';
 
   // Animation values
   const opacityAnim = useRef(new Animated.Value(1)).current;
@@ -135,6 +145,38 @@ export default function ProfileScreenNew() {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // 🔥 Fetch user PnL from backend
+  const fetchUserPnl = useCallback(async () => {
+    if (!privyId) return;
+
+    try {
+      setPnlLoading(true);
+
+      const res = await fetch(
+        `${SERVER_URL}/api/jupiter/ultra/get-pnl/${encodeURIComponent(
+          privyId,
+        )}`, 
+      );
+      
+      const data = await res.json();
+console.log('response:::::::::::::::::::::::::::::::: ', data);
+      if (data.success) {
+        setPnlUsd(data.totalPnl); // 🔥 USD PnL
+        setPnlPercent(data.pnlPercent); // 🔥 % PnL
+      } else {
+        console.warn('PnL fetch failed:', data);
+      }
+    } catch (err) {
+      console.error('Error fetching PnL:', err);
+    } finally {
+      setPnlLoading(false);
+    }
+  }, [privyId]);
+  // 🔥 Fetch PnL when privyId is available
+  useEffect(() => {
+    fetchUserPnl();
+  }, [fetchUserPnl]);
 
   useEffect(() => {
     fetchWalletAssets();
@@ -421,7 +463,7 @@ export default function ProfileScreenNew() {
                     width={30}
                     height={30}
                     color="#00FF77"
-                  />
+                  /> 
                 </View>
               </View>
 
@@ -430,10 +472,10 @@ export default function ProfileScreenNew() {
                 <Text style={styles.balanceText}>
                   {`$ ${(Number(price) * Number(nativeBalance)).toFixed(2)}`}
                 </Text>
-                <Text style={styles.pnlText}>
-                  {profile?.pnl_percent
-                    ? `${profile?.pnl_percent}% $0.00 PNL`
-                    : '0.00% $0.00 PNL'}
+                <Text style={[styles.pnlText, {color: pnlColor}]}>
+                  {pnlLoading
+                    ? 'Calculating PnL...'
+                    : `${Number(pnlPercent).toFixed(2)}% $${Number(pnlUsd).toFixed(5) } PNL`}
                 </Text>
               </View>
 
@@ -479,8 +521,10 @@ export default function ProfileScreenNew() {
                     </View>
                   </TouchableOpacity>
                 </View>
-                <View style = {{flexDirection: 'row', gap: 7}}>
-                  <Text style = {{color: '#fff', fontSize: 14}}>{nativeBalance}</Text>
+                <View style={{flexDirection: 'row', gap: 7}}>
+                  <Text style={{color: '#fff', fontSize: 14}}>
+                    {nativeBalance}
+                  </Text>
                   <Icons.CreateCoinIcon width={18} height={18} />
                 </View>
               </View>

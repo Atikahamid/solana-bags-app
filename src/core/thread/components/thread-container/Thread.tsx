@@ -101,7 +101,7 @@ export const Thread: React.FC<ThreadProps> = ({
   //         'https://gateway.irys.xyz/TJRvvcIhEfQHL8L8dWo0ZZW3UvEtXTJg88KyTsFRG74',
   //     },
   //   },
-  // ];
+  // ]; 
   const trades = useTrades(); 
   // console.log('trades: ', trades);
   const isLoading = !trades || trades.length === 0;

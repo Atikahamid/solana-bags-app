@@ -52,7 +52,7 @@ export default function FeedScreen() {
   const [profileStable, setProfileStable] = useState(false);
   const [areInitialPostsLoading, setAreInitialPostsLoading] = useState(true);
   const [hasRegisteredPushToken, setHasRegisteredPushToken] = useState(false);
-
+ 
   // Build current user object from Redux data
   const currentUser: ThreadUser = {
     id: userWallet || 'anonymous-user',

@@ -5,6 +5,7 @@ export * from './feed-screen';
 export * from './other-profile-screen';
 export * from './trade-screen';
 export * from './perpetuals-screen';
+export * from './leader-borad-page';
 // export * from './profile-screen';
 // Re-export components and alias their 'styles' export to avoid conflicts.
 export { ProfileScreen, styles as ProfileScreenStyles } from './profile-screen';
