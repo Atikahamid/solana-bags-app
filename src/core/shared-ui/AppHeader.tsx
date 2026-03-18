@@ -1,69 +1,63 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
+import {LinearGradient} from 'expo-linear-gradient';
+import {useNavigation} from '@react-navigation/native';
 import COLORS from '@/assets/colors';
 import TYPOGRAPHY from '@/assets/typography';
 import Icons from '@/assets/svgs';
-
+import {headerStyles} from '../thread/components/thread-container/Thread.styles';
 interface AppHeaderProps {
   /**
    * Title to display in the center of the header
    */
   title?: string;
-  
+
   /**
    * Whether to show a back button on the left
    * @default true
    */
   showBackButton?: boolean;
-  
+
   /**
    * Whether to show a bottom border gradient
    * @default true
    */
   showBottomGradient?: boolean;
-  
+
   /**
    * Whether to show default right icons (wallet)
    * @default true
    */
   showDefaultRightIcons?: boolean;
-  
+
   /**
    * Custom component to render on the left side
    * (replaces back button if provided)
    */
   leftComponent?: React.ReactNode;
-  
+
   /**
    * Custom component to render on the right side
    * (replaces default icons if provided)
    */
   rightComponent?: React.ReactNode;
-  
+
   /**
    * Custom function to handle back button press
    * (if not provided, will use navigation.goBack)
    */
   onBackPress?: () => void;
-  
+
   /**
    * Custom function to handle wallet icon press
    */
   onWalletPress?: () => void;
-  
+
   /**
    * Additional styles for the header container
    */
   style?: object;
-  
+
   /**
    * Custom gradient colors for the bottom border
    * @default ['transparent', COLORS.lightBackground]
@@ -84,10 +78,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   onBackPress,
   onWalletPress,
   style,
-  gradientColors = ['transparent', COLORS.lightBackground] as readonly [string, string],
+  gradientColors = ['transparent', COLORS.lightBackground] as readonly [
+    string,
+    string,
+  ],
 }) => {
   const navigation = useNavigation();
-  
+
   // Default back button handler
   const handleBackPress = () => {
     if (onBackPress) {
@@ -98,50 +95,53 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   };
 
   // Handle wallet icon press
-  const handleWalletPress = () => {
-    if (onWalletPress) {
-      onWalletPress();
-    } else {
-      // @ts-ignore - Navigation type is generic
-      navigation.navigate('WalletScreen');
-    }
-  };
-  
+  // const handleWalletPress = () => {
+  //   if (onWalletPress) {
+  //     onWalletPress();
+  //   } else {
+  //     // @ts-ignore - Navigation type is generic
+  //     navigation.navigate('WalletScreen');
+  //   }
+  // };
+
   return (
     <View style={[styles.container, style]}>
       {/* Left: Back button or custom component */}
-      {leftComponent || (showBackButton && (
-        <TouchableOpacity onPress={handleBackPress} style={styles.leftButton}>
-          <Icons.ArrowLeft width={24} height={24} color={COLORS.white} />
-        </TouchableOpacity>
-      )) || <View style={styles.leftPlaceholder} />}
-      
-      {/* Center: Title */}
-      {title && (
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{title}</Text>
-        </View>
-      )}
-      
-      {/* Right: Default icons or custom component */}
-      {rightComponent || (showDefaultRightIcons && (
-        <View style={styles.rightContainer}>
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={handleWalletPress}
-          >
-            <Icons.walletIcon width={35} height={35} color={COLORS.white} />
+      {leftComponent ||
+        (showBackButton && (
+          <TouchableOpacity onPress={handleBackPress} style={styles.leftButton}>
+            <Icons.ArrowLeft width={24} height={24} color={COLORS.white} />
           </TouchableOpacity>
-        </View>
-      )) || <View style={styles.rightPlaceholder} />}
-      
+        )) || <View style={styles.leftPlaceholder} />}
+
+      {/* Center: Title */}
+      <View style={headerStyles.absoluteLogoContainer}>
+        {title ? (
+          <Text style={styles.title}>{title}</Text>
+        ) : (
+          <Icons.AppLogo width={28} height={28} />
+        )}
+      </View>
+
+      {/* Right: Default icons or custom component */}
+      {/* {rightComponent || (showDefaultRightIcons && (
+        // <View style={styles.rightContainer}>
+        //   <TouchableOpacity 
+        //     style={styles.iconButton}
+        //     onPress={handleWalletPress}
+        //   >
+        //     <Icons.walletIcon width={35} height={35} color={COLORS.white} />
+        //   </TouchableOpacity>
+        // </View>
+      )) || <View style={styles.rightPlaceholder} />} */}
+
       {/* Bottom gradient border */}
       {showBottomGradient && (
         <LinearGradient
           colors={gradientColors}
           style={styles.bottomGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
+          start={{x: 0, y: 0}}
+          end={{x: 0, y: 1}}
         />
       )}
     </View>
@@ -205,4 +205,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppHeader; 
+export default AppHeader;

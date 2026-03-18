@@ -13,7 +13,8 @@ export function getThreadComposerBaseStyles(
       paddingBottom: 8,
       backgroundColor: COLORS.background,
       borderBottomColor: COLORS.borderDarkColor,
-      borderBottomWidth: 1,
+      borderWidth: 3,
+      margin: 3 
     },
     composerAvatarContainer: {
       marginRight: 12,

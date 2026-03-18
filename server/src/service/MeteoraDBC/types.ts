@@ -6,7 +6,7 @@ export enum TokenType {
   SPL = 0,
   Token2022 = 1
 }
-
+ 
 export enum FeeSchedulerMode {
   Linear = 0,
   Exponential = 1

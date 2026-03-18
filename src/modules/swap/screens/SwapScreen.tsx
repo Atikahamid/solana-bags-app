@@ -158,7 +158,7 @@ export default function SwapScreen() {
     } catch (error) {
       console.error('Failed to paste from clipboard:', error);
     }
-  };
+  }; 
 
   return (
     <KeyboardAvoidingView

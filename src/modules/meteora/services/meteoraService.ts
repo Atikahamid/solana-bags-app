@@ -14,11 +14,14 @@ import {
   VersionedTransaction,
 } from '@solana/web3.js';
 import BN from 'bn.js';
-import {Buffer} from 'buffer';
-import {SERVER_URL} from '@env';
+import { Buffer } from 'buffer';
+import { SERVER_URL } from '@env';
+import { resourceLimits } from 'worker_threads';
+import { useWallet } from '@/modules/wallet-providers';
 
 // API base URL - Use local server that implements the SDK
-const API_BASE_URL = `${SERVER_URL || 'http://localhost:8080'}/api`;
+const API_BASE_URL = `${SERVER_URL || 'https://solana-bags-app-production.up.railway.app'}/api`;
+// const { sendBase64Transaction, isPrivy } = useWallet();
 
 // Helper function to make API calls
 async function apiCall(endpoint: string, method: string = 'GET', data?: any) {
@@ -28,7 +31,7 @@ async function apiCall(endpoint: string, method: string = 'GET', data?: any) {
     // Log the data for debugging if this is a POST request
     if (method === 'POST' && data) {
       // Clean up the logged data for readability, avoiding large numbers that might stringify as hex
-      const cleanedData = {...data};
+      const cleanedData = { ...data };
       if (cleanedData.buyAmount)
         cleanedData.buyAmount = String(cleanedData.buyAmount);
       if (cleanedData.minimumAmountOut)
@@ -46,7 +49,7 @@ async function apiCall(endpoint: string, method: string = 'GET', data?: any) {
 
     if (data && (method === 'POST' || method === 'PUT')) {
       // Ensure numeric values are properly stringified
-      const processedData = {...data};
+      const processedData = { ...data };
 
       // Handle specific endpoints that need numeric values as strings
       if (endpoint.includes('/pool-and-buy')) {
@@ -74,9 +77,9 @@ async function apiCall(endpoint: string, method: string = 'GET', data?: any) {
       // Return empty mock data instead of throwing an error for better UX
       // This will show empty states in the UI instead of errors
       if (endpoint.includes('/positions/')) {
-        return {success: true, positions: []};
+        return { success: true, positions: [] };
       } else if (endpoint.includes('/pools')) {
-        return {success: true, pools: []};
+        return { success: true, pools: [] };
       }
 
       throw new Error(`Expected JSON response but got ${contentType}`);
@@ -97,9 +100,9 @@ async function apiCall(endpoint: string, method: string = 'GET', data?: any) {
 
     // Return mock data for specific endpoints to prevent UI from breaking
     if (endpoint.includes('/positions/')) {
-      return {success: true, positions: []};
+      return { success: true, positions: [] };
     } else if (endpoint.includes('/pools')) {
-      return {success: true, pools: []};
+      return { success: true, pools: [] };
     }
 
     throw error;
@@ -114,7 +117,7 @@ export const createConfig = async (
   connection: Connection,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string}> => {
+): Promise<{ txId: string }> => {
   try {
     onStatusUpdate?.('Creating DBC config...');
 
@@ -176,7 +179,7 @@ export const createConfig = async (
     const txSignature = await wallet.sendTransaction(
       txToSignConfig,
       connection,
-      {confirmTransaction: true, statusCallback: onStatusUpdate},
+      { confirmTransaction: true, statusCallback: onStatusUpdate },
     );
 
     onStatusUpdate?.('Config created successfully!');
@@ -194,198 +197,241 @@ export const createConfig = async (
 /**
  * Build curve by market cap and create config
  */
+// export const buildCurveByMarketCap = async (
+//   params: BuildCurveByMarketCapParams,
+//   connection: Connection,
+//   wallet: any,
+//   onStatusUpdate?: (status: string) => void,
+// ): Promise<{ txId: string; configAddress: string }> => {
+//   try {
+//     onStatusUpdate?.('Building curve by market cap...');
+
+//     const result = await apiCall('/meteora/build-curve-marketcap', 'POST', {
+//       payer: wallet.publicKey.toString(),
+//     });
+
+//     if (!result.success) {
+//       throw new Error(result.error || 'Failed to build curve');
+//     }
+
+//     onStatusUpdate?.('Signing transaction...');
+
+//     let txSignature;
+//     try {
+//       const txBufferCurve = Buffer.from(result.transaction, 'base64');
+//       let txToSignCurve: Transaction | VersionedTransaction;
+//       try {
+//         txToSignCurve = VersionedTransaction.deserialize(
+//           new Uint8Array(txBufferCurve),
+//         );
+//       } catch (e) {
+//         console.warn(
+//           'Failed to deserialize as VersionedTransaction for buildCurveByMarketCap, trying legacy Transaction:',
+//           e,
+//         );
+//         txToSignCurve = Transaction.from(new Uint8Array(txBufferCurve));
+//         if (!txToSignCurve.feePayer && wallet.publicKey) {
+//           txToSignCurve.feePayer = new PublicKey(wallet.publicKey);
+//         } else if (!txToSignCurve.feePayer) {
+//           console.error(
+//             'CRITICAL: Legacy transaction for buildCurveByMarketCap deserialized without a feePayer and wallet.publicKey is unavailable.',
+//           );
+//         }
+//       }
+
+//       // Try to sign and send the transaction with confirmation - INCREASED TIMEOUT AND RETRIES
+//       txSignature = await wallet.sendTransaction(txToSignCurve, connection, {
+//         confirmTransaction: true,
+//         statusCallback: onStatusUpdate,
+//         maxRetries: 120, // Doubled to 120 retries
+//         confirmationTimeout: 180000, // Tripled to 3 minutes
+//       });
+//     } catch (confirmError) {
+//       console.warn('Error confirming transaction:', confirmError);
+
+//       // If confirmation fails, try to send without waiting for confirmation
+//       onStatusUpdate?.(
+//         'Confirmation timed out. Sending without confirmation...',
+//       );
+
+//       const txBufferCurveRetry = Buffer.from(result.transaction, 'base64');
+//       let txToSignCurveRetry: Transaction | VersionedTransaction;
+//       try {
+//         txToSignCurveRetry = VersionedTransaction.deserialize(
+//           new Uint8Array(txBufferCurveRetry),
+//         );
+//       } catch (e) {
+//         console.warn(
+//           'Failed to deserialize as VersionedTransaction for buildCurveByMarketCap retry, trying legacy Transaction:',
+//           e,
+//         );
+//         txToSignCurveRetry = Transaction.from(
+//           new Uint8Array(txBufferCurveRetry),
+//         );
+//         if (!txToSignCurveRetry.feePayer && wallet.publicKey) {
+//           txToSignCurveRetry.feePayer = new PublicKey(wallet.publicKey);
+//         } else if (!txToSignCurveRetry.feePayer) {
+//           console.error(
+//             'CRITICAL: Legacy transaction for buildCurveByMarketCap retry deserialized without a feePayer and wallet.publicKey is unavailable.',
+//           );
+//         }
+//       }
+
+//       txSignature = await wallet.sendTransaction(
+//         txToSignCurveRetry,
+//         connection,
+//         { confirmTransaction: false, statusCallback: onStatusUpdate },
+//       );
+
+//       // Wait a few seconds to allow transaction to propagate
+//       onStatusUpdate?.('Transaction sent. Waiting for network propagation...');
+//       await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10 seconds wait
+
+//       // Multiple attempts to check confirmation
+//       let confirmed = false;
+//       let attempts = 0;
+//       const maxAttempts = 5;
+
+//       while (!confirmed && attempts < maxAttempts) {
+//         attempts++;
+//         try {
+//           onStatusUpdate?.(
+//             `Checking transaction status (attempt ${attempts}/${maxAttempts})...`,
+//           );
+//           const status = await connection.getSignatureStatus(txSignature);
+//           console.log('Transaction status:', status);
+
+//           if (
+//             status &&
+//             status.value &&
+//             (status.value.confirmationStatus === 'confirmed' ||
+//               status.value.confirmationStatus === 'finalized')
+//           ) {
+//             onStatusUpdate?.('Transaction confirmed manually!');
+//             confirmed = true;
+//             break;
+//           } else {
+//             onStatusUpdate?.(
+//               `Status check ${attempts}/${maxAttempts}: Transaction not confirmed yet. Waiting...`,
+//             );
+//             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
+//           }
+//         } catch (statusError) {
+//           console.warn(
+//             `Error checking transaction status (attempt ${attempts}/${maxAttempts}):`,
+//             statusError,
+//           );
+//         }
+//       }
+
+//       if (!confirmed) {
+//         onStatusUpdate?.(
+//           'Could not verify transaction status. Please check explorer later.',
+//         );
+//       }
+//     }
+
+//     onStatusUpdate?.('Curve building transaction sent! TX ID: ' + txSignature);
+
+//     // Additional verification to make sure we have a config address
+//     if (!result.configAddress) {
+//       console.warn(
+//         'Missing configAddress in result, trying to fetch transaction result',
+//       );
+//       // Try to wait for a bit and see if we can get transaction details
+//       await new Promise(resolve => setTimeout(resolve, 5000));
+
+//       try {
+//         const txResult = await connection.getTransaction(txSignature, {
+//           commitment: 'confirmed',
+//           maxSupportedTransactionVersion: 0,
+//         });
+
+//         if (txResult) {
+//           onStatusUpdate?.('Transaction found on-chain. Proceeding...');
+//         } else {
+//           onStatusUpdate?.('Transaction not yet found on-chain.');
+//         }
+//       } catch (txError) {
+//         console.warn('Error fetching transaction:', txError);
+//       }
+//     }
+
+//     return {
+//       txId: txSignature,
+//       configAddress: result.configAddress || '',
+//     };
+//   } catch (error) {
+//     console.error('Error building curve by market cap:', error);
+//     onStatusUpdate?.('Curve building failed');
+//     throw error;
+//   }
+// };
+
+
+/**
+ * Frontend wrapper: calls backend to build curve by market cap
+ */
+
 export const buildCurveByMarketCap = async (
-  params: BuildCurveByMarketCapParams,
+  params: { payer: string },
   connection: Connection,
-  wallet: any,
+  walletPubKey: any,
+  isPrivy: () => boolean,
+  sendBase64Transaction: (
+    base64Tx: string,
+    connection: Connection,
+    options?: {
+      confirmTransaction?: boolean;
+      statusCallback?: (status: string) => void;
+    },
+  ) => Promise<string>,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string; configAddress: string}> => {
+): Promise<{ txId: string; configAddress: string }> => {
   try {
     onStatusUpdate?.('Building curve by market cap...');
 
     const result = await apiCall('/meteora/build-curve-by-market-cap', 'POST', {
-      buildCurveByMarketCapParam: {
-        totalTokenSupply: params.totalTokenSupply,
-        initialMarketCap: params.initialMarketCap,
-        migrationMarketCap: params.migrationMarketCap,
-        migrationOption: params.migrationOption,
-        tokenBaseDecimal: params.tokenBaseDecimal,
-        tokenQuoteDecimal: params.tokenQuoteDecimal,
-        lockedVesting: params.lockedVesting,
-        feeSchedulerParam: params.feeSchedulerParam,
-        baseFeeBps: params.baseFeeBps,
-        dynamicFeeEnabled: params.dynamicFeeEnabled,
-        activationType: params.activationType,
-        collectFeeMode: params.collectFeeMode,
-        migrationFeeOption: params.migrationFeeOption,
-        tokenType: params.tokenType,
-        partnerLpPercentage: params.partnerLpPercentage,
-        creatorLpPercentage: params.creatorLpPercentage,
-        partnerLockedLpPercentage: params.partnerLockedLpPercentage,
-        creatorLockedLpPercentage: params.creatorLockedLpPercentage,
-        creatorTradingFeePercentage: params.creatorTradingFeePercentage,
-      },
-      feeClaimer: wallet.publicKey.toString(),
-      leftoverReceiver: wallet.publicKey.toString(),
-      payer: wallet.publicKey.toString(),
-      quoteMint: 'So11111111111111111111111111111111111111112', // SOL by default
+      payer: params.payer,
+    });
+    console.log("---------------------------------------------------------------------");
+    // console.log("result of bonding curve: ", result);
+    if (!result.success) throw new Error(result.error || 'Failed to build curve');
+
+    // 🔹 Extract serialized base64 transaction
+    const serializedTxBase64 = result.transaction;
+    // console.log("serialized transaction: ", serializedTxBase64);
+    if (!serializedTxBase64) throw new Error('No transaction returned from backend');
+
+    // ✅ Use your Privy wallet through useWallet()
+
+    if (!isPrivy()) {
+      throw new Error('Privy wallet is not active');
+    }
+
+    onStatusUpdate?.('Signing and sending transaction via Privy...');
+
+    // 🔹 This will:
+    //  1. Deserialize the base64 tx
+    //  2. Ask Privy to sign it
+    //  3. Send it to Solana cluster
+    const txSignature = await sendBase64Transaction(serializedTxBase64, connection, {
+      confirmTransaction: true,
+      statusCallback: onStatusUpdate,
     });
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to build curve');
-    }
-
-    onStatusUpdate?.('Signing transaction...');
-
-    let txSignature;
-    try {
-      const txBufferCurve = Buffer.from(result.transaction, 'base64');
-      let txToSignCurve: Transaction | VersionedTransaction;
-      try {
-        txToSignCurve = VersionedTransaction.deserialize(
-          new Uint8Array(txBufferCurve),
-        );
-      } catch (e) {
-        console.warn(
-          'Failed to deserialize as VersionedTransaction for buildCurveByMarketCap, trying legacy Transaction:',
-          e,
-        );
-        txToSignCurve = Transaction.from(new Uint8Array(txBufferCurve));
-        if (!txToSignCurve.feePayer && wallet.publicKey) {
-          txToSignCurve.feePayer = new PublicKey(wallet.publicKey);
-        } else if (!txToSignCurve.feePayer) {
-          console.error(
-            'CRITICAL: Legacy transaction for buildCurveByMarketCap deserialized without a feePayer and wallet.publicKey is unavailable.',
-          );
-        }
-      }
-
-      // Try to sign and send the transaction with confirmation - INCREASED TIMEOUT AND RETRIES
-      txSignature = await wallet.sendTransaction(txToSignCurve, connection, {
-        confirmTransaction: true,
-        statusCallback: onStatusUpdate,
-        maxRetries: 120, // Doubled to 120 retries
-        confirmationTimeout: 180000, // Tripled to 3 minutes
-      });
-    } catch (confirmError) {
-      console.warn('Error confirming transaction:', confirmError);
-
-      // If confirmation fails, try to send without waiting for confirmation
-      onStatusUpdate?.(
-        'Confirmation timed out. Sending without confirmation...',
-      );
-
-      const txBufferCurveRetry = Buffer.from(result.transaction, 'base64');
-      let txToSignCurveRetry: Transaction | VersionedTransaction;
-      try {
-        txToSignCurveRetry = VersionedTransaction.deserialize(
-          new Uint8Array(txBufferCurveRetry),
-        );
-      } catch (e) {
-        console.warn(
-          'Failed to deserialize as VersionedTransaction for buildCurveByMarketCap retry, trying legacy Transaction:',
-          e,
-        );
-        txToSignCurveRetry = Transaction.from(
-          new Uint8Array(txBufferCurveRetry),
-        );
-        if (!txToSignCurveRetry.feePayer && wallet.publicKey) {
-          txToSignCurveRetry.feePayer = new PublicKey(wallet.publicKey);
-        } else if (!txToSignCurveRetry.feePayer) {
-          console.error(
-            'CRITICAL: Legacy transaction for buildCurveByMarketCap retry deserialized without a feePayer and wallet.publicKey is unavailable.',
-          );
-        }
-      }
-
-      txSignature = await wallet.sendTransaction(
-        txToSignCurveRetry,
-        connection,
-        {confirmTransaction: false, statusCallback: onStatusUpdate},
-      );
-
-      // Wait a few seconds to allow transaction to propagate
-      onStatusUpdate?.('Transaction sent. Waiting for network propagation...');
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10 seconds wait
-
-      // Multiple attempts to check confirmation
-      let confirmed = false;
-      let attempts = 0;
-      const maxAttempts = 5;
-
-      while (!confirmed && attempts < maxAttempts) {
-        attempts++;
-        try {
-          onStatusUpdate?.(
-            `Checking transaction status (attempt ${attempts}/${maxAttempts})...`,
-          );
-          const status = await connection.getSignatureStatus(txSignature);
-          console.log('Transaction status:', status);
-
-          if (
-            status &&
-            status.value &&
-            (status.value.confirmationStatus === 'confirmed' ||
-              status.value.confirmationStatus === 'finalized')
-          ) {
-            onStatusUpdate?.('Transaction confirmed manually!');
-            confirmed = true;
-            break;
-          } else {
-            onStatusUpdate?.(
-              `Status check ${attempts}/${maxAttempts}: Transaction not confirmed yet. Waiting...`,
-            );
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
-          }
-        } catch (statusError) {
-          console.warn(
-            `Error checking transaction status (attempt ${attempts}/${maxAttempts}):`,
-            statusError,
-          );
-        }
-      }
-
-      if (!confirmed) {
-        onStatusUpdate?.(
-          'Could not verify transaction status. Please check explorer later.',
-        );
-      }
-    }
-
-    onStatusUpdate?.('Curve building transaction sent! TX ID: ' + txSignature);
-
-    // Additional verification to make sure we have a config address
-    if (!result.configAddress) {
-      console.warn(
-        'Missing configAddress in result, trying to fetch transaction result',
-      );
-      // Try to wait for a bit and see if we can get transaction details
-      await new Promise(resolve => setTimeout(resolve, 5000));
-
-      try {
-        const txResult = await connection.getTransaction(txSignature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
-
-        if (txResult) {
-          onStatusUpdate?.('Transaction found on-chain. Proceeding...');
-        } else {
-          onStatusUpdate?.('Transaction not yet found on-chain.');
-        }
-      } catch (txError) {
-        console.warn('Error fetching transaction:', txError);
-      }
-    }
+    console.log('✅ TX Signature for build curve:', txSignature);
+    onStatusUpdate?.('Curve created successfully. TX: ' + txSignature);
 
     return {
       txId: txSignature,
       configAddress: result.configAddress || '',
     };
-  } catch (error) {
-    console.error('Error building curve by market cap:', error);
+
+  } catch (err) {
+    console.error('Error in buildCurveByMarketCap:', err);
     onStatusUpdate?.('Curve building failed');
-    throw error;
+    throw err;
   }
 };
 
@@ -395,143 +441,54 @@ export const buildCurveByMarketCap = async (
 export const createPool = async (
   params: CreatePoolParams,
   connection: Connection,
-  wallet: any,
+  walletPubKey: any,
+  isPrivy: () => boolean,
+  sendBase64Transaction: (
+    base64Tx: string,
+    connection: Connection,
+    options?: {
+      confirmTransaction?: boolean;
+      statusCallback?: (status: string) => void;
+    },
+  ) => Promise<string>,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string; poolAddress: string; baseMintAddress: string}> => {
+): Promise<{ txId: string; poolAddress: string; baseMintAddress: string }> => {
   try {
     onStatusUpdate?.('Creating token pool...');
 
     const result = await apiCall('/meteora/pool', 'POST', {
-      payer: wallet.publicKey.toString(),
-      poolCreator: wallet.publicKey.toString(),
-      quoteMint: params.quoteMint,
+      payer: walletPubKey,
+      poolCreator: walletPubKey,
+      // quoteMint: params.quoteMint,
       config: params.config,
-      baseTokenType: params.baseTokenType,
-      quoteTokenType: params.quoteTokenType,
+      // baseTokenType: params.baseTokenType,
+      // quoteTokenType: params.quoteTokenType,
       name: params.name,
       symbol: params.symbol,
       uri: params.uri,
     });
+    // console.log("result of pool: ", result);
+    if (!result.success) throw new Error(result.error || 'Failed to create pool');
+    const serializedTxBase64 = result.transaction;
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to create pool');
-    }
+    // console.log("serialized trasanction for pool: ", serializedTxBase64);
 
-    onStatusUpdate?.('Signing transaction...');
+    if (!serializedTxBase64)
+      throw new Error('No transaction returned from backend');
 
-    let txSignature;
-    try {
-      const txBufferPool = Buffer.from(result.transaction, 'base64');
-      let txToSignPool: Transaction | VersionedTransaction;
-      try {
-        txToSignPool = VersionedTransaction.deserialize(
-          new Uint8Array(txBufferPool),
-        );
-      } catch (e) {
-        console.warn(
-          'Failed to deserialize as VersionedTransaction for createPool, trying legacy Transaction:',
-          e,
-        );
-        txToSignPool = Transaction.from(new Uint8Array(txBufferPool));
-        if (!txToSignPool.feePayer && wallet.publicKey) {
-          txToSignPool.feePayer = new PublicKey(wallet.publicKey);
-        } else if (!txToSignPool.feePayer) {
-          console.error(
-            'CRITICAL: Legacy transaction for createPool deserialized without a feePayer and wallet.publicKey is unavailable.',
-          );
-        }
-      }
-      // Try to sign and send the transaction with confirmation - INCREASED TIMEOUT AND RETRIES
-      txSignature = await wallet.sendTransaction(txToSignPool, connection, {
-        confirmTransaction: true,
-        statusCallback: onStatusUpdate,
-        maxRetries: 120, // Doubled to 120 retries
-        confirmationTimeout: 180000, // Tripled to 3 minutes
-      });
-    } catch (confirmError) {
-      console.warn('Error confirming pool creation transaction:', confirmError);
+    // console.log('createPool serialized transaction:', serializedTxBase64);
 
-      // If confirmation fails, try to send without waiting for confirmation
-      onStatusUpdate?.(
-        'Confirmation timed out. Sending without confirmation...',
-      );
+    if (!isPrivy()) throw new Error('Privy wallet is not active');
 
-      const txBufferPoolRetry = Buffer.from(result.transaction, 'base64');
-      let txToSignPoolRetry: Transaction | VersionedTransaction;
-      try {
-        txToSignPoolRetry = VersionedTransaction.deserialize(
-          new Uint8Array(txBufferPoolRetry),
-        );
-      } catch (e) {
-        console.warn(
-          'Failed to deserialize as VersionedTransaction for createPool retry, trying legacy Transaction:',
-          e,
-        );
-        txToSignPoolRetry = Transaction.from(new Uint8Array(txBufferPoolRetry));
-        if (!txToSignPoolRetry.feePayer && wallet.publicKey) {
-          txToSignPoolRetry.feePayer = new PublicKey(wallet.publicKey);
-        } else if (!txToSignPoolRetry.feePayer) {
-          console.error(
-            'CRITICAL: Legacy transaction for createPool retry deserialized without a feePayer and wallet.publicKey is unavailable.',
-          );
-        }
-      }
+    onStatusUpdate?.('Signing and sending transaction via Privy...');
 
-      txSignature = await wallet.sendTransaction(
-        txToSignPoolRetry,
-        connection,
-        {confirmTransaction: false, statusCallback: onStatusUpdate},
-      );
+    const txSignature = await sendBase64Transaction(serializedTxBase64, connection, {
+      confirmTransaction: true,
+      statusCallback: onStatusUpdate,
+    });
 
-      // Wait longer on mainnet to allow transaction to propagate
-      onStatusUpdate?.('Transaction sent. Waiting for network propagation...');
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Increased to 10 seconds wait
-
-      // Multiple attempts to check confirmation
-      let confirmed = false;
-      let attempts = 0;
-      const maxAttempts = 5;
-
-      while (!confirmed && attempts < maxAttempts) {
-        attempts++;
-        try {
-          onStatusUpdate?.(
-            `Checking transaction status (attempt ${attempts}/${maxAttempts})...`,
-          );
-          const status = await connection.getSignatureStatus(txSignature);
-          console.log('Pool creation transaction status:', status);
-
-          if (
-            status &&
-            status.value &&
-            (status.value.confirmationStatus === 'confirmed' ||
-              status.value.confirmationStatus === 'finalized')
-          ) {
-            onStatusUpdate?.('Transaction confirmed manually!');
-            confirmed = true;
-            break;
-          } else {
-            onStatusUpdate?.(
-              `Status check ${attempts}/${maxAttempts}: Transaction not confirmed yet. Waiting...`,
-            );
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
-          }
-        } catch (statusError) {
-          console.warn(
-            `Error checking transaction status (attempt ${attempts}/${maxAttempts}):`,
-            statusError,
-          );
-        }
-      }
-
-      if (!confirmed) {
-        onStatusUpdate?.(
-          'Transaction sent but could not verify confirmation. Please check explorer later.',
-        );
-      }
-    }
-
-    onStatusUpdate?.('Pool creation transaction sent! TX ID: ' + txSignature);
+    console.log('✅ Pool creation TX Signature:', txSignature);
+    onStatusUpdate?.('Pool created successfully. TX: ' + txSignature);
 
     return {
       txId: txSignature,
@@ -628,7 +585,7 @@ export const uploadTokenMetadata = async (
       console.log(
         'Using image URL:',
         params.imageUri.substring(0, 50) +
-          (params.imageUri.length > 50 ? '...' : ''),
+        (params.imageUri.length > 50 ? '...' : ''),
       );
       formData.append('imageUrl', params.imageUri);
     }
@@ -699,29 +656,255 @@ export const uploadTokenMetadata = async (
  * Helper function to create a Meteora DBC token with default parameters
  * This creates a new token with bonding curve pool for buying/selling.
  */
+// export const createTokenWithCurve = async (
+//   params: {
+//     tokenName: string;
+//     tokenSymbol: string;
+//     initialMarketCap: number;
+//     targetMarketCap: number;
+//     tokenSupply: number;
+//     buyAmount?: number; // Optional amount to buy immediately after creation
+//     metadataUri?: string; // Token metadata URI from IPFS or similar
+//     website?: string; // Optional website for token metadata
+//     logo?: string; // Optional logo URL for token metadata
+//     // Advanced settings
+//     baseFeeBps?: number; // Base fee in basis points (100 = 1%)
+//     dynamicFeeEnabled?: boolean; // Enable dynamic fee
+//     collectFeeBoth?: boolean; // Collect fee in both tokens
+//     migrationFeeOption?: number; // Migration fee option
+//     partnerLpPercentage?: number; // Partner LP percentage
+//     creatorLpPercentage?: number; // Creator LP percentage
+//     partnerLockedLpPercentage?: number; // Partner locked LP percentage
+//     creatorLockedLpPercentage?: number; // Creator locked LP percentage
+//   },
+//   connection: Connection,
+//   wallet: any,
+//   onStatusUpdate?: (status: string) => void,
+// ): Promise<{
+//   configAddress: string;
+//   poolAddress?: string;
+//   baseMintAddress?: string;
+//   txId: string;
+// }> => {
+//   try {
+//     onStatusUpdate?.('Creating new token with bonding curve...');
+
+//     // Step 1: Create the config with bonding curve
+//     onStatusUpdate?.('Step 1: Building curve and creating config...');
+//     const curveResult = await buildCurveByMarketCap(
+//       {
+//         totalTokenSupply: params.tokenSupply,
+//         initialMarketCap: params.initialMarketCap,
+//         migrationMarketCap: params.targetMarketCap,
+//         migrationOption: 0, // DAMM V1
+//         tokenBaseDecimal: 9, // Standard token decimals
+//         tokenQuoteDecimal: 9, // SOL has 9 decimals
+//         lockedVesting: {
+//           amountPerPeriod: '0',
+//           cliffDurationFromMigrationTime: '0',
+//           frequency: '0',
+//           numberOfPeriod: '0',
+//           cliffUnlockAmount: '0',
+//         },
+//         feeSchedulerParam: {
+//           numberOfPeriod: 0,
+//           reductionFactor: 0,
+//           periodFrequency: 0,
+//           feeSchedulerMode: 0,
+//         },
+//         baseFeeBps: params.baseFeeBps ?? 100, // Use provided value or default to 1% fee
+//         dynamicFeeEnabled: params.dynamicFeeEnabled ?? true, // Use provided value or default to true
+//         activationType: 0, // Slot based
+//         collectFeeMode: params.collectFeeBoth ? 1 : 0, // 1 for both tokens, 0 for quote only
+//         migrationFeeOption: params.migrationFeeOption ?? 0, // Use provided value or default to Fixed 25bps
+//         tokenType: 0, // SPL token
+//         partnerLpPercentage: params.partnerLpPercentage ?? 25, // Use provided value or default to 25%
+//         creatorLpPercentage: params.creatorLpPercentage ?? 25, // Use provided value or default to 25%
+//         partnerLockedLpPercentage: params.partnerLockedLpPercentage ?? 25, // Use provided value or default to 25%
+//         creatorLockedLpPercentage: params.creatorLockedLpPercentage ?? 25, // Use provided value or default to 25%
+//         creatorTradingFeePercentage: 0,
+//       },
+//       connection,
+//       wallet,
+//       onStatusUpdate,
+//     );
+
+//     const configAddress = curveResult.configAddress;
+
+//     if (!configAddress) {
+//       throw new Error('Failed to create config - config address not returned');
+//     }
+
+//     onStatusUpdate?.(`Config created with address ${configAddress}`);
+
+//     let poolResult;
+//     let txId = curveResult.txId;
+
+//     // If buy amount is specified, use createPoolAndBuy to optimize the flow
+//     if (params.buyAmount && params.buyAmount > 0) {
+//       // Step 2+3: Create pool and buy in one transaction
+//       onStatusUpdate?.(
+//         `Creating pool and buying ${params.buyAmount} SOL worth of tokens...`,
+//       );
+
+//       const buyAmountLamports = Math.floor(params.buyAmount * 1e9);
+//       console.log(
+//         `Converting buyAmount ${params.buyAmount} SOL to ${buyAmountLamports} lamports`,
+//       );
+
+//       const poolAndBuyResult = await apiCall('/meteora/pool-and-buy', 'POST', {
+//         createPoolParam: {
+//           quoteMint: 'So11111111111111111111111111111111111111112', // SOL
+//           config: configAddress,
+//           baseTokenType: 0, // SPL
+//           quoteTokenType: 0, // SPL
+//           name: params.tokenName,
+//           symbol: params.tokenSymbol,
+//           uri: params.metadataUri || params.logo || '', // Use the metadata URI if available
+//           baseMint: '', // Will be created by the API
+//           payer: wallet.publicKey.toString(),
+//           poolCreator: wallet.publicKey.toString(),
+//         },
+//         buyAmount: buyAmountLamports.toString(), // Use string instead of BN object
+//         minimumAmountOut: '1', // Use string instead of BN object
+//         referralTokenAccount: null,
+//       });
+
+//       if (!poolAndBuyResult.success) {
+//         throw new Error(
+//           poolAndBuyResult.error || 'Failed to create pool and buy tokens',
+//         );
+//       }
+
+//       onStatusUpdate?.('Signing transaction...');
+
+//       const txBufferPoolAndBuy = Buffer.from(
+//         poolAndBuyResult.transaction,
+//         'base64',
+//       );
+//       let txToSignPoolAndBuy: Transaction | VersionedTransaction;
+//       try {
+//         txToSignPoolAndBuy = VersionedTransaction.deserialize(
+//           new Uint8Array(txBufferPoolAndBuy),
+//         );
+//       } catch (e) {
+//         console.warn(
+//           'Failed to deserialize as VersionedTransaction for createTokenWithCurve (poolAndBuy), trying legacy Transaction:',
+//           e,
+//         );
+//         txToSignPoolAndBuy = Transaction.from(
+//           new Uint8Array(txBufferPoolAndBuy),
+//         );
+//         if (!txToSignPoolAndBuy.feePayer && wallet.publicKey) {
+//           txToSignPoolAndBuy.feePayer = new PublicKey(wallet.publicKey);
+//         } else if (!txToSignPoolAndBuy.feePayer) {
+//           console.error(
+//             'CRITICAL: Legacy transaction for createTokenWithCurve (poolAndBuy) deserialized without a feePayer and wallet.publicKey is unavailable.',
+//           );
+//         }
+//       }
+//       // Sign and send the transaction
+//       const txSignature = await wallet.sendTransaction(
+//         txToSignPoolAndBuy,
+//         connection,
+//         { confirmTransaction: true, statusCallback: onStatusUpdate },
+//       );
+
+//       poolResult = {
+//         txId: txSignature,
+//         poolAddress: poolAndBuyResult.poolAddress,
+//         baseMintAddress: poolAndBuyResult.baseMintAddress,
+//       };
+
+//       onStatusUpdate?.(`Pool created and tokens purchased successfully!`);
+//     } else {
+//       // Step 2: Create the pool without buying
+//       onStatusUpdate?.('Creating pool...');
+//       poolResult = await createPool(
+//         {
+//           quoteMint: 'So11111111111111111111111111111111111111112', // SOL
+//           config: configAddress,
+//           baseTokenType: 0, // SPL
+//           quoteTokenType: 0, // SPL
+//           name: params.tokenName,
+//           symbol: params.tokenSymbol,
+//           uri: params.metadataUri || params.logo || '', // Use the metadata URI if available
+//           baseMint: '', // This will be created by the API call
+//         },
+//         connection,
+//         wallet,
+//         onStatusUpdate,
+//       );
+
+//       txId = poolResult.txId;
+//       onStatusUpdate?.(`Pool created successfully!`);
+//     }
+
+//     // Step 3 (optional): Create pool metadata if we have any additional info
+//     if (poolResult.poolAddress && (params.website || params.logo)) {
+//       try {
+//         onStatusUpdate?.('Creating pool metadata...');
+
+//         const metadataResult = await createPoolMetadata(
+//           {
+//             virtualPool: poolResult.poolAddress,
+//             name: params.tokenName,
+//             website: params.website || '',
+//             logo: params.logo || '',
+//             creator: wallet.publicKey.toString(),
+//             payer: wallet.publicKey.toString(),
+//           },
+//           connection,
+//           wallet,
+//           onStatusUpdate,
+//         );
+
+//         onStatusUpdate?.('Pool metadata created successfully!');
+//       } catch (metadataError) {
+//         console.warn('Error creating pool metadata:', metadataError);
+//         onStatusUpdate?.(
+//           'Note: Pool metadata creation failed, but token was created successfully.',
+//         );
+//         // We don't want to fail the whole process if just metadata creation fails
+//       }
+//     }
+
+//     return {
+//       configAddress,
+//       poolAddress: poolResult.poolAddress,
+//       baseMintAddress: poolResult.baseMintAddress,
+//       txId,
+//     };
+//   } catch (error) {
+//     console.error('Error creating token with curve:', error);
+//     onStatusUpdate?.(
+//       'Failed to create token with curve: ' +
+//       (error instanceof Error ? error.message : 'Unknown error'),
+//     );
+//     throw error;
+//   }
+// };
+
 export const createTokenWithCurve = async (
   params: {
     tokenName: string;
     tokenSymbol: string;
-    initialMarketCap: number;
-    targetMarketCap: number;
-    tokenSupply: number;
-    buyAmount?: number; // Optional amount to buy immediately after creation
-    metadataUri?: string; // Token metadata URI from IPFS or similar
-    website?: string; // Optional website for token metadata
-    logo?: string; // Optional logo URL for token metadata
-    // Advanced settings
-    baseFeeBps?: number; // Base fee in basis points (100 = 1%)
-    dynamicFeeEnabled?: boolean; // Enable dynamic fee
-    collectFeeBoth?: boolean; // Collect fee in both tokens
-    migrationFeeOption?: number; // Migration fee option
-    partnerLpPercentage?: number; // Partner LP percentage
-    creatorLpPercentage?: number; // Creator LP percentage
-    partnerLockedLpPercentage?: number; // Partner locked LP percentage
-    creatorLockedLpPercentage?: number; // Creator locked LP percentage
+    buyAmount?: number; // Optional: buy immediately
+    metadataUri?: string;
+    website?: string;
+    logo?: string;
   },
   connection: Connection,
-  wallet: any,
+  walletPubKey: any,
+  isPrivy: () => boolean,
+  sendBase64Transaction: (
+    base64Tx: string,
+    connection: Connection,
+    options?: {
+      confirmTransaction?: boolean;
+      statusCallback?: (status: string) => void;
+    },
+  ) => Promise<string>,
   onStatusUpdate?: (status: string) => void,
 ): Promise<{
   configAddress: string;
@@ -732,163 +915,112 @@ export const createTokenWithCurve = async (
   try {
     onStatusUpdate?.('Creating new token with bonding curve...');
 
-    // Step 1: Create the config with bonding curve
+    // Step 1: Build curve & config (all params handled on backend)
     onStatusUpdate?.('Step 1: Building curve and creating config...');
+    console.log("string of wallet: ", walletPubKey);
+
+
     const curveResult = await buildCurveByMarketCap(
-      {
-        totalTokenSupply: params.tokenSupply,
-        initialMarketCap: params.initialMarketCap,
-        migrationMarketCap: params.targetMarketCap,
-        migrationOption: 0, // DAMM V1
-        tokenBaseDecimal: 9, // Standard token decimals
-        tokenQuoteDecimal: 9, // SOL has 9 decimals
-        lockedVesting: {
-          amountPerPeriod: '0',
-          cliffDurationFromMigrationTime: '0',
-          frequency: '0',
-          numberOfPeriod: '0',
-          cliffUnlockAmount: '0',
-        },
-        feeSchedulerParam: {
-          numberOfPeriod: 0,
-          reductionFactor: 0,
-          periodFrequency: 0,
-          feeSchedulerMode: 0,
-        },
-        baseFeeBps: params.baseFeeBps ?? 100, // Use provided value or default to 1% fee
-        dynamicFeeEnabled: params.dynamicFeeEnabled ?? true, // Use provided value or default to true
-        activationType: 0, // Slot based
-        collectFeeMode: params.collectFeeBoth ? 1 : 0, // 1 for both tokens, 0 for quote only
-        migrationFeeOption: params.migrationFeeOption ?? 0, // Use provided value or default to Fixed 25bps
-        tokenType: 0, // SPL token
-        partnerLpPercentage: params.partnerLpPercentage ?? 25, // Use provided value or default to 25%
-        creatorLpPercentage: params.creatorLpPercentage ?? 25, // Use provided value or default to 25%
-        partnerLockedLpPercentage: params.partnerLockedLpPercentage ?? 25, // Use provided value or default to 25%
-        creatorLockedLpPercentage: params.creatorLockedLpPercentage ?? 25, // Use provided value or default to 25%
-        creatorTradingFeePercentage: 0,
-      },
+      { payer: walletPubKey },
       connection,
-      wallet,
+      walletPubKey,
+      isPrivy,
+      sendBase64Transaction,
       onStatusUpdate,
     );
 
     const configAddress = curveResult.configAddress;
-
-    if (!configAddress) {
-      throw new Error('Failed to create config - config address not returned');
-    }
+    console.log("config address: ", configAddress);
+    if (!configAddress) throw new Error('Config creation failed');
 
     onStatusUpdate?.(`Config created with address ${configAddress}`);
-
     let poolResult;
-    let txId = curveResult.txId;
+    let final_txId;
 
-    // If buy amount is specified, use createPoolAndBuy to optimize the flow
+    // Step 2: If buy amount provided → create pool and buy
     if (params.buyAmount && params.buyAmount > 0) {
-      // Step 2+3: Create pool and buy in one transaction
       onStatusUpdate?.(
         `Creating pool and buying ${params.buyAmount} SOL worth of tokens...`,
       );
 
       const buyAmountLamports = Math.floor(params.buyAmount * 1e9);
-      console.log(
-        `Converting buyAmount ${params.buyAmount} SOL to ${buyAmountLamports} lamports`,
-      );
 
       const poolAndBuyResult = await apiCall('/meteora/pool-and-buy', 'POST', {
         createPoolParam: {
-          quoteMint: 'So11111111111111111111111111111111111111112', // SOL
+          // quoteMint: 'So11111111111111111111111111111111111111112', // SOL
           config: configAddress,
-          baseTokenType: 0, // SPL
-          quoteTokenType: 0, // SPL
+          // baseTokenType: 0,
+          // quoteTokenType: 0,
           name: params.tokenName,
           symbol: params.tokenSymbol,
-          uri: params.metadataUri || params.logo || '', // Use the metadata URI if available
-          baseMint: '', // Will be created by the API
-          payer: wallet.publicKey.toString(),
-          poolCreator: wallet.publicKey.toString(),
+          uri: params.metadataUri || params.logo || '',
+          // baseMint: '', // created by API
+          payer: walletPubKey,
+          poolCreator: walletPubKey,
         },
-        buyAmount: buyAmountLamports.toString(), // Use string instead of BN object
-        minimumAmountOut: '1', // Use string instead of BN object
+        buyAmount: buyAmountLamports.toString(),
+        minimumAmountOut: '1',
         referralTokenAccount: null,
       });
 
-      if (!poolAndBuyResult.success) {
-        throw new Error(
-          poolAndBuyResult.error || 'Failed to create pool and buy tokens',
-        );
-      }
+      if (!poolAndBuyResult.success) throw new Error(poolAndBuyResult.error || 'Failed to create pool');
+      const serializedTxBase64 = poolAndBuyResult.transaction;
 
-      onStatusUpdate?.('Signing transaction...');
+      // console.log("serialized trasanction for pool: ", serializedTxBase64);
 
-      const txBufferPoolAndBuy = Buffer.from(
-        poolAndBuyResult.transaction,
-        'base64',
-      );
-      let txToSignPoolAndBuy: Transaction | VersionedTransaction;
-      try {
-        txToSignPoolAndBuy = VersionedTransaction.deserialize(
-          new Uint8Array(txBufferPoolAndBuy),
-        );
-      } catch (e) {
-        console.warn(
-          'Failed to deserialize as VersionedTransaction for createTokenWithCurve (poolAndBuy), trying legacy Transaction:',
-          e,
-        );
-        txToSignPoolAndBuy = Transaction.from(
-          new Uint8Array(txBufferPoolAndBuy),
-        );
-        if (!txToSignPoolAndBuy.feePayer && wallet.publicKey) {
-          txToSignPoolAndBuy.feePayer = new PublicKey(wallet.publicKey);
-        } else if (!txToSignPoolAndBuy.feePayer) {
-          console.error(
-            'CRITICAL: Legacy transaction for createTokenWithCurve (poolAndBuy) deserialized without a feePayer and wallet.publicKey is unavailable.',
-          );
-        }
-      }
-      // Sign and send the transaction
-      const txSignature = await wallet.sendTransaction(
-        txToSignPoolAndBuy,
-        connection,
-        {confirmTransaction: true, statusCallback: onStatusUpdate},
-      );
+      if (!serializedTxBase64)
+        throw new Error('No transaction returned from backend');
 
+      // console.log('createPool serialized transaction:', serializedTxBase64);
+
+      if (!isPrivy()) throw new Error('Privy wallet is not active');
+
+      onStatusUpdate?.('Signing and sending transaction via Privy...');
+
+      const txSignature = await sendBase64Transaction(serializedTxBase64, connection, {
+        confirmTransaction: true,
+        statusCallback: onStatusUpdate,
+      });
+
+      console.log('✅ Pool creation and buy TX Signature:', txSignature);
+      onStatusUpdate?.('Pool created and buy successfully. TX: ' + txSignature);
+
+      final_txId= txSignature;
       poolResult = {
         txId: txSignature,
         poolAddress: poolAndBuyResult.poolAddress,
         baseMintAddress: poolAndBuyResult.baseMintAddress,
       };
 
-      onStatusUpdate?.(`Pool created and tokens purchased successfully!`);
+      onStatusUpdate?.('Pool created and tokens purchased successfully!');
     } else {
-      // Step 2: Create the pool without buying
+      // Step 2: Only create pool
       onStatusUpdate?.('Creating pool...');
       poolResult = await createPool(
         {
-          quoteMint: 'So11111111111111111111111111111111111111112', // SOL
+          // quoteMint: 'So11111111111111111111111111111111111111112', // SOL
           config: configAddress,
-          baseTokenType: 0, // SPL
-          quoteTokenType: 0, // SPL
+          // baseTokenType: 0,
+          // quoteTokenType: 0,
           name: params.tokenName,
           symbol: params.tokenSymbol,
-          uri: params.metadataUri || params.logo || '', // Use the metadata URI if available
-          baseMint: '', // This will be created by the API call
+          uri: params.metadataUri || params.logo || '',
+          // baseMint: '', // created by API
         },
         connection,
-        wallet,
+        walletPubKey,
+        isPrivy,
+        sendBase64Transaction,
         onStatusUpdate,
       );
-
-      txId = poolResult.txId;
-      onStatusUpdate?.(`Pool created successfully!`);
+      final_txId = poolResult.txId;
+      console.log("pool address txid: ", final_txId);
     }
 
-    // Step 3 (optional): Create pool metadata if we have any additional info
+    // Step 3: Metadata (optional)
     if (poolResult.poolAddress && (params.website || params.logo)) {
       try {
-        onStatusUpdate?.('Creating pool metadata...');
-
-        const metadataResult = await createPoolMetadata(
+        await createPoolMetadata(
           {
             virtualPool: poolResult.poolAddress,
             name: params.tokenName,
@@ -901,14 +1033,8 @@ export const createTokenWithCurve = async (
           wallet,
           onStatusUpdate,
         );
-
-        onStatusUpdate?.('Pool metadata created successfully!');
-      } catch (metadataError) {
-        console.warn('Error creating pool metadata:', metadataError);
-        onStatusUpdate?.(
-          'Note: Pool metadata creation failed, but token was created successfully.',
-        );
-        // We don't want to fail the whole process if just metadata creation fails
+      } catch (err) {
+        console.warn('Metadata creation failed:', err);
       }
     }
 
@@ -916,15 +1042,14 @@ export const createTokenWithCurve = async (
       configAddress,
       poolAddress: poolResult.poolAddress,
       baseMintAddress: poolResult.baseMintAddress,
-      txId,
+      txId: final_txId,
     };
-  } catch (error) {
-    console.error('Error creating token with curve:', error);
+  } catch (err) {
+    console.error('Error creating token with curve:', err);
     onStatusUpdate?.(
-      'Failed to create token with curve: ' +
-        (error instanceof Error ? error.message : 'Unknown error'),
+      'Failed to create token with curve: ' + (err instanceof Error ? err.message : 'Unknown'),
     );
-    throw error;
+    throw err;
   }
 };
 
@@ -936,7 +1061,7 @@ export const createPoolAndBuy = async (
   connection: Connection,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string; poolAddress: string}> => {
+): Promise<{ txId: string; poolAddress: string }> => {
   try {
     onStatusUpdate?.('Creating pool and buying tokens...');
 
@@ -1057,7 +1182,7 @@ export const createPoolAndBuy = async (
       txSignature = await wallet.sendTransaction(
         txToSignPoolAndBuyRetry,
         connection,
-        {confirmTransaction: false, statusCallback: onStatusUpdate},
+        { confirmTransaction: false, statusCallback: onStatusUpdate },
       );
 
       // Wait longer to allow transaction to propagate on mainnet
@@ -1138,7 +1263,7 @@ export const createPoolMetadata = async (
   connection: Connection,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string}> => {
+): Promise<{ txId: string }> => {
   try {
     onStatusUpdate?.('Creating pool metadata...');
 
@@ -1181,7 +1306,7 @@ export const createPoolMetadata = async (
     const txSignature = await wallet.sendTransaction(
       txToSignMetadata,
       connection,
-      {confirmTransaction: true, statusCallback: onStatusUpdate},
+      { confirmTransaction: true, statusCallback: onStatusUpdate },
     );
 
     onStatusUpdate?.('Pool metadata created successfully!');
@@ -1303,7 +1428,7 @@ export const executeTrade = async (
   poolAddress: string,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string}> => {
+): Promise<{ txId: string }> => {
   try {
     onStatusUpdate?.('Preparing trade...');
 
@@ -1389,7 +1514,7 @@ export const executeTrade = async (
       txSignature = await wallet.sendTransaction(
         txToSignSwap,
         fallbackConnection,
-        {confirmTransaction: true, statusCallback: onStatusUpdate},
+        { confirmTransaction: true, statusCallback: onStatusUpdate },
       );
     } catch (sendError) {
       // If it's some other error, rethrow it
@@ -1426,7 +1551,7 @@ export const addLiquidity = async (
   connection: Connection,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string}> => {
+): Promise<{ txId: string }> => {
   try {
     onStatusUpdate?.('Preparing to add liquidity...');
 
@@ -1495,7 +1620,7 @@ export const addLiquidity = async (
     const txSignature = await wallet.sendTransaction(
       txToSignAddLiq,
       connection,
-      {confirmTransaction: true, statusCallback: onStatusUpdate},
+      { confirmTransaction: true, statusCallback: onStatusUpdate },
     );
 
     onStatusUpdate?.('Liquidity added successfully!');
@@ -1519,7 +1644,7 @@ export const removeLiquidity = async (
   connection: Connection,
   wallet: any,
   onStatusUpdate?: (status: string) => void,
-): Promise<{txId: string}> => {
+): Promise<{ txId: string }> => {
   try {
     onStatusUpdate?.('Preparing to remove liquidity...');
 
@@ -1561,7 +1686,7 @@ export const removeLiquidity = async (
     const txSignature = await wallet.sendTransaction(
       txToSignRemoveLiq,
       connection,
-      {confirmTransaction: true, statusCallback: onStatusUpdate},
+      { confirmTransaction: true, statusCallback: onStatusUpdate },
     );
 
     onStatusUpdate?.('Liquidity removed successfully!');

@@ -6,3 +6,5 @@ export * from './Common';
 
 // Sample UI Screens
 export * from './sample-ui'; 
+
+export * from './coinbase';

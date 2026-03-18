@@ -21,6 +21,10 @@ import {
   getUsersForChat,
   editMessage,
   deleteMessage,
+  listPublicGroups,
+  joinGroup,
+  leaveGroup,
+  listGroupMembers,
 } from '../../controllers/chatController';
 import { chatImageRouter } from './chatImageRoutes';
 
@@ -58,6 +62,16 @@ chatRouter.delete('/messages/:messageId', asyncHandler(deleteMessage));
 
 // Get users for chat creation (search)
 chatRouter.get('/users', asyncHandler(getUsersForChat));
+
+// Public group discovery (for "Groups" tab)
+chatRouter.get('/groups', asyncHandler(listPublicGroups));
+
+// Join/leave group
+chatRouter.post('/groups/:chatId/join', asyncHandler(joinGroup));
+chatRouter.post('/groups/:chatId/leave', asyncHandler(leaveGroup));
+
+// Group members
+chatRouter.get('/groups/:chatId/members', asyncHandler(listGroupMembers));
 
 // Mount the chat image router **AFTER** specific message routes
 chatRouter.use('/images', chatImageRouter);

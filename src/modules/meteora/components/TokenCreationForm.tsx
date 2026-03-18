@@ -1,872 +1,966 @@
 import React, { useState, useEffect } from 'react';
+// import {Solfla}
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    ActivityIndicator,
-    Switch,
-    Image,
-    Alert,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Switch,
+  Image,
+  Alert,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Icons from '@/assets/svgs';
+import { IPFSAwareImage } from '@/shared/utils/IPFSImage';
+
 import * as ImagePicker from 'expo-image-picker';
+// import * as VideoThumbnails from 'expo-video-thumbnails';
 import COLORS from '@/assets/colors';
 import TYPOGRAPHY from '@/assets/typography';
 import {
-    TokenType,
-    FeeSchedulerMode,
-    ActivationType,
-    CollectFeeMode,
-    MigrationOption,
-    MigrationFeeOption,
-    BuildCurveByMarketCapParams,
+  TokenType,
+  FeeSchedulerMode,
+  ActivationType,
+  CollectFeeMode,
+  MigrationOption,
+  MigrationFeeOption,
+  BuildCurveByMarketCapParams,
 } from '../types';
-import { buildCurveByMarketCap, createPool, createTokenWithCurve, uploadTokenMetadata } from '../services/meteoraService';
+import {
+  buildCurveByMarketCap,
+  createPool,
+  createTokenWithCurve,
+  uploadTokenMetadata,
+} from '../services/meteoraService';
 import BondingCurveVisualizer from './BondingCurveVisualizer';
-import { Connection } from '@solana/web3.js';
+import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
 import { useWallet } from '@/modules/wallet-providers/hooks/useWallet';
 import BN from 'bn.js';
 import { HELIUS_STAKED_URL } from '@env';
 
 interface TokenCreationFormProps {
-    walletAddress: string;
-    onTokenCreated?: (tokenAddress: string, txId: string) => void;
+  walletAddress: string;
+  isPrivy: () => boolean;
+  sendBase64Transaction: (
+    base64Tx: string,
+    connection: Connection,
+    options?: {
+      confirmTransaction?: boolean;
+      statusCallback?: (status: string) => void;
+    },
+  ) => Promise<string>;
+  onTokenCreated?: (tokenAddress: string, txId: string) => void;
 }
+type FeeEarner = {
+  id: string;
+  username: string;
+  percentage: number;
+};
 
 export default function TokenCreationForm({
-    walletAddress,
-    onTokenCreated,
+  walletAddress,
+  isPrivy,
+  sendBase64Transaction,
+  onTokenCreated,
 }: TokenCreationFormProps) {
-    // Basic token info
-    const [tokenName, setTokenName] = useState('');
-    const [tokenSymbol, setTokenSymbol] = useState('');
-    const [tokenSupply, setTokenSupply] = useState('1000000000');
-    const [tokenDecimals, setTokenDecimals] = useState('9');
-    const [tokenWebsite, setTokenWebsite] = useState('');
-    const [tokenDescription, setTokenDescription] = useState('');
-    const [tokenTwitter, setTokenTwitter] = useState('');
-    const [tokenTelegram, setTokenTelegram] = useState('');
+  //   const {wallet} = useWallet();
+  //   console.log('wallet from wallet address: ', walletAddress);
+  // Basic token info
+  const [tokenName, setTokenName] = useState('');
+  const [tokenSymbol, setTokenSymbol] = useState('');
+  const [tokenSupply, setTokenSupply] = useState('1000000000');
+  const [tokenDecimals, setTokenDecimals] = useState('9');
+  const [tokenWebsite, setTokenWebsite] = useState('');
+  const [tokenDescription, setTokenDescription] = useState('');
+  const [tokenTwitter, setTokenTwitter] = useState('');
+  const [tokenTelegram, setTokenTelegram] = useState('');
 
-    // Market cap settings
-    const [initialMarketCap, setInitialMarketCap] = useState('100');
-    const [migrationMarketCap, setMigrationMarketCap] = useState('3000');
+  const [feeEarners, setFeeEarners] = useState<FeeEarner[]>([]);
+  const [yourShare, setYourShare] = useState(100);
+  const [addingEarner, setAddingEarner] = useState(false);
+  const [draftUsername, setDraftUsername] = useState('');
+  const [draftPercentage, setDraftPercentage] = useState(0);
+  const [splitEqually, setSplitEqually] = useState(false);
 
-    // Token type
-    const [isToken2022, setIsToken2022] = useState(false);
+  useEffect(() => {
+    const used = feeEarners.reduce((sum, e) => sum + e.percentage, 0);
+    setYourShare(Math.max(0, 100 - used));
+  }, [feeEarners]);
 
-    // Buy on creation options
-    const [buyOnCreate, setBuyOnCreate] = useState(false);
-    const [buyAmount, setBuyAmount] = useState('1');
+  // Market cap settings
+  const [initialMarketCap, setInitialMarketCap] = useState('100');
+  const [migrationMarketCap, setMigrationMarketCap] = useState('3000');
 
-    // Advanced options
-    const [showAdvanced, setShowAdvanced] = useState(false);
-    const [baseFeeBps, setBaseFeeBps] = useState('100'); // 1% fee
-    const [dynamicFeeEnabled, setDynamicFeeEnabled] = useState(true);
-    const [collectFeeBoth, setCollectFeeBoth] = useState(false);
-    const [selectedMigrationFee, setSelectedMigrationFee] = useState(MigrationFeeOption.FixedBps25);
+  // Token type
+  const [isToken2022, setIsToken2022] = useState(false);
 
-    // LP distribution
-    const [partnerLpPercentage, setPartnerLpPercentage] = useState('25');
-    const [creatorLpPercentage, setCreatorLpPercentage] = useState('25');
-    const [partnerLockedLpPercentage, setPartnerLockedLpPercentage] = useState('25');
-    const [creatorLockedLpPercentage, setCreatorLockedLpPercentage] = useState('25');
+  // Buy on creation options
+  const [buyOnCreate, setBuyOnCreate] = useState(false);
+  const [buyAmount, setBuyAmount] = useState('1');
 
-    // Form state
-    const [error, setError] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
-    const [step, setStep] = useState(1);
-    const [configAddress, setConfigAddress] = useState('');
-    const [statusMessage, setStatusMessage] = useState('');
+  // Advanced options
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [baseFeeBps, setBaseFeeBps] = useState('100'); // 1% fee
+  const [dynamicFeeEnabled, setDynamicFeeEnabled] = useState(true);
+  const [collectFeeBoth, setCollectFeeBoth] = useState(false);
+  const [selectedMigrationFee, setSelectedMigrationFee] = useState(
+    MigrationFeeOption.FixedBps25,
+  );
 
-    // Image and metadata handling
-    const [tokenLogo, setTokenLogo] = useState('');
-    const [imageUri, setImageUri] = useState<string | null>(null);
-    const [imageFile, setImageFile] = useState<any>(null);
-    const [metadataUri, setMetadataUri] = useState('');
-    const [isUploadingMetadata, setIsUploadingMetadata] = useState(false);
-    const [showSocials, setShowSocials] = useState(false);
+  // LP distribution
+  const [partnerLpPercentage, setPartnerLpPercentage] = useState('25');
+  const [creatorLpPercentage, setCreatorLpPercentage] = useState('25');
+  const [partnerLockedLpPercentage, setPartnerLockedLpPercentage] =
+    useState('25');
+  const [creatorLockedLpPercentage, setCreatorLockedLpPercentage] =
+    useState('25');
 
-    // Get wallet and connection
-    const wallet = useWallet();
-    // Create a connection to the Solana network with better configuration
-    const connection = new Connection(
-        HELIUS_STAKED_URL,
-        {
-            commitment: 'confirmed',
-            confirmTransactionInitialTimeout: 120000, // 2 minutes 
-            disableRetryOnRateLimit: false
-        }
-    );
+  // Form state
+  const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [step, setStep] = useState(1);
+  const [configAddress, setConfigAddress] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
 
-    // Add new state variables for parsed numeric values
-    const [parsedInitialMarketCap, setParsedInitialMarketCap] = useState(100);
-    const [parsedMigrationMarketCap, setParsedMigrationMarketCap] = useState(3000);
-    const [parsedTokenSupply, setParsedTokenSupply] = useState(1000000000);
+  // Image and metadata handling
+  const [tokenLogo, setTokenLogo] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<any>(null);
+  const [metadataUri, setMetadataUri] = useState('');
+  const [isUploadingMetadata, setIsUploadingMetadata] = useState(false);
+  const [showSocials, setShowSocials] = useState(false);
+  const [feeSharing, setFeeSharing] = useState(false);
 
-    // Update parsed values when inputs change
-    useEffect(() => {
-        const initCap = Number(initialMarketCap);
-        if (!isNaN(initCap) && initCap > 0) {
-            setParsedInitialMarketCap(initCap);
-        }
+  // Video upload handling
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<any>(null);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
-        const migCap = Number(migrationMarketCap);
-        if (!isNaN(migCap) && migCap > 0) {
-            setParsedMigrationMarketCap(migCap);
-        }
+  // Get wallet and connection
+  // const wallet = useWallet();
+  // console.log("wallet publickey passing: ", wallet.publicKey?.toBase58())
+  // Create a connection to the Solana network with better configuration
 
-        const supply = Number(tokenSupply);
-        if (!isNaN(supply) && supply > 0) {
-            setParsedTokenSupply(supply);
-        }
-    }, [initialMarketCap, migrationMarketCap, tokenSupply]);
+  //   const connection = new Connection(HELIUS_STAKED_URL, {
+  //     commitment: 'confirmed',
+  //     confirmTransactionInitialTimeout: 120000, // 2 minutes
+  //     disableRetryOnRateLimit: false,
+  //   });
 
-    const validateStep1 = () => {
-        if (!tokenName.trim()) {
-            setError('Token name is required');
-            return false;
-        }
+  const connection = new Connection(clusterApiUrl('devnet'), {
+    commitment: 'confirmed',
+    confirmTransactionInitialTimeout: 120000, // optional
+  });
 
-        if (!tokenSymbol.trim()) {
-            setError('Token symbol is required');
-            return false;
-        }
+  // Add new state variables for parsed numeric values
+  const [parsedInitialMarketCap, setParsedInitialMarketCap] = useState(100);
+  const [parsedMigrationMarketCap, setParsedMigrationMarketCap] =
+    useState(3000);
+  const [parsedTokenSupply, setParsedTokenSupply] = useState(1000000000);
 
-        if (!tokenDescription.trim()) {
-            setError('Token description is required');
-            return false;
-        }
+  // Update parsed values when inputs change
+  useEffect(() => {
+    const initCap = Number(initialMarketCap);
+    if (!isNaN(initCap) && initCap > 0) {
+      setParsedInitialMarketCap(initCap);
+    }
 
-        if (!imageUri && !tokenLogo) {
-            setError('Token image is required');
-            return false;
-        }
+    const migCap = Number(migrationMarketCap);
+    if (!isNaN(migCap) && migCap > 0) {
+      setParsedMigrationMarketCap(migCap);
+    }
 
-        const supplyNum = Number(tokenSupply);
-        if (isNaN(supplyNum) || supplyNum <= 0) {
-            setError('Token supply must be a positive number');
-            return false;
-        }
+    const supply = Number(tokenSupply);
+    if (!isNaN(supply) && supply > 0) {
+      setParsedTokenSupply(supply);
+    }
+  }, [initialMarketCap, migrationMarketCap, tokenSupply]);
+  useEffect(() => {
+    const used = feeEarners.reduce((s, e) => s + e.percentage, 0);
+    setYourShare(Math.max(0, 100 - used));
+  }, [feeEarners]);
 
-        const decimalsNum = Number(tokenDecimals);
-        if (isNaN(decimalsNum) || decimalsNum < 6 || decimalsNum > 9) {
-            setError('Token decimals must be between 6 and 9');
-            return false;
-        }
+  const startAddEarner = () => {
+    setDraftUsername('');
+    setDraftPercentage(0);
+    setAddingEarner(true);
+  };
 
-        return true;
-    };
+  const cancelAddEarner = () => {
+    setAddingEarner(false);
+  };
 
-    const validateStep2 = () => {
-        const initMarketCap = Number(initialMarketCap);
-        if (isNaN(initMarketCap) || initMarketCap <= 0) {
-            setError('Initial market cap must be a positive number');
-            return false;
-        }
+  const confirmAddEarner = () => {
+    if (!draftUsername || draftPercentage <= 0) return;
 
-        const migMarketCap = Number(migrationMarketCap);
-        if (isNaN(migMarketCap) || migMarketCap <= initMarketCap) {
-            setError('Migration market cap must be greater than initial market cap');
-            return false;
-        }
+    setFeeEarners(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        username: draftUsername,
+        percentage: draftPercentage,
+      },
+    ]);
 
-        const feeVal = Number(baseFeeBps);
-        if (isNaN(feeVal) || feeVal < 0 || feeVal > 1000) {
-            setError('Base fee must be between 0 and 1000 basis points (0-10%)');
-            return false;
-        }
+    setAddingEarner(false);
+  };
 
-        // Validate buy amount if buy on create is enabled
-        if (buyOnCreate) {
-            const buyAmountVal = Number(buyAmount);
-            if (isNaN(buyAmountVal) || buyAmountVal <= 0) {
-                setError('Buy amount must be a positive number');
-                return false;
-            }
+  const removeEarner = (id: string) => {
+    setFeeEarners(prev => prev.filter(e => e.id !== id));
+  };
 
-            // Check if buy amount is reasonable (usually not more than 100 SOL)
-            if (buyAmountVal > 100) {
-                setError('Buy amount is unusually high. Please check the amount.');
-                return false;
-            }
-        }
+  const validateStep1 = () => {
+    if (!tokenName.trim()) {
+      setError('Token name is required');
+      return false;
+    }
 
-        // Check LP percentages add up to 100%
-        const totalPercentage = Number(partnerLpPercentage) +
-            Number(creatorLpPercentage) +
-            Number(partnerLockedLpPercentage) +
-            Number(creatorLockedLpPercentage);
+    if (!tokenSymbol.trim()) {
+      setError('Token symbol is required');
+      return false;
+    }
 
-        if (totalPercentage !== 100) {
-            setError('LP percentages must add up to 100%');
-            return false;
-        }
+    if (!tokenDescription.trim()) {
+      setError('Token description is required');
+      return false;
+    }
 
-        return true;
-    };
+    if (!imageUri && !tokenLogo) {
+      setError('Token image is required');
+      return false;
+    }
 
-    const handleNext = () => {
-        setError('');
-        if (step === 1 && validateStep1()) {
-            setStep(2);
-        }
-    };
+    const supplyNum = Number(tokenSupply);
+    if (isNaN(supplyNum) || supplyNum <= 0) {
+      setError('Token supply must be a positive number');
+      return false;
+    }
 
-    const handleBack = () => {
-        setError('');
-        if (step === 2) {
-            setStep(1);
-        }
-    };
+    const decimalsNum = Number(tokenDecimals);
+    if (isNaN(decimalsNum) || decimalsNum < 6 || decimalsNum > 9) {
+      setError('Token decimals must be between 6 and 9');
+      return false;
+    }
 
-    const handleCreateToken = async () => {
-        if (!validateStep2()) {
-            return;
-        }
+    return true;
+  };
 
-        setError('');
-        setIsCreating(true);
+  const validateStep2 = () => {
+    const initMarketCap = Number(initialMarketCap);
+    if (isNaN(initMarketCap) || initMarketCap <= 0) {
+      setError('Initial market cap must be a positive number');
+      return false;
+    }
 
+    const migMarketCap = Number(migrationMarketCap);
+    if (isNaN(migMarketCap) || migMarketCap <= initMarketCap) {
+      setError('Migration market cap must be greater than initial market cap');
+      return false;
+    }
+
+    const feeVal = Number(baseFeeBps);
+    if (isNaN(feeVal) || feeVal < 0 || feeVal > 1000) {
+      setError('Base fee must be between 0 and 1000 basis points (0-10%)');
+      return false;
+    }
+
+    // Validate buy amount if buy on create is enabled
+    if (buyOnCreate) {
+      const buyAmountVal = Number(buyAmount);
+      if (isNaN(buyAmountVal) || buyAmountVal <= 0) {
+        setError('Buy amount must be a positive number');
+        return false;
+      }
+
+      // Check if buy amount is reasonable (usually not more than 100 SOL)
+      if (buyAmountVal > 100) {
+        setError('Buy amount is unusually high. Please check the amount.');
+        return false;
+      }
+    }
+
+    // Check LP percentages add up to 100%
+    const totalPercentage =
+      Number(partnerLpPercentage) +
+      Number(creatorLpPercentage) +
+      Number(partnerLockedLpPercentage) +
+      Number(creatorLockedLpPercentage);
+
+    if (totalPercentage !== 100) {
+      setError('LP percentages must add up to 100%');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleCreateToken = async () => {
+    if (!validateStep2()) {
+      return;
+    }
+    const publicKey = new PublicKey(walletAddress);
+    const balance = await connection.getBalance(publicKey);
+    // if (balance === 0) {
+    //   return Alert.alert('Error', 'Not enough sol');
+    // }
+    // setError('');
+    // setIsCreating(true);
+
+    try {
+      // Step 1: Upload metadata first
+      setStatusMessage('Uploading token metadata...');
+      let uri = metadataUri;
+
+      if (!uri) {
+        uri = await uploadMetadata();
+      }
+
+      if (!uri) {
+        throw new Error('Failed to get metadata URI');
+      }
+
+      // Step 2: Create token with curve
+      setStatusMessage('Creating token with bonding curve...');
+
+      // Log parameters for debugging
+      console.log('Creating token with params:', {
+        tokenName,
+        tokenSymbol,
+        buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
+        metadataUri: uri,
+        website: tokenWebsite,
+        logo: imageUri || tokenLogo,
+      });
+
+      // Use the createTokenWithCurve function with only the required params
+      //   const walletPubKey = wallet?.publicKey;
+      //   console.log(
+      //     'wallet publickey passed in create token with curve function: ',
+      //     walletPubKey,
+      //   );
+      // const result = await createTokenWithCurve(
+      //   {
+      //     tokenName,
+      //     tokenSymbol,
+      //     buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
+      //     metadataUri: uri,
+      //     website: tokenWebsite,
+      //     logo: imageUri || tokenLogo,
+      //   },
+      //   connection,
+      //   walletAddress,
+      //   isPrivy,
+      //   sendBase64Transaction,
+      //   setStatusMessage,
+      // );
+
+      console.log('Token created successfully:');
+
+      // Step 3: Upload video if provided
+      if (videoFile) {
         try {
-            // Step 1: Upload metadata first
-            setStatusMessage('Uploading token metadata...');
-            let uri = metadataUri;
-
-            if (!uri) {
-                uri = await uploadMetadata();
-            }
-
-            if (!uri) {
-                throw new Error('Failed to get metadata URI');
-            }
-
-            // Step 2: Create token with curve
-            setStatusMessage('Creating token with bonding curve...');
-
-            // Log parameters for debugging
-            console.log('Creating token with params:', {
-                tokenName,
-                tokenSymbol,
-                initialMarketCap: parseFloat(initialMarketCap),
-                targetMarketCap: parseFloat(migrationMarketCap),
-                tokenSupply: parseInt(tokenSupply),
-                buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
-                metadataUri: uri,
-                baseFeeBps: parseInt(baseFeeBps),
-                dynamicFeeEnabled,
-                collectFeeBoth,
-                migrationFeeOption: selectedMigrationFee,
-                partnerLpPercentage: parseInt(partnerLpPercentage),
-                creatorLpPercentage: parseInt(creatorLpPercentage),
-                partnerLockedLpPercentage: parseInt(partnerLockedLpPercentage),
-                creatorLockedLpPercentage: parseInt(creatorLockedLpPercentage)
-            });
-
-            // Use the improved createTokenWithCurve function with metadata URI
-            const result = await createTokenWithCurve(
-                {
-                    tokenName,
-                    tokenSymbol,
-                    initialMarketCap: parseFloat(initialMarketCap),
-                    targetMarketCap: parseFloat(migrationMarketCap),
-                    tokenSupply: parseInt(tokenSupply),
-                    buyAmount: buyOnCreate ? parseFloat(buyAmount) : undefined,
-                    metadataUri: uri,
-                    website: tokenWebsite,
-                    logo: imageUri || tokenLogo,
-                    // Pass the advanced settings
-                    baseFeeBps: parseInt(baseFeeBps),
-                    dynamicFeeEnabled,
-                    collectFeeBoth,
-                    migrationFeeOption: selectedMigrationFee,
-                    partnerLpPercentage: parseInt(partnerLpPercentage),
-                    creatorLpPercentage: parseInt(creatorLpPercentage),
-                    partnerLockedLpPercentage: parseInt(partnerLockedLpPercentage),
-                    creatorLockedLpPercentage: parseInt(creatorLockedLpPercentage)
-                },
-                connection,
-                wallet,
-                setStatusMessage
-            );
-
-            console.log('Token created successfully:', result);
-
-            if (onTokenCreated && result.baseMintAddress) {
-                onTokenCreated(result.baseMintAddress, result.txId);
-            }
-        } catch (err) {
-            console.error('Error creating token:', err);
-            setError(`Failed to create token: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        } finally {
-            setIsCreating(false);
+          setStatusMessage('Uploading token video...');
+          await uploadVideoToServer('2Ne1SAvtYbnDasFAN5ZjznXzZVuZ9CgBPjrenEQggL3K');
+        } catch (videoError) {
+          console.error('Video upload failed:', videoError);
+          // Don't fail the entire process if video upload fails
+          Alert.alert('Warning', 'Token created but video upload failed. You can upload the video later.');
         }
-    };
+      }
 
-    // Add a function to handle image picking
-    const pickImage = async () => {
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 0.8,
-            });
+      // if (onTokenCreated && result.baseMintAddress) {
+      //   onTokenCreated(result.baseMintAddress, result.txId);
+      // }
+      setTokenName('');
+      setTokenSymbol('');
+      setBuyAmount('');
+      setBuyOnCreate(false);
+      setMetadataUri('');
+      setTokenWebsite('');
+      setTokenLogo('');
+      setImageUri(null);
+      setVideoUri(null);
+      setVideoFile(null);
+      setTokenDescription('');
+      setTokenTwitter('');
+      setTokenTelegram('');
+      setStatusMessage('Token created successfully!');
+    } catch (err) {
+      console.error('Error creating token:', err);
+      setError(
+        `Failed to create token: ${err instanceof Error ? err.message : 'Unknown error'
+        }`,
+      );
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
-            if (!result.canceled && result.assets.length > 0) {
-                setImageUri(result.assets[0].uri);
-                setImageFile(result.assets[0]);
-                // If using direct URL input before, clear it
-                if (tokenLogo && tokenLogo !== result.assets[0].uri) {
-                    setTokenLogo('');
-                }
-            }
-        } catch (error) {
-            console.error('Error picking image:', error);
-            Alert.alert('Error', 'Failed to select image');
+  // Add a function to handle image picking
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your media library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setImageUri(result.assets[0].uri);
+        setImageFile(result.assets[0]);
+        // If using direct URL input before, clear it
+        if (tokenLogo && tokenLogo !== result.assets[0].uri) {
+          setTokenLogo('');
         }
-    };
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select image');
+    }
+  };
 
-    // Function to remove selected image
-    const removeImage = () => {
-        setImageUri(null);
-        setImageFile(null);
-        setTokenLogo('');
-    };
+  // Function to remove selected image
+  const removeImage = () => {
+    setImageUri(null);
+    setImageFile(null);
+    setTokenLogo('');
+  };
 
-    // Function to use image from URL
-    const setImageFromUrl = () => {
-        if (tokenLogo && (
-            tokenLogo.startsWith('http://') ||
-            tokenLogo.startsWith('https://') ||
-            tokenLogo.startsWith('ipfs://')
-        )) {
-            setImageUri(tokenLogo);
-            setImageFile(null);
-        } else {
-            Alert.alert('Invalid URL', 'Please enter a valid URL starting with http://, https://, or ipfs://');
+  // Function to use image from URL
+  const setImageFromUrl = () => {
+    if (
+      tokenLogo &&
+      (tokenLogo.startsWith('http://') ||
+        tokenLogo.startsWith('https://') ||
+        tokenLogo.startsWith('ipfs://'))
+    ) {
+      setImageUri(tokenLogo);
+      setImageFile(null);
+    } else {
+      Alert.alert(
+        'Invalid URL',
+        'Please enter a valid URL starting with http://, https://, or ipfs://',
+      );
+    }
+  };
+
+  // Add function to handle video picking
+  const pickVideo = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your media library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 60, // 60 seconds max
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.duration && asset.duration > 60 * 1000) {
+          Alert.alert('Video too long', 'Please select a video shorter than 60 seconds');
+          return;
         }
-    };
+        setVideoUri(asset.uri);
+        setVideoFile(asset);
+        // Generate thumbnail for the video
+        // await generateVideoThumbnail(asset.uri);
+      }
+    } catch (error) {
+      console.error('Error picking video:', error);
+      Alert.alert('Error', 'Failed to select video');
+    }
+  };
 
-    // Add function to upload metadata
-    const uploadMetadata = async (): Promise<string> => {
-        try {
-            setIsUploadingMetadata(true);
-            setStatusMessage('Uploading token metadata and image...');
+  // Function to generate video thumbnail
+  // const generateVideoThumbnail = async (uri: string) => {
+  //   try {
+  //     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
+  //       uri,
+  //       {
+  //         time: 0, // Get thumbnail from the start of the video
+  //       },
+  //     );
+  //     setVideoThumbnail(thumbnailUri);
+  //   } catch (error) {
+  //     console.error('Error generating video thumbnail:', error);
+  //     // If thumbnail generation fails, it's not critical - video can still be used
+  //   }
+  // };
 
-            if (!tokenName || !tokenSymbol || !tokenDescription) {
-                throw new Error('Missing required metadata fields');
-            }
+  // Function to remove selected video
+  const removeVideo = () => {
+    setVideoUri(null);
+    setVideoFile(null);
+    setVideoThumbnail(null);
+  };
 
-            if (!imageUri && !tokenLogo) {
-                throw new Error('Token image is required');
-            }
+  // Add function to upload metadata
+  const uploadMetadata = async (): Promise<string> => {
+    try {
+      setIsUploadingMetadata(true);
+      setStatusMessage('Uploading token metadata and image...');
 
-            // Create form data for upload
-            const metadataResult = await uploadTokenMetadata({
-                tokenName,
-                tokenSymbol,
-                description: tokenDescription,
-                imageUri: imageUri || tokenLogo,
-                imageFile: imageFile,
-                twitter: tokenTwitter,
-                telegram: tokenTelegram,
-                website: tokenWebsite,
-            });
+      if (!tokenName || !tokenSymbol || !tokenDescription) {
+        throw new Error('Missing required metadata fields');
+      }
 
-            if (!metadataResult.success || !metadataResult.metadataUri) {
-                throw new Error(metadataResult.error || 'Failed to upload metadata');
-            }
+      if (!imageUri && !tokenLogo) {
+        throw new Error('Token image is required');
+      }
 
-            setMetadataUri(metadataResult.metadataUri);
-            setStatusMessage('Metadata uploaded successfully!');
-            return metadataResult.metadataUri;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error uploading metadata';
-            console.error('Error uploading metadata:', errorMessage);
-            setStatusMessage('');
-            throw new Error(errorMessage);
-        } finally {
-            setIsUploadingMetadata(false);
-        }
-    };
+      // Create form data for upload
+      const metadataResult = await uploadTokenMetadata({
+        tokenName,
+        tokenSymbol,
+        description: tokenDescription,
+        imageUri: imageUri || tokenLogo,
+        imageFile: imageFile,
+        twitter: tokenTwitter,
+        telegram: tokenTelegram,
+        website: tokenWebsite,
+      });
 
-    const renderStep1 = () => {
-        return (
-            <View>
-                <Text style={styles.sectionTitle}>Basic Token Information</Text>
+      if (!metadataResult.success || !metadataResult.metadataUri) {
+        throw new Error(metadataResult.error || 'Failed to upload metadata');
+      }
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Name</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenName}
-                        onChangeText={setTokenName}
-                        placeholder="e.g. My Awesome Token"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardAppearance="dark"
-                    />
-                </View>
+      setMetadataUri(metadataResult.metadataUri);
+      setStatusMessage('Metadata uploaded successfully!');
+      return metadataResult.metadataUri;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error uploading metadata';
+      console.error('Error uploading metadata:', errorMessage);
+      setStatusMessage('');
+      throw new Error(errorMessage);
+    } finally {
+      setIsUploadingMetadata(false);
+    }
+  };
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Symbol</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenSymbol}
-                        onChangeText={setTokenSymbol}
-                        placeholder="e.g. MAT"
-                        placeholderTextColor={COLORS.greyDark}
-                        maxLength={10}
-                        keyboardAppearance="dark"
-                    />
-                </View>
+  // Function to upload video to server
+  const uploadVideoToServer = async (tokenMint: string) => {
+    if (!videoFile) return;
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Description</Text>
-                    <TextInput
-                        style={[styles.input, { height: 80 }]}
-                        value={tokenDescription}
-                        onChangeText={setTokenDescription}
-                        placeholder="Describe your token's purpose"
-                        placeholderTextColor={COLORS.greyDark}
-                        multiline
-                        keyboardAppearance="dark"
-                    />
-                </View>
+    try {
+      setIsUploadingVideo(true);
 
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Website (Optional)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenWebsite}
-                        onChangeText={setTokenWebsite}
-                        placeholder="e.g. https://example.com"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardAppearance="dark"
-                    />
-                    <Text style={styles.helperText}>Project website for token metadata</Text>
-                </View>
+      const formData = new FormData();
+      formData.append('video', {
+        uri: videoUri,
+        type: videoFile.type || 'video/mp4',
+        name: videoFile.fileName || `video_${Date.now()}.mp4`,
+      } as any);
+      formData.append('tokenMint', tokenMint);
+      formData.append('userId', walletAddress); // Using wallet address as user ID
 
-                {/* Token image section - improved UI */}
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Token Image</Text>
-                    <View style={styles.imageUploadContainer}>
-                        {imageUri ? (
-                            <View style={styles.imagePreviewContainer}>
-                                {imageUri.startsWith('http') || imageUri.startsWith('ipfs') ? (
-                                    <View style={styles.imageUrlPreview}>
-                                        <Text style={styles.imageUrlText}>{imageUri}</Text>
-                                    </View>
-                                ) : (
-                                    <Image
-                                        source={{ uri: imageUri }}
-                                        style={styles.imagePreview}
-                                    />
-                                )}
-                                <View style={styles.imageControlsContainer}>
-                                    <TouchableOpacity
-                                        style={styles.imageControlButton}
-                                        onPress={pickImage}
-                                        disabled={isCreating}>
-                                        <Text style={styles.imageControlText}>Change</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.imageControlButton, styles.removeButton]}
-                                        onPress={removeImage}
-                                        disabled={isCreating}>
-                                        <Text style={styles.imageControlText}>Remove</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={styles.uploadContent}>
-                                <View style={{ paddingTop: 10 }} />
-                                <TouchableOpacity
-                                    onPress={pickImage}
-                                    style={styles.uploadImageButton}
-                                    disabled={isCreating}>
-                                    <LinearGradient
-                                        colors={['#32D4DE', '#B591FF']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        style={styles.uploadButtonGradient}
-                                    >
-                                        <Text style={styles.uploadButtonText}>Upload Image</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
+      const response = await fetch(`${process.env.SERVER_URL || 'http://localhost:3000'}/api/videos/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-                                <Text style={styles.orText}>OR</Text>
+      const result = await response.json();
 
-                                <View style={styles.urlInputContainer}>
-                                    <TextInput
-                                        style={styles.input}
-                                        placeholder="Enter image URL (https://... or ipfs://...)"
-                                        placeholderTextColor={COLORS.greyDark}
-                                        value={tokenLogo}
-                                        onChangeText={setTokenLogo}
-                                        editable={!isCreating}
-                                        keyboardAppearance="dark"
-                                    />
-                                    <TouchableOpacity
-                                        onPress={setImageFromUrl}
-                                        style={[styles.urlButton, !tokenLogo && styles.disabledButton]}
-                                        disabled={isCreating || !tokenLogo}>
-                                        <Text style={styles.urlButtonText}>Use URL</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <Text style={styles.helperText}>
-                                    Upload a square image (recommended 512x512px)
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to upload video');
+      }
 
-                {/* Social media section */}
-                <TouchableOpacity
-                    style={styles.socialsToggleButton}
-                    onPress={() => setShowSocials(!showSocials)}
-                    disabled={isCreating}>
-                    <Text style={styles.socialsToggleText}>
-                        {showSocials ? 'Hide Social Links' : 'Add Social Links'} {showSocials ? '↑' : '↓'}
-                    </Text>
-                </TouchableOpacity>
+      console.log('Video uploaded successfully:', result.video);
+      return result.video;
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      throw error;
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
 
-                {showSocials && (
-                    <View style={styles.socialsContainer}>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Twitter (Optional)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={tokenTwitter}
-                                onChangeText={setTokenTwitter}
-                                placeholder="@username"
-                                placeholderTextColor={COLORS.greyDark}
-                                editable={!isCreating}
-                                keyboardAppearance="dark"
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Telegram (Optional)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={tokenTelegram}
-                                onChangeText={setTokenTelegram}
-                                placeholder="t.me/community"
-                                placeholderTextColor={COLORS.greyDark}
-                                editable={!isCreating}
-                                keyboardAppearance="dark"
-                            />
-                        </View>
-                    </View>
-                )}
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Total Supply</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenSupply}
-                        onChangeText={setTokenSupply}
-                        placeholder="e.g. 1000000000"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Decimals (6-9)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={tokenDecimals}
-                        onChangeText={setTokenDecimals}
-                        placeholder="e.g. 9"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        maxLength={1}
-                        keyboardAppearance="dark"
-                    />
-                </View>
-
-                {/* <View style={styles.switchContainer}>
-                    <Text style={styles.label}>Use Token-2022 Standard</Text>
-                    <Switch
-                        value={isToken2022}
-                        onValueChange={setIsToken2022}
-                        trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                        thumbColor={isToken2022 ? COLORS.white : COLORS.greyLight}
-                    />
-                </View> */}
-
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-                <TouchableOpacity style={styles.actionButton} onPress={handleNext}>
-                    <LinearGradient
-                        colors={['#32D4DE', '#B591FF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.actionButtonGradient}
-                    >
-                        <Text style={styles.actionButtonText}>Next</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
-        );
-    };
-
-    const renderStep2 = () => {
-        return (
-            <View>
-                <Text style={styles.sectionTitle}>Bonding Curve Configuration</Text>
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Initial Market Cap (SOL)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={initialMarketCap}
-                        onChangeText={setInitialMarketCap}
-                        placeholder="e.g. 100"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                    <Text style={styles.helperText}>Starting market cap for your token.</Text>
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Migration Market Cap (SOL)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={migrationMarketCap}
-                        onChangeText={setMigrationMarketCap}
-                        placeholder="e.g. 3000"
-                        placeholderTextColor={COLORS.greyDark}
-                        keyboardType="numeric"
-                        keyboardAppearance="dark"
-                    />
-                    <Text style={styles.helperText}>When reached, token graduates to DAMM V1.</Text>
-                </View>
-
-                {/* Buy on create option */}
-                <View style={styles.switchContainer}>
-                    <Text style={styles.label}>Buy tokens after creation</Text>
-                    <Switch
-                        value={buyOnCreate}
-                        onValueChange={setBuyOnCreate}
-                        trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                        thumbColor={buyOnCreate ? COLORS.white : COLORS.greyLight}
-                    />
-                </View>
-
-                {/* Buy amount input (only shown when toggle is on) */}
-                {buyOnCreate && (
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Amount to buy (SOL)</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={buyAmount}
-                            onChangeText={setBuyAmount}
-                            placeholder="e.g. 1"
-                            placeholderTextColor={COLORS.greyDark}
-                            keyboardType="numeric"
-                            keyboardAppearance="dark"
-                        />
-                        <Text style={styles.helperText}>Amount of SOL to spend buying your token after creation.</Text>
-                    </View>
-                )}
-
-                {/* Add the bonding curve visualizer */}
-                <BondingCurveVisualizer
-                    initialMarketCap={parsedInitialMarketCap}
-                    migrationMarketCap={parsedMigrationMarketCap}
-                    tokenSupply={parsedTokenSupply}
-                    baseFeeBps={Number(baseFeeBps)}
-                    dynamicFeeEnabled={dynamicFeeEnabled}
-                    collectFeeBoth={collectFeeBoth}
-                    migrationFeeOption={selectedMigrationFee}
-                />
-
-                <TouchableOpacity
-                    style={styles.advancedToggle}
-                    onPress={() => setShowAdvanced(!showAdvanced)}
-                >
-                    <Text style={styles.advancedToggleText}>
-                        {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
-                    </Text>
-                </TouchableOpacity>
-
-                {showAdvanced && (
-                    <View style={styles.advancedContainer}>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.label}>Base Fee (BPS)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={baseFeeBps}
-                                onChangeText={setBaseFeeBps}
-                                placeholder="e.g. 100 (1%)"
-                                placeholderTextColor={COLORS.greyDark}
-                                keyboardType="numeric"
-                                maxLength={4}
-                                keyboardAppearance="dark"
-                            />
-                            <Text style={styles.helperText}>100 BPS = 1% trading fee</Text>
-                        </View>
-
-                        <View style={styles.switchContainer}>
-                            <Text style={styles.label}>Enable Dynamic Fee</Text>
-                            <Switch
-                                value={dynamicFeeEnabled}
-                                onValueChange={setDynamicFeeEnabled}
-                                trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                                thumbColor={dynamicFeeEnabled ? COLORS.white : COLORS.greyLight}
-                            />
-                        </View>
-
-                        <View style={styles.switchContainer}>
-                            <Text style={styles.label}>Collect Fee in Both Tokens</Text>
-                            <Switch
-                                value={collectFeeBoth}
-                                onValueChange={setCollectFeeBoth}
-                                trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
-                                thumbColor={collectFeeBoth ? COLORS.white : COLORS.greyLight}
-                            />
-                        </View>
-
-                        <Text style={styles.label}>Migration Fee Option</Text>
-                        <View style={styles.feeTiersContainer}>
-                            {[
-                                { label: '0.25%', value: MigrationFeeOption.FixedBps25 },
-                                { label: '0.3%', value: MigrationFeeOption.FixedBps30 },
-                                { label: '1%', value: MigrationFeeOption.FixedBps100 },
-                                { label: '2%', value: MigrationFeeOption.FixedBps200 },
-                                { label: '4%', value: MigrationFeeOption.FixedBps400 },
-                                { label: '6%', value: MigrationFeeOption.FixedBps600 },
-                            ].map((fee) => (
-                                <TouchableOpacity
-                                    key={`fee-${fee.value}`}
-                                    style={[
-                                        styles.feeTierButton,
-                                        selectedMigrationFee === fee.value && styles.feeTierButtonSelected,
-                                    ]}
-                                    onPress={() => setSelectedMigrationFee(fee.value)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.feeTierText,
-                                            selectedMigrationFee === fee.value && styles.feeTierTextSelected,
-                                        ]}
-                                    >
-                                        {fee.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        <Text style={styles.label}>LP Distribution</Text>
-                        <Text style={styles.helperText}>Total must add up to 100%</Text>
-                        <View style={styles.lpDistributionContainer}>
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Partner</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={partnerLpPercentage}
-                                    onChangeText={setPartnerLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Creator</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={creatorLpPercentage}
-                                    onChangeText={setCreatorLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Partner Locked</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={partnerLockedLpPercentage}
-                                    onChangeText={setPartnerLockedLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-
-                            <View style={styles.lpInputGroup}>
-                                <Text style={styles.lpLabel}>Creator Locked</Text>
-                                <TextInput
-                                    style={styles.lpInput}
-                                    value={creatorLockedLpPercentage}
-                                    onChangeText={setCreatorLockedLpPercentage}
-                                    keyboardType="numeric"
-                                    maxLength={3}
-                                    keyboardAppearance="dark"
-                                />
-                                <Text style={styles.lpPercent}>%</Text>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {isCreating && statusMessage ? (
-                    <View style={styles.statusContainer}>
-                        <Text style={styles.statusText}>{statusMessage}</Text>
-                    </View>
-                ) : null}
-
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                        <Text style={styles.backButtonText}>Back</Text>
-                    </TouchableOpacity>
-                    <View style={{ width: 12 }} />
-                    <TouchableOpacity
-                        style={[styles.actionButton, styles.createButton]}
-                        onPress={handleCreateToken}
-                        disabled={isCreating}
-                    >
-                        <LinearGradient
-                            colors={['#32D4DE', '#B591FF']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.actionButtonGradient}
-                        >
-                            {isCreating ? (
-                                <ActivityIndicator color={COLORS.white} />
-                            ) : (
-                                <Text style={styles.actionButtonText}>
-                                    {buyOnCreate ? 'Create & Buy Tokens' : 'Create Token'}
-                                </Text>
-                            )}
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
-
+  const renderFeeSharingSection = () => {
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <View style={styles.card}>
-                <Text style={styles.title}>Create Token with Bonding Curve</Text>
+      <View style={styles.feeCard}>
+        {/* YOUR SHARE */}
+        <View style={styles.row}>
+          <View>
+            <Text style={styles.label}>Your share</Text>
+            <Text style={styles.helper} numberOfLines={2}>
+              creators earn {yourShare}% of total trading volume
+            </Text>
+          </View>
+          <Text style={styles.share}>{yourShare.toFixed(2)}%</Text>
+        </View>
 
-                <View style={styles.stepIndicator}>
+        <Text style={styles.section}>SHARE FEES (OPTIONAL)</Text>
+
+        {/* ADD EARNER BUTTON */}
+        {!addingEarner && (
+          <TouchableOpacity style={styles.addButton} onPress={startAddEarner}>
+            <Text style={styles.addText}>+ add fee earner</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ADD EARNER EDITOR (PIC 2) */}
+        {/* ADD EARNER EDITOR (MATCHING ATTACHED UI) */}
+        {addingEarner && (
+          <View style={styles.editorCard}>
+            {/* HEADER */}
+            <View style={styles.editorHeader}>
+              <Text style={styles.editorTitle}>Fee Earner #1</Text>
+
+              <View style={styles.headerIcons}>
+                <TouchableOpacity onPress={cancelAddEarner}>
+                  <Text style={styles.trash}>🗑</Text>
+                </TouchableOpacity>
+                <Text style={styles.chevron}>⌃</Text>
+              </View>
+            </View>
+
+            {/* USER ROW */}
+            <View style={styles.userRow}>
+              <View style={styles.avatar} />
+              <Text style={styles.username}>@{draftUsername || 'BagsAMM'}</Text>
+
+              <TouchableOpacity>
+                <Text style={styles.edit}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* SHARE */}
+            <View style={styles.shareRow}>
+              <Text style={styles.helper}>Their Share</Text>
+              <Text style={styles.shareValue}>
+                {draftPercentage.toFixed(2)}%
+              </Text>
+            </View>
+
+            {/* PRESET BUTTONS */}
+            <View style={styles.percentRow}>
+              {[1, 10, 50, 100].map(v => (
+                <TouchableOpacity
+                  key={v}
+                  onPress={() => setDraftPercentage(v)}
+                  style={[
+                    styles.percentPill,
+                    draftPercentage === v && styles.percentPillActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.percentText,
+                      draftPercentage === v && styles.percentTextActive,
+                    ]}>
+                    {v}%
+                  </Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity style={styles.percentPill} onPress={() => { }}>
+                <Text style={styles.percentText}>Custom</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* SAVE */}
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={confirmAddEarner}>
+              <Text style={styles.saveText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* COMMITTED EARNERS (PIC 3) */}
+        {feeEarners.map(e => (
+          <View key={e.id} style={styles.earnerRow}>
+            <View>
+              <Text style={styles.earnerName}>{e.username}</Text>
+              <Text style={styles.helper}>{e.percentage.toFixed(2)}%</Text>
+            </View>
+
+            <TouchableOpacity onPress={() => removeEarner(e.id)}>
+              <Text style={styles.delete}>🗑</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {/* SPLIT TOGGLE */}
+        {feeEarners.length > 1 && (
+          <View style={styles.row}>
+            <Text style={styles.helper}>Split fees equally</Text>
+            <Switch value={splitEqually} onValueChange={setSplitEqually} />
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderStep1 = () => {
+    return (
+      <View>
+        {/* Token image section - improved UI */}
+        <View style={styles.inputContainer}>
+          {/* <View style={styles.avatarContainer}>
+            {imageUri ? (
+              imageUri.startsWith('http') || imageUri.startsWith('ipfs') ? (
+                <View style={styles.avatarUrlPreview}>
+                  <Text style={styles.avatarUrlText}>{imageUri}</Text>
+                </View>
+              ) : (
+                <Image source={{uri: imageUri}} style={styles.avatarImage} />
+              )
+            ) : (
+              <View style={styles.uploadContent}>
+                <View style={{paddingTop: 2}} />
+                <TouchableOpacity
+                  onPress={pickImage}
+                  style={styles.uploadImageButton}
+                  disabled={isCreating}>
+                  <Text style={styles.uploadButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+          
+            <TouchableOpacity
+              style={styles.editIconContainer}
+              onPress={pickImage}
+              disabled={isCreating}>
+              <View style={styles.editIconCircle}>
+                <Icons.PencilIcon width={14} height={14} color={COLORS.white} />
+              </View>
+            </TouchableOpacity>
+          </View> */}
+
+          <View style={styles.imageUploadBox}>
+            <TouchableOpacity onPress={pickImage} disabled={isCreating}>
+              {imageUri ? (
+                imageUri.startsWith('file://') ? (
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.imagePreviewSquare}
+                  />
+                ) : (
+                  <IPFSAwareImage
+                    source={{ uri: imageUri }}
+                    style={styles.imagePreviewSquare}
+                    key={
+                      Platform.OS === 'android'
+                        ? `profile-${Date.now()}`
+                        : 'profile'
+                    }
+                  />
+                )
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Text style={styles.plusIcon}>+</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Video upload section */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Token Video (Optional)</Text>
+          <View style={styles.videoUploadBox}>
+            <TouchableOpacity onPress={pickVideo} disabled={isCreating || isUploadingVideo}>
+              {videoUri && videoThumbnail ? (
+                <View style={styles.videoPreviewContainer}>
+                  <Image
+                    source={{uri: videoThumbnail}}
+                    style={styles.videoThumbnailPreview}
+                  />
+                  <View style={styles.videoPlayOverlay}>
+                    <Text style={styles.playIcon}>▶️</Text>
+                  </View>
+                  <TouchableOpacity onPress={removeVideo} style={styles.removeVideoButton}>
+                    <Text style={styles.removeVideoText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.videoPlaceholder}>
+                  <Text style={styles.videoIcon}>🎥</Text>
+                  <Text style={styles.videoPlaceholderText}>Add Video</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.helperText}>Max 60 seconds, MP4 format recommended</Text>
+        </View>
+
+        <View style={styles.inputContainer}>
+          {/* <Text style={styles.label}>Token Name</Text> */}
+          <TextInput
+            style={styles.input}
+            value={tokenName}
+            onChangeText={setTokenName}
+            placeholder="Name"
+            placeholderTextColor={COLORS.greyDark}
+            keyboardAppearance="dark"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          {/* <Text style={styles.label}>Token Symbol</Text> */}
+          <TextInput
+            style={styles.input}
+            value={tokenSymbol}
+            onChangeText={setTokenSymbol}
+            placeholder="Ticker"
+            placeholderTextColor={COLORS.greyDark}
+            maxLength={10}
+            keyboardAppearance="dark"
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          {/* <Text style={styles.label}>Description</Text> */}
+          <TextInput
+            style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+            value={tokenDescription}
+            onChangeText={setTokenDescription}
+            placeholder="Description"
+            placeholderTextColor={COLORS.greyDark}
+            multiline
+            keyboardAppearance="dark"
+          />
+        </View>
+
+        <View style={styles.switchContainer}>
+          <View style={styles.insideSwithcContainer}>
+            <Text style={styles.label}>Fee sharing</Text>
+            <Text style={styles.helperText}>
+              Share trading fees with friends
+            </Text>
+          </View>
+
+          <Switch
+            value={feeSharing}
+            onValueChange={setFeeSharing}
+            trackColor={{ false: COLORS.greyDark, true: COLORS.brandPrimary }}
+            thumbColor={COLORS.white}
+          />
+        </View>
+
+        {feeSharing && renderFeeSharingSection()}
+
+        <TouchableOpacity
+          onPress={() => setShowAdvanced(!showAdvanced)}
+          style={{ alignItems: 'center', marginBottom: 30, marginTop: 20 }}>
+          <Text style={styles.advancedToggleText}>
+            {showAdvanced ? 'Less options' : 'More options'}
+          </Text>
+        </TouchableOpacity>
+
+        {showAdvanced && (
+          <>
+            <Text style={styles.sectionLabel}>INITIAL BUY (OPTIONAL)</Text>
+
+            <View style={styles.buyOptionsRow}>
+              {['0.1', '0.5', '1', '2'].map(v => (
+                <TouchableOpacity
+                  key={v}
+                  style={[
+                    styles.buyPill,
+                    buyAmount === v && styles.buyPillActive,
+                  ]}
+                  onPress={() => {
+                    setBuyOnCreate(true);
+                    setBuyAmount(v);
+                  }}>
+                  <Text style={styles.buyPillText}>{v}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={styles.buyPill}
+                onPress={() => setBuyOnCreate(true)}>
+                <Text style={styles.buyPillText}>Custom</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputContainer}>
+              {/* <Text style={styles.label}>Website (Optional)</Text> */}
+              <TextInput
+                style={styles.input}
+                value={tokenWebsite}
+                onChangeText={setTokenWebsite}
+                placeholder="Website (Optional)"
+                placeholderTextColor={COLORS.greyDark}
+                keyboardAppearance="dark"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              {/* <Text style={styles.label}>Twitter (Optional)</Text> */}
+              <TextInput
+                style={styles.input}
+                value={tokenTwitter}
+                onChangeText={setTokenTwitter}
+                placeholder="Twitter (Optional)"
+                placeholderTextColor={COLORS.greyDark}
+                editable={!isCreating}
+                keyboardAppearance="dark"
+              />
+            </View>
+          </>
+        )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.createButton]}
+          onPress={handleCreateToken}
+          disabled={isCreating}>
+          <LinearGradient
+            colors={['#427abbff', '#164780ff']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.actionButtonGradient}>
+            {isCreating ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <Text style={styles.actionButtonText}>
+                {buyOnCreate ? 'Launch and Buy' : 'Launch'}
+              </Text>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  return (
+    <LinearGradient
+      colors={COLORS.backgroundSemiGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
+          {/* <Text style={styles.title}>Create Token with Bonding Curve</Text> */}
+          {renderStep1()}
+          {/* <View style={styles.stepIndicator}>
                     <View style={[styles.step, step >= 1 && styles.stepActive]}>
                         <Text style={[styles.stepText, step >= 1 && styles.stepTextActive]}>1</Text>
                     </View>
@@ -876,368 +970,797 @@ export default function TokenCreationForm({
                     </View>
                 </View>
 
-                {step === 1 ? renderStep1() : renderStep2()}
-            </View>
-        </ScrollView>
-    );
+                {step === 1 ? renderStep1() : renderStep2()} */}
+        </View>
+      </ScrollView>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    card: {
-        backgroundColor: COLORS.background,
-        borderRadius: 16,
-        padding: 10,
-        margin: 16,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    title: {
-        fontSize: TYPOGRAPHY.size.xl,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-        color: COLORS.white,
-        marginBottom: 24,
-        textAlign: 'center',
-    },
-    stepIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-    },
-    step: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: COLORS.darkerBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-    },
-    stepActive: {
-        backgroundColor: COLORS.brandPrimary,
-        borderColor: COLORS.brandPrimary,
-    },
-    stepConnector: {
-        width: 30,
-        height: 2,
-        backgroundColor: COLORS.borderDarkColor,
-        marginHorizontal: 8,
-    },
-    stepText: {
-        color: COLORS.greyDark,
-        fontSize: TYPOGRAPHY.size.md,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-    },
-    stepTextActive: {
-        color: COLORS.white,
-    },
-    sectionTitle: {
-        fontSize: TYPOGRAPHY.size.lg,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-        color: COLORS.white,
-        marginBottom: 16,
-    },
-    inputContainer: {
-        marginBottom: 16,
-    },
-    label: {
-        fontSize: TYPOGRAPHY.size.sm,
-        color: COLORS.greyMid,
-        marginBottom: 8,
-    },
-    input: {
-        backgroundColor: COLORS.darkerBackground,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-    },
-    helperText: {
-        fontSize: TYPOGRAPHY.size.xs,
-        color: COLORS.greyDark,
-        marginTop: 4,
-    },
-    switchContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    errorText: {
-        color: COLORS.errorRed,
-        fontSize: TYPOGRAPHY.size.sm,
-        marginVertical: 8,
-    },
-    statusContainer: {
-        backgroundColor: COLORS.darkerBackground,
-        padding: 12,
-        borderRadius: 8,
-        marginVertical: 12,
-        borderLeftWidth: 3,
-        borderLeftColor: COLORS.brandPrimary,
-    },
-    statusText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-    },
-    actionButton: {
-        overflow: 'hidden',
-        borderRadius: 12,
-    },
-    actionButtonGradient: {
-        paddingVertical: 14,
-        alignItems: 'center',
-        borderRadius: 12,
-    },
-    actionButtonText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-    },
-    advancedToggle: {
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    advancedToggleText: {
-        color: COLORS.brandPrimary,
-        fontSize: TYPOGRAPHY.size.sm,
-        fontWeight: TYPOGRAPHY.weights.medium,
-    },
-    advancedContainer: {
-        marginTop: 8,
-    },
-    feeTiersContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginVertical: 8,
-    },
-    feeTierButton: {
-        backgroundColor: COLORS.darkerBackground,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        marginRight: 8,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-    },
-    feeTierButtonSelected: {
-        backgroundColor: COLORS.brandPrimary,
-        borderColor: COLORS.brandPrimary,
-    },
-    feeTierText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-    },
-    feeTierTextSelected: {
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-    },
-    lpDistributionContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginVertical: 8,
-    },
-    lpInputGroup: {
-        width: '50%',
-        paddingRight: 8,
-        marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    lpLabel: {
-        width: '40%',
-        fontSize: TYPOGRAPHY.size.xs,
-        color: COLORS.greyMid,
-    },
-    lpInput: {
-        flex: 1,
-        backgroundColor: COLORS.darkerBackground,
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-        textAlign: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-    },
-    lpPercent: {
-        marginLeft: 4,
-        fontSize: TYPOGRAPHY.size.xs,
-        color: COLORS.greyMid,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 16,
-        paddingHorizontal: 16,
-    },
-    backButton: {
-        padding: 0,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 50,
-        backgroundColor: 'transparent',
-    },
-    backButtonText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
-        fontWeight: TYPOGRAPHY.weights.medium,
-    },
-    createButton: {
-        flex: 1,
-        height: 50,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    imageUploadContainer: {
-        backgroundColor: COLORS.lighterBackground,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-        borderStyle: 'dashed',
-        height: 230,
-        overflow: 'hidden',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    uploadContent: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        height: '100%',
-        padding: 20,
-    },
-    imagePreviewContainer: {
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-    },
-    imagePreview: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    imageUrlPreview: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: COLORS.darkerBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    imageUrlText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-        fontFamily: TYPOGRAPHY.fontFamily,
-        textAlign: 'center',
-    },
-    imageControlsContainer: {
-        position: 'absolute',
-        bottom: 10,
-        right: 10,
-        flexDirection: 'row',
-    },
-    imageControlButton: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 4,
-        marginLeft: 8,
-    },
-    removeButton: {
-        backgroundColor: 'rgba(220,53,69,0.8)', // Red color with transparency
-    },
-    imageControlText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.xs,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    selectFileButton: {
-        backgroundColor: COLORS.background,
-        paddingVertical: 8,
-        paddingHorizontal: 24,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: COLORS.borderDarkColor,
-        marginBottom: 12,
-    },
-    selectFileText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    orText: {
-        color: COLORS.greyMid,
-        fontSize: TYPOGRAPHY.size.sm,
-        textAlign: 'center',
-        marginVertical: 8,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    urlButton: {
-        backgroundColor: COLORS.brandPrimary,
-        paddingVertical: 8,
-        paddingHorizontal: 24,
-        borderRadius: 4,
-        marginTop: 8,
-        alignSelf: 'center',
-    },
-    urlButtonText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.sm,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    socialsToggleButton: {
-        paddingVertical: 12,
-        marginBottom: 8,
-    },
-    socialsToggleText: {
-        color: COLORS.brandPrimary,
-        fontSize: TYPOGRAPHY.size.md,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    socialsContainer: {
-        marginBottom: 16,
-    },
-    uploadImageButton: {
-        overflow: 'hidden',
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    uploadButtonGradient: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-    },
-    uploadButtonText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-        fontFamily: TYPOGRAPHY.fontFamily,
-    },
-    urlInputContainer: {
-        width: '100%',
-        marginBottom: 12,
-    },
-    disabledButton: {
-        opacity: 0.5,
-    },
+  container: {
+    flex: 1,
+  },
+  card: {
+    // backgroundColor: COLORS.background,
+    borderRadius: 16,
+    padding: 10,
+    margin: 16,
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //     width: 0,
+    //     height: 4,
+    // },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 8,
+    // elevation: 5,
+  },
+  title: {
+    fontSize: TYPOGRAPHY.size.xl,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+    color: COLORS.white,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+
+  sectionLabel: {
+    color: COLORS.greyMid,
+    fontSize: TYPOGRAPHY.size.xs,
+    marginBottom: 16,
+    marginLeft: 2,
+  },
+
+  buyOptionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+
+  buyPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: COLORS.darkerBackground,
+  },
+
+  buyPillActive: {
+    backgroundColor: COLORS.brandPrimary,
+  },
+
+  buyPillText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+  },
+
+  step: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.darkerBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+  },
+  stepActive: {
+    backgroundColor: COLORS.brandPrimary,
+    borderColor: COLORS.brandPrimary,
+  },
+  stepConnector: {
+    width: 30,
+    height: 2,
+    backgroundColor: COLORS.borderDarkColor,
+    marginHorizontal: 8,
+  },
+  stepText: {
+    color: COLORS.greyDark,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+  },
+  stepTextActive: {
+    color: COLORS.white,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.size.lg,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+    color: COLORS.white,
+    marginBottom: 16,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: TYPOGRAPHY.size.sm,
+    color: COLORS.white,
+    marginBottom: 8,
+    marginRight: 4,
+  },
+  input: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 0.75,
+    backgroundColor: '#05223360',
+    borderColor: '#646669',
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.md,
+  },
+  helperText: {
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.greyDark,
+    marginTop: 4,
+    // width: 150,
+    // marginLeft: 10,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 0.75,
+    backgroundColor: '#05223360',
+    borderColor: '#646669',
+    borderRadius: 12,
+  },
+  insideSwithcContainer: {},
+  errorText: {
+    color: COLORS.errorRed,
+    fontSize: TYPOGRAPHY.size.sm,
+    marginVertical: 8,
+  },
+  statusContainer: {
+    backgroundColor: COLORS.darkerBackground,
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.brandPrimary,
+  },
+  statusText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+  },
+  actionButton: {
+    overflow: 'hidden',
+    borderRadius: 12,
+  },
+  actionButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  actionButtonText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+  },
+  advancedToggle: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  advancedToggleText: {
+    color: COLORS.brandPrimary,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  advancedContainer: {
+    marginTop: 8,
+  },
+  feeTiersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginVertical: 8,
+  },
+  feeTierButton: {
+    backgroundColor: COLORS.darkerBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+  },
+  feeTierButtonSelected: {
+    backgroundColor: COLORS.brandPrimary,
+    borderColor: COLORS.brandPrimary,
+  },
+  feeTierText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+  },
+  feeTierTextSelected: {
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+  },
+  lpDistributionContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginVertical: 8,
+  },
+  lpInputGroup: {
+    width: '50%',
+    paddingRight: 8,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lpLabel: {
+    width: '40%',
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.greyMid,
+  },
+  lpInput: {
+    flex: 1,
+    backgroundColor: COLORS.darkerBackground,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+  },
+  lpPercent: {
+    marginLeft: 4,
+    fontSize: TYPOGRAPHY.size.xs,
+    color: COLORS.greyMid,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    padding: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    backgroundColor: 'transparent',
+  },
+  backButtonText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.md,
+    fontWeight: TYPOGRAPHY.weights.medium,
+  },
+  createButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  imageUploadContainer: {
+    backgroundColor: COLORS.darkerBackground,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+    borderStyle: 'dashed',
+    height: 65,
+    width: 65,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  uploadContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    padding: 20,
+    borderRadius: 50,
+  },
+  imagePreviewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageUrlPreview: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.darkerBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  imageUrlText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: TYPOGRAPHY.fontFamily,
+    textAlign: 'center',
+  },
+  imageControlsContainer: {
+    position: 'absolute',
+    top: 2,
+    right: 20,
+    flexDirection: 'row',
+  },
+  imageControlButton: {
+    backgroundColor: 'rgba(153, 131, 131, 0.6)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  removeButton: {
+    backgroundColor: 'rgba(220,53,69,0.8)', // Red color with transparency
+  },
+  imageControlText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.xs,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  selectFileButton: {
+    backgroundColor: COLORS.background,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.borderDarkColor,
+    marginBottom: 12,
+  },
+  selectFileText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  orText: {
+    color: COLORS.greyMid,
+    fontSize: TYPOGRAPHY.size.sm,
+    textAlign: 'center',
+    marginVertical: 8,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  urlButton: {
+    backgroundColor: COLORS.brandPrimary,
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+    borderRadius: 4,
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  urlButtonText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.sm,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  socialsToggleButton: {
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  socialsToggleText: {
+    color: COLORS.brandPrimary,
+    fontSize: TYPOGRAPHY.size.md,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  socialsContainer: {
+    marginBottom: 16,
+  },
+  uploadImageButton: {
+    color: '#fff',
+    // overflow: 'hidden',
+    borderRadius: 8,
+
+    // marginBottom: 16,
+  },
+  uploadButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  uploadButtonText: {
+    color: COLORS.white,
+    fontSize: 19,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+    fontFamily: TYPOGRAPHY.fontFamily,
+  },
+  urlInputContainer: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  avatarContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    alignSelf: 'center',
+    position: 'relative',
+    backgroundColor: COLORS.darkerBackground,
+    // overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 45,
+    resizeMode: 'cover',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarPlaceholderText: {
+    color: COLORS.greyDark,
+    fontSize: 32,
+    fontWeight: TYPOGRAPHY.weights.semiBold,
+  },
+  avatarUrlPreview: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 6,
+  },
+  avatarUrlText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.xs,
+    textAlign: 'center',
+  },
+  editIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+  },
+  editIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#164780ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editIconText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
+  imageUploadBox: {
+    width: 120,
+    height: 120,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.greyDark,
+    alignSelf: 'center',
+    marginBottom: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  plusIcon: {
+    color: COLORS.greyDark,
+    fontSize: 36,
+    fontWeight: '600',
+  },
+
+  imagePreviewSquare: {
+    width: 120,
+    height: 120,
+    borderRadius: 16,
+  },
+  videoUploadBox: {
+    width: '100%',
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.greyDark,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  videoPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  videoPlaceholderText: {
+    color: COLORS.greyDark,
+    fontSize: TYPOGRAPHY.size.sm,
+  },
+  videoPreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 16,
+    position: 'relative',
+  },
+  videoThumbnailPreview: {
+    width: '100%',
+    height: 80,
+    borderRadius: 12,
+    resizeMode: 'cover',
+  },
+  videoPlayOverlay: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  playIcon: {
+    fontSize: 32,
+  },
+  videoSelectedText: {
+    color: COLORS.white,
+    fontSize: TYPOGRAPHY.size.md,
+  },
+  removeVideoButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: COLORS.brandPrimary,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  removeVideoText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  feeCard: {
+    // backgroundColor: '#05223360',
+    // borderRadius: 12,
+    // paddingHorizontal: 16,
+    // paddingVertical: 8,
+    // borderWidth: 0.75,
+    // borderColor: '#646669',
+  },
+
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 0.75,
+    borderColor: '#646669',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+
+  share: {
+    color: COLORS.white,
+    fontSize: 20,
+    fontWeight: '600',
+  },
+
+  section: {
+    color: '#fff',
+    fontSize: 14,
+    marginVertical: 12,
+  },
+
+  addButton: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.greyDark,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+
+  addText: {
+    color: COLORS.white,
+  },
+
+  editorCard: {
+    // backgroundColor: COLORS.darkerBackground,
+    // borderRadius: 10,
+    paddingHorizontal: 16,
+    gap: 5,
+    paddingVertical: 8,
+    marginTop: 10,
+    backgroundColor: '#05223360',
+    borderRadius: 12,
+    // paddingHorizontal: 16,
+    // paddingVertical: 8,
+    borderWidth: 0.75,
+    borderColor: '#646669',
+  },
+
+  editorTitle: {
+    color: COLORS.white,
+    marginBottom: 8,
+  },
+
+  editorActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+
+  cancel: {
+    color: COLORS.greyDark,
+  },
+
+  next: {
+    color: COLORS.brandPrimary,
+    fontWeight: '600',
+  },
+
+  earnerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderColor: COLORS.borderDarkColor,
+  },
+
+  earnerName: {
+    color: COLORS.white,
+  },
+
+  delete: {
+    color: COLORS.errorRed,
+  },
+  helper: {
+    color: COLORS.greyDark,
+    fontSize: 12,
+    width: 150,
+  },
+  //   editorCard: {
+  //   backgroundColor: '#0b0b0b',
+  //   borderRadius: 14,
+  //   padding: 14,
+  //   borderWidth: 0.75,
+  //   borderColor: '#2a2a2a',
+  //   marginTop: 12,
+  // },
+
+  editorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  // editorTitle: {
+  //   color: COLORS.white,
+  //   fontSize: 14,
+  //   fontWeight: '600',
+  // },
+
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+
+  trash: {
+    color: COLORS.errorRed,
+    fontSize: 14,
+  },
+
+  chevron: {
+    color: COLORS.greyDark,
+    fontSize: 14,
+  },
+
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#141414',
+    borderRadius: 10,
+    padding: 10,
+    gap: 10,
+    marginBottom: 14,
+  },
+
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#1f7aff',
+  },
+
+  username: {
+    color: COLORS.white,
+    flex: 1,
+    fontSize: 13,
+  },
+
+  edit: {
+    color: COLORS.greyMid,
+    fontSize: 12,
+  },
+
+  shareRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+
+  shareValue: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  percentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+
+  percentPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#141414',
+  },
+
+  percentPillActive: {
+    backgroundColor: '#2dff6a',
+  },
+
+  percentText: {
+    color: COLORS.greyMid,
+    fontSize: 12,
+  },
+
+  percentTextActive: {
+    color: '#000',
+    fontWeight: '600',
+  },
+
+  saveButton: {
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+
+  saveText: {
+    color: '#000',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
 });

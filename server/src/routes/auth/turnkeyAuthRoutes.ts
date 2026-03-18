@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { DEFAULT_ETHEREUM_ACCOUNTS, Turnkey } from '@turnkey/sdk-server';
 import { decode, JwtPayload } from 'jsonwebtoken';
 
-dotenv.config();
+dotenv.config(); 
 
 const router: Router = express.Router();
 

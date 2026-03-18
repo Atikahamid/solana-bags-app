@@ -28,12 +28,17 @@ const COLORS = {
   cyan: '#32D4DE',
 
   // DarkBackground colors
-  background: '#0C101A',
+  // background: '#131720ff',
+  backgroundGradient: ['#000e1d', '#032448ff', '#00132a', '#031828', '#061141'],
+  backgroundSemiGradient: ['#071e36ff', '#032448ff', '#051c35ff', '#042945ff', '#051148ff'],
+  walletCardGradient:  ['#103d6eff', '#032448ff', '#051c35ff', '#103d6eff', '#032448ff'],
+
   lightBackground: '#141926',
-  lighterBackground: '#1D212D',
-  darkerBackground: '#101521',
+  lighterBackground: '#5366a1ff',
+  bottomTabBackground: '#232428ff',
+  darkerBackground: '#1a202e',
   accessoryDarkColor: '#818B9A',
-  borderDarkColor: 'rgba(255, 255, 255, 0.1)',
+  borderDarkColor: 'rgba(35, 65, 131, 0.4)',
   textDarkColor: '#1E1E1E',
 };
 

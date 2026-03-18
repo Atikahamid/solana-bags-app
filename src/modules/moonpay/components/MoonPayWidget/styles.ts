@@ -5,13 +5,13 @@ import TYPOGRAPHY from '@/assets/typography';
 export const styles = StyleSheet.create({
   container: {
     width: '100%',
-    borderRadius: 12,
+    // borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
   webView: {
     flex: 1,
-    borderRadius: 12,
+    // borderRadius: 12,
     overflow: 'hidden',
   },
   loadingContainer: {
@@ -94,7 +94,7 @@ export const styles = StyleSheet.create({
   },
   webViewWrapper: {
     backgroundColor: 'transparent',
-    borderRadius: 12,
+    // borderRadius: 12,
     overflow: 'hidden',
     width: '100%',
     height: '100%',

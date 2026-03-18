@@ -43,7 +43,7 @@ export default function SectionNftListing({ listingData, compact = false }: Sect
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginVertical: 8,
+    marginVertical: 1,
     backgroundColor: COLORS.lighterBackground,
     borderRadius: 16,
     overflow: 'hidden',
@@ -52,13 +52,13 @@ const styles = StyleSheet.create({
   },
   compactContainer: {
     width: '100%',
-    maxWidth: 300,
+    // maxWidth: 300,
     alignSelf: 'center',
   },
   nftContainer: {
     backgroundColor: 'transparent',
     borderWidth: 0,
-    padding: 12,
+    padding: 2,
   },
   compactNftContainer: {
     padding: 8,

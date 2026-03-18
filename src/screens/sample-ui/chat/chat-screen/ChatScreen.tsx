@@ -1618,20 +1618,22 @@ function ChatScreen(): React.ReactElement {
         )}
 
         {/* Chat Composer */}
-        <View style={styles.composerContainer}>
-          <ChatComposer
-            currentUser={currentUser}
-            onMessageSent={handleMessageSent}
-            chatContext={{ chatId: chatId }}
-            disabled={false} // Ensure composer is not disabled by default
-          />
-          {/* Removed spacer completely to eliminate gap */}
-        </View>
+        <ChatComposer
+          currentUser={currentUser}
+          onMessageSent={handleMessageSent}
+          chatContext={{ chatId: chatId }}
+          disabled={false} // Ensure composer is not disabled by default
+        />
       </>
     );
   };
 
   return (
+    <LinearGradient
+      colors={COLORS.backgroundGradient}
+      start={{x: 0, y: 0}}
+      end={{x: 0, y: 1}}
+      style={styles.container}>
     <>
       {Platform.OS === 'android' && <View style={androidStyles.statusBarPlaceholder} />}
       <SafeAreaView style={styles.container}>
@@ -1641,29 +1643,51 @@ function ChatScreen(): React.ReactElement {
         <View style={styles.decorCircle1} />
         <View style={styles.decorCircle2} />
         <LinearGradient
-          colors={['rgba(50, 212, 222, 0.05)', 'transparent']}
+          colors={['rgba(50, 212, 222, 0.05)', 'transparent'] as const}
           style={styles.glow1}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
 
-        {/* Replace custom header with AppHeader component */}
-        <AppHeader
-          title={chatName}
-          onBackPress={handleBack}
-          showBottomGradient={false}
-          style={{
-            backgroundColor: 'transparent',
-            borderBottomWidth: 0,
-          }}
-          rightComponent={
-            isGroup ? (
-              <View style={styles.titleContainer}>
-                <Text style={styles.subtitleText}>{getMembersCount()}</Text>
-              </View>
-            ) : undefined
-          }
-        />
+        {/* Replace custom header with matched design header */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          paddingTop: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+        }}>
+          {/* Back Button */}
+          <TouchableOpacity onPress={handleBack} style={{ padding: 8, marginLeft: -8, zIndex: 10 }}>
+            <Icons.ArrowLeft width={24} height={24} color={COLORS.white} />
+          </TouchableOpacity>
+
+          {/* Center Title */}
+          <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', zIndex: 0, pointerEvents: 'none' }}>
+            <Text style={{
+              color: COLORS.white,
+              fontSize: 16,
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              fontFamily: TYPOGRAPHY.fontFamily
+            }}>
+              {typeof chatName !== 'undefined' ? chatName : 'Chat'}
+            </Text>
+          </View>
+
+          {/* Right Action */}
+          {/* <TouchableOpacity style={{ padding: 8, marginRight: -8, zIndex: 10 }}>
+            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: COLORS.greyMid, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.greyMid, marginTop: -3 }} />
+              <View style={{ width: 14, height: 6, borderTopLeftRadius: 7, borderTopRightRadius: 7, backgroundColor: COLORS.greyMid, position: 'absolute', bottom: 1 }} />
+              
+              <View style={{ position: 'absolute', right: -4, bottom: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.brandGreen, borderWidth: 1, borderColor: COLORS.background }} />
+            </View>
+          </TouchableOpacity> */}
+        </View>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1797,6 +1821,7 @@ function ChatScreen(): React.ReactElement {
         )}
       </SafeAreaView>
     </>
+    </LinearGradient>
   );
 }
 

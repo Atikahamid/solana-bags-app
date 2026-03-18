@@ -6,7 +6,7 @@ const JUPITER_API_URL_GET_ORDER = process.env.JUPITER_API_URL_GET_ORDER || "http
 const JUPITER_API_URL_EXECUTE_ORDER = process.env.JUPITER_API_URL_EXECUTE_ORDER || "https://lite-api.jup.ag/ultra/v1/execute";
 const JUPITER_ULTRA_API_BASE_URL = process.env.JUPITER_ULTRA_API_BASE_URL || 'https://lite-api.jup.ag/ultra/v1';
 
-/**
+/** 
  * Jupiter Ultra API Controller
  * Provides methods for interacting with Jupiter Ultra API for swap orders
  */
@@ -17,9 +17,10 @@ export class JupiterUltraController {
   static async getSwapOrder(
     inputMint: string,
     outputMint: string,
-    amount: string | number,
+    amount: string | number, 
     taker?: string
   ) {
+    console.log("7777777777777777777777777777taker777777777777777777", taker);
     try {
       // Validate input parameters
       if (!inputMint || !outputMint || amount === undefined) {
@@ -41,6 +42,7 @@ export class JupiterUltraController {
       }
 
       // Validate taker address if provided
+      console.log("takerrrrrr: ", taker);
       if (taker) {
         try {
           new PublicKey(taker);
@@ -55,6 +57,7 @@ export class JupiterUltraController {
         amount: amountStr,
         ...(taker && { taker })
       });
+      console.log("||||||||||||||||||||||||||||||||||||||||||||||||||||");
 
       console.log('Requesting swap order with params:', {
         inputMint,
@@ -66,6 +69,8 @@ export class JupiterUltraController {
       const response = await fetch(
         `${JUPITER_API_URL_GET_ORDER}?${params.toString()}`
       );
+
+      console.log("response of order swap: ", response);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -82,6 +87,7 @@ export class JupiterUltraController {
       }
 
       const data = await response.json();
+      // console.log("json data: ", data);
       
       if (!data || !data.requestId) {
         console.error('Invalid Jupiter Ultra API response:', data);
@@ -170,7 +176,7 @@ export async function getUltraSwapOrderHandler(
       amount,
       taker
     );
-
+    console.log("order data: ", orderData);
     res.json({
       success: true,
       data: orderData

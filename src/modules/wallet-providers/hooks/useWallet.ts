@@ -185,10 +185,10 @@ export function useWallet() {
     options?: { confirmTransaction?: boolean; statusCallback?: (status: string) => void }
   ): Promise<string> => {
     // Check if component is still mounted
-    if (!isMounted.current) {
-      console.warn('[useWallet] sendBase64Transaction called after component unmounted');
-      throw new Error('Component unmounted');
-    }
+    // if (!isMounted.current) {
+    //   console.warn('[useWallet] sendBase64Transaction called after component unmounted');
+    //   throw new Error('Component unmounted');
+    // }
     
     const availableWallet = getWallet();
     if (!availableWallet) {

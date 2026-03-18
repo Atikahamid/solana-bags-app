@@ -80,7 +80,7 @@ function MoonPayWidget({
     } : {}),
     // Override with brand styling
     theme: 'dark',
-    colorCode: COLORS.brandBlue.replace('#', ''),
+    colorCode: COLORS.brandBlue.replace('#', '032448ff'),
     showWalletAddressForm: false,
     // Override with any custom parameters provided
     ...parameters,

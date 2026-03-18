@@ -13,6 +13,8 @@ import CommentIdle from './comment-idle.svg';
 import DotsThree from './dots-three.svg';
 import MediaIcon from './media-icon.svg';
 import ReactionIdle from './reaction-idle.svg';
+import ShareReelIcon from './share-reel-icon.svg';
+import MessageCommentIcon from './message-comment-icon.svg';
 import RetweetIdle from './retweet-idle.svg';
 import ShareIdle from './share-idle.svg';
 import Target from './target.svg';
@@ -46,6 +48,54 @@ import tensor from './Vector.svg';
 import listedNft from './Vector (1).svg';
 import cross from "./Close.svg"
 import arrowRIght from "./Back.svg"
+import FillArrowUp from './up-arrow-svgrepo-com.svg';
+import FillArrowDown from './down-arrow-svgrepo-com.svg';
+
+import OneUser from './one-uer.svg';
+import TwoUsers from './two-users.svg';
+import PumpFun from './pumpfun-icon.svg';
+import GreenPumpfun from './green-pumpfun.svg';
+import WebIcon from './web-icon.svg';
+import Holders from './holders-icon.svg';
+import CandleStiks from './candlestick-icon.svg';
+import Trophy from './trophy-icon.svg';
+import Crown from './crown-icon.svg';
+import TiktokIcon from './tiktok-icon.svg';
+import TelegramIcon from './telegram-cion.svg';
+import CalenderIcon from './calender-icon.svg';
+// import Twittericon from './x-twitter-icon.svg';
+import KickIcon from './kick-icon.svg';
+import GithubIcon from './github-icon.svg';
+import GoogleIcon from './google-icon.svg';
+import EmailIcon from './email-icon.svg';
+import Twittericon from './twitter-icon.svg';
+import WhiteArrowDown from './white-arrow-down.svg';
+import StarUserGreen from './star-user-green.svg';
+import StarUserRed from './star-user-red.svg';
+import CloudGreen from './cloud-green.svg';
+import CloudRed from './cloud-red.svg';
+import TargetGreen from './target-green.svg';
+import TargetRed from './target-red.svg';
+import GhostGreen from './ghost-green.svg';
+import GhostRed from './ghost-red.svg';
+import BlcoksGreen from './block-green.svg';
+import BlocksRed from './block-red.svg';
+import ShareIcon from './share-icon.svg';
+import TrendingIcon from './trending-icon.svg';
+import TrendingDark from './trending-icon-dark.svg';
+import PopularIcon from './popular-icon.svg';
+import Populardark from './popular-dark-icon.svg';
+import featuredicon from './featured-icon.svg';
+import FeaturedDark from './featured-icon-dark.svg';
+import StocksIcon from './stocks-icon.svg';
+import StocksDark from './stocks-icon-dark.svg';
+import AiIcon from './ai-icon.svg';
+import Aidark from './ai-icon-dark.svg';
+import LstsIcon from './lsts-icon.svg';
+import lstDark from './lsts-icon-dark.svg';
+import Bluechipicon from './bluechip-icon.svg';
+import BlueChipDark from './bluechip-icon-dark.svg';
+
 // Login elements left
 import LeftCircle from './login-elements-left/circle.svg';
 import LeftStar from './login-elements-left/left-star.svg';
@@ -74,7 +124,42 @@ import TokenMillIcon from './Tokenmill_icon.svg'
 import AddFundsIcon from './add-funds-icon.svg';
 import PlusCircleIcon from './plus-circle-icon.svg';
 import QrCodeIcon from './qr-code-icon.svg';
-
+import SearchIcons from './search-iconss.svg';
+import SearchIconssSelected from './search-iconss-selected.svg';
+import CreateCoinIcon from './create-coin.svg';
+import CreateCoinIconSelected from './create-coin-selected.svg';
+import MyChatIcon from './my-chat-icon.svg';
+import MyChatIconSelected from './my-chat-icon-selected.svg';
+import CoinStatusIcon from './coin-status-icon.svg';
+import CoinStatusIconSelected from './coin-status-icon-selected.svg';
+import NewTokensIcon from './newTokens.svg';
+import FinalStretchicon from './final-stretch-icons.svg';
+import MigratedIcon from './migrated-tokens-icons.svg';
+import NewTokensDark from './new-token-dark.svg';
+import FinalStretchDark from './final-stretch-dark.svg';
+import MigratedDark from './migrated-dark.svg';
+import PencilIcon from './pencil-icon.svg';
+import UpArrowIcon from './up-arrow-icon.svg';
+import GreenArrowUp from './arrow-up.svg';
+import RedArrowDown from './arrow-down.svg';
+import DownArrowIcon from './down-arrow-icon.svg';
+import profileSettingsIcon from './profile-settings-icon.svg';
+import DepositeIcon from './deposie-icon.svg';
+import SendIcon from './send-icon.svg';
+import WithdrawIcon from './withdraw-icon.svg';
+import RefreshIcon from './refresh-icon.svg';
+import Swapsettingsicon from './swap-settings-icon.svg';
+import ExportWalleticon from './wallet-icon.svg';
+import ProfileSettingssIcon from './profile-setting-icon.svg';
+import ShieldIcon from './shield-icon.svg';
+import Historyicon from './history-icon.svg';
+import FlagIcon from './flag-icon.svg';
+import HelpIcon from './help-icon.svg';
+import LogoutIcon from './logout-icon.svg';
+import DeleteIcon from './delete-icon.svg';
+import EyeIcon from './eye-close.svg';
+import ArrowUp from './u-arrow-icon.svg';
+import DownArrowKey from './down-arrow-keyy.svg';
 // Login elements right
 import RightRectangle from './login-elements-right/rectangle-right.svg';
 import RightSwap from './login-elements-right/swap-right.svg';
@@ -85,13 +170,21 @@ import RightEllipse from './login-elements-right/ellipse-right.svg';
 import EditIcon from './EditIcon';
 import GalleryIcon from './GalleryIcon';
 import NftIcon from './NftIcon';
-
+import SettingsIcon from './settings-icon.svg';
+import MyWalletIcon from './wallet-icon-my.svg';
+import BarsBTN from './bars-btn-swap.svg';
+import ThunderBtn from './thunder-btn-swap.svg';
+import GiftIcon from './gift-icon.svg';
+import { Share } from 'react-native';
 export default {
   SolanaDot,
   SplashText,
   GettingStartedButton,
   SmileFace,
   Google,
+  GreenArrowUp,
+  RedArrowDown,
+  ShareIcon,
   Apple,
   Device,
   infoIcon,
@@ -99,8 +192,12 @@ export default {
   BlinkEye,
   BlueCheck,
   BookmarkIdle,
+  FillArrowDown,
+  FillArrowUp,
   CommentIdle,
   DotsThree,
+  ShareReelIcon,
+  MessageCommentIcon,
   MediaIcon,
   ReactionIdle,
   RetweetIdle,
@@ -109,6 +206,7 @@ export default {
   ProfilePlusIcon,
   PinLocation,
   SubscriptionTick,
+  WhiteArrowDown,
   SwapIcon,
   NotifBell,
   HomeIcon,
@@ -116,6 +214,7 @@ export default {
   ProfileIcon,
   ExploreIcon,
   Arrow,
+  CalenderIcon,
   ArrowDown,
   NotifBellSelected,
   HomeIconSelected,
@@ -131,11 +230,73 @@ export default {
   CryptoIcon,
   MagnifyingGlass,
   MagnifyingGlassSelected,
+  NewTokensDark,
+  FinalStretchDark,
+  MigratedDark,
   tensor,
   listedNft,
   cross,
   arrowRIght,
-  // Login elements left
+  BarsBTN,
+  ThunderBtn,
+  OneUser,
+  TwoUsers,
+  PumpFun,
+  GreenPumpfun,
+  WebIcon,  // Login elements left
+  GiftIcon,
+  DepositeIcon,
+  SendIcon,
+  WithdrawIcon,
+  RefreshIcon,
+  Swapsettingsicon,
+  ExportWalleticon,
+  ProfileSettingssIcon,
+  ShieldIcon,
+  Historyicon,
+  FlagIcon,
+  HelpIcon,
+  LogoutIcon,
+  DeleteIcon,
+  EyeIcon,
+  Holders,
+  CandleStiks,
+  Trophy,
+  Crown,
+  TrendingIcon,
+  TrendingDark,
+  PopularIcon,
+  Populardark,
+  featuredicon,
+  FeaturedDark,
+  StocksIcon,
+  StocksDark,
+  AiIcon,
+  TiktokIcon,
+  TelegramIcon,
+  KickIcon,
+  GithubIcon,
+  GoogleIcon,
+  EmailIcon,
+  Twittericon,
+  Aidark,
+  LstsIcon,
+  lstDark,
+  Bluechipicon,
+  BlueChipDark,
+  NewTokensIcon,
+  FinalStretchicon,
+  MigratedIcon,
+  StarUserGreen,
+  StarUserRed,
+  CloudGreen,
+  CloudRed,
+  TargetGreen,
+  TargetRed,
+  GhostGreen,
+  GhostRed,
+  BlcoksGreen,
+  BlocksRed,
   LeftCircle,
   LeftStar,
   LeftEllipse,
@@ -163,7 +324,22 @@ export default {
   AddFundsIcon,
   PlusCircleIcon,
   QrCodeIcon,
-  
+  SearchIcons,
+  SearchIconssSelected,
+  CreateCoinIcon,
+  CreateCoinIconSelected,
+  MyChatIcon,
+  MyChatIconSelected,
+  CoinStatusIcon,
+  CoinStatusIconSelected,
+  SettingsIcon,
+  PencilIcon,
+  MyWalletIcon,
+  UpArrowIcon,
+  DownArrowIcon,
+  profileSettingsIcon,
+  ArrowUp,
+  DownArrowKey,
   // Login elements right
   RightRectangle,
   RightSwap,

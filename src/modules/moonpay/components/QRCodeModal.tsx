@@ -125,7 +125,7 @@ function QRCodeModal({ visible, onClose, walletAddress }: QRCodeModalProps) {
             statusBarTranslucent
             onRequestClose={onClose}
         >
-            <StatusBar backgroundColor="rgba(0,0,0,0.6)" barStyle="light-content" />
+            <StatusBar backgroundColor="rgba(0, 0, 0, 0.97)" barStyle="light-content" />
 
             {/* Backdrop */}
             <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
@@ -240,7 +240,7 @@ function QRCodeModal({ visible, onClose, walletAddress }: QRCodeModalProps) {
 const styles = StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: '#051c35ff',
     },
     backdropTouchable: {
         flex: 1,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
         fontFamily: TYPOGRAPHY.fontFamily,
     },
     addressContainer: {
-        backgroundColor: COLORS.lighterBackground,
+        backgroundColor: '#103d6eff',
         borderRadius: 12,
         paddingVertical: 16,
         paddingHorizontal: 16,
@@ -369,11 +369,11 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     shareButton: {
-        backgroundColor: COLORS.brandBlue,
+        backgroundColor: '#09488bff',
         borderRadius: 16,
         paddingVertical: 16,
         paddingHorizontal: 24,
-        shadowColor: COLORS.brandBlue,
+        shadowColor: "#09488bff",
         shadowOffset: {
             width: 0,
             height: 4,

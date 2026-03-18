@@ -1,24 +1,24 @@
 import express, { Request, Response } from "express";
 import { config } from "dotenv";
-import{
-GetAssetsByOwnerParams, 
-GetAssetsByAuthorityParams, 
-GetAssetsByGroupParams, 
-GetAssetsByCreatorParams, 
-GetSignaturesForAssetParams, 
-SearchAssetsParams,
-GetTokenAccountsParams,
-GetAssetProofParams,
-GetAssetsByBatchParams,
-GetAssetProofBatchParams
+import {
+    GetAssetsByOwnerParams,
+    GetAssetsByAuthorityParams,
+    GetAssetsByGroupParams,
+    GetAssetsByCreatorParams,
+    GetSignaturesForAssetParams,
+    SearchAssetsParams,
+    GetTokenAccountsParams,
+    GetAssetProofParams,
+    GetAssetsByBatchParams,
+    GetAssetProofBatchParams
 } from "../../types/aura/interface";
-
+import fetch from 'node-fetch';
 config();
 const router = express.Router() as any;
 
 
 async function fetchRPC(method: string, params: any) {
-    const response = await fetch(process.env.RPC_URL || "https://aura-mainnet.metaplex.com", {
+    const response = await fetch(process.env.RPC_URL || "https://api.devnet.solana.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -32,6 +32,20 @@ async function fetchRPC(method: string, params: any) {
     if (data.error) throw new Error(data.error.message);
     return data.result;
 }
+router.get('/get-trending-tokens', async (req: Request, res: Response) => {
+    const options = {
+        method: 'GET',
+        headers: {
+            accept: 'application/json',
+            'X-API-Key': `${process.env.MORALIS_API_KEY}`
+        },
+    };
+
+    fetch('https://deep-index.moralis.io/api/v2.2/tokens/trending?chain=solana', options)
+        .then(response => response.json())
+        .then(response => console.log(response))
+        .catch(err => console.error(err));
+})
 // Fetch asset by ID
 router.post("/asset", async (req: Request<{}, {}, GetSignaturesForAssetParams>, res: Response): Promise<any> => {
     try {
@@ -66,14 +80,14 @@ router.post("/assets/batch", async (req: Request<{}, {}, GetAssetsByBatchParams>
     try {
         // Expect an array of asset IDs in the request body
         const { assetIds } = req.body;
-        
+
         // Validate input
         if (!Array.isArray(assetIds)) {
             return res.status(400).json({ error: "assetIds must be an array" });
         }
 
-        const assets = await fetchRPC("getAssetBatch", { 
-            ids: assetIds 
+        const assets = await fetchRPC("getAssetBatch", {
+            ids: assetIds
         });
         res.json(assets);
     } catch (error) {
@@ -81,19 +95,19 @@ router.post("/assets/batch", async (req: Request<{}, {}, GetAssetsByBatchParams>
         res.status(500).json({ error: "Failed to fetch assets batch" });
     }
 });
-
+ 
 router.post("/assets/proof/batch", async (req: Request<{}, {}, GetAssetProofBatchParams>, res: Response): Promise<any> => {
     try {
         // Expect an array of asset IDs in the request body
         const { assetIds } = req.body;
-        
+
         // Validate input
         if (!Array.isArray(assetIds)) {
             return res.status(400).json({ error: "assetIds must be an array" });
         }
 
-        const proofs = await fetchRPC("getAssetProofBatch", { 
-            ids: assetIds 
+        const proofs = await fetchRPC("getAssetProofBatch", {
+            ids: assetIds
         });
         res.json(proofs);
     } catch (error) {
@@ -104,13 +118,13 @@ router.post("/assets/proof/batch", async (req: Request<{}, {}, GetAssetProofBatc
 // Fetch assets by Owner
 router.post("/assets/owner", async (req: Request<{}, {}, GetAssetsByOwnerParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             ownerAddress,
             sortBy,
             limit,
             page,
             before,
-            after 
+            after
         } = req.body;
 
         if (!ownerAddress) {
@@ -128,6 +142,7 @@ router.post("/assets/owner", async (req: Request<{}, {}, GetAssetsByOwnerParams>
         if (after) params.after = after;
 
         const assets = await fetchRPC("getAssetsByOwner", params);
+        console.log("assets: ", assets);
         res.json(assets);
     } catch (error) {
         console.error(error);
@@ -139,13 +154,13 @@ router.post("/assets/owner", async (req: Request<{}, {}, GetAssetsByOwnerParams>
 // Fetch assets by Authority
 router.post("/assets/authority", async (req: Request<{}, {}, GetAssetsByAuthorityParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             authorityAddress,
             sortBy,
             limit,
             page,
             before,
-            after 
+            after
         } = req.body;
 
         // Validate required parameter
@@ -176,14 +191,14 @@ router.post("/assets/authority", async (req: Request<{}, {}, GetAssetsByAuthorit
 // Fetch assets by Group
 router.post("/assets/group", async (req: Request<{}, {}, GetAssetsByGroupParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             groupKey,
             groupValue,
             sortBy,
             limit,
             page,
             before,
-            after 
+            after
         } = req.body;
 
         // Validate required parameters
@@ -214,14 +229,14 @@ router.post("/assets/group", async (req: Request<{}, {}, GetAssetsByGroupParams>
 // Fetch assets by Creator
 router.post("/assets/creator", async (req: Request<{}, {}, GetAssetsByCreatorParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             creatorAddress,
             onlyVerified,
             sortBy,
             limit,
             page,
             before,
-            after 
+            after
         } = req.body;
 
         // Validate required parameter
@@ -252,12 +267,12 @@ router.post("/assets/creator", async (req: Request<{}, {}, GetAssetsByCreatorPar
 // Fetch signatures for asset
 router.post("/asset/signatures", async (req: Request<{}, {}, GetSignaturesForAssetParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             id,
             page,
             limit,
             before,
-            after 
+            after
         } = req.body;
 
         // Validate required parameter
@@ -289,9 +304,9 @@ router.post("/asset/signatures", async (req: Request<{}, {}, GetSignaturesForAss
 // Fetch token accounts
 router.post("/token/accounts", async (req: Request<{}, {}, GetTokenAccountsParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             mint,
-            owner,
+            ownerAddress,
             limit,
             page,
             cursor,
@@ -301,9 +316,9 @@ router.post("/token/accounts", async (req: Request<{}, {}, GetTokenAccountsParam
         } = req.body;
 
         // Validate that at least one of mint or owner is provided
-        if (!mint && !owner) {
-            return res.status(400).json({ 
-                error: "Either mint or owner address is required" 
+        if (!mint && !ownerAddress) {
+            return res.status(400).json({
+                error: "Either mint or owner address is required"
             });
         }
 
@@ -312,7 +327,7 @@ router.post("/token/accounts", async (req: Request<{}, {}, GetTokenAccountsParam
 
         // Add parameters if they exist
         if (mint) params.mint = mint;
-        if (owner) params.owner = owner;
+        if (ownerAddress) params.ownerAddress = ownerAddress;
         if (limit) params.limit = Number(limit);
         if (page) params.page = Number(page);
         if (cursor) params.cursor = cursor;
@@ -321,6 +336,7 @@ router.post("/token/accounts", async (req: Request<{}, {}, GetTokenAccountsParam
         if (showZeroBalance !== undefined) params.showZeroBalance = showZeroBalance;
 
         const tokenAccounts = await fetchRPC("getTokenAccounts", params);
+        console.log("tokenAccounts: ", tokenAccounts);
         res.json(tokenAccounts);
     } catch (error) {
         console.error(error);
@@ -330,7 +346,7 @@ router.post("/token/accounts", async (req: Request<{}, {}, GetTokenAccountsParam
 // Search assets endpoint
 router.post("/assets/search", async (req: Request<{}, {}, SearchAssetsParams>, res: Response): Promise<any> => {
     try {
-        const { 
+        const {
             negate,
             interface: interfaceType,
             ownerAddress,
@@ -387,6 +403,87 @@ router.post("/assets/search", async (req: Request<{}, {}, SearchAssetsParams>, r
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Failed to search assets" });
+    }
+});
+
+
+// Combined endpoint: get token accounts + asset metadata
+router.post("/token/accounts/with-assets", async (req: Request, res: Response): Promise<any> => {
+    try {
+        const {
+            mint,
+            ownerAddress,
+            limit,
+            page,
+            cursor,
+            before,
+            after,
+            showZeroBalance
+        } = req.body;
+
+        if (!mint && !ownerAddress) {
+            return res.status(400).json({ error: "Either mint or owner address is required" });
+        }
+
+        const params: GetTokenAccountsParams = {};
+        if (mint) params.mint = mint;
+        if (ownerAddress) params.ownerAddress = ownerAddress;
+        if (limit) params.limit = Number(limit);
+        if (page) params.page = Number(page);
+        if (cursor) params.cursor = cursor;
+        if (before) params.before = before;
+        if (after) params.after = after;
+        if (showZeroBalance !== undefined) params.showZeroBalance = showZeroBalance;
+
+        const tokenAccountsResponse = await fetchRPC("getTokenAccounts", params);
+        const tokenAccounts = tokenAccountsResponse?.token_accounts || [];
+
+        if (!tokenAccounts.length) {
+            return res.json({ ...tokenAccountsResponse, token_accounts: [] });
+        }
+
+        // Extract unique mint addresses
+        const mintAddresses: string[] = [...new Set<string>(tokenAccounts.map((t: any) => t.mint as string))];
+
+        // Fetch all asset metadata concurrently
+        const assetResults = await Promise.allSettled(
+            mintAddresses.map((id: string) =>
+                fetchRPC("getAsset", { id }).catch(() => null)
+            )
+        );
+
+        // Map mint -> asset metadata
+        const assetMap: Record<string, any> = {};
+        assetResults.forEach((result, i) => {
+            if (result.status === "fulfilled" && result.value) {
+                const asset = result.value;
+                const metadata = asset.content?.metadata || {};
+                const links = asset.content?.links || {};
+                assetMap[mintAddresses[i]] = {
+                    name: metadata.name || null,
+                    symbol: metadata.symbol || null,
+                    description: metadata.description || null,
+                    image: links.image || null,
+                    json_uri: asset.content?.json_uri || null
+                };
+            }
+        });
+
+        // Merge token account + metadata
+        const enrichedAccounts = tokenAccounts.map((account: any) => ({
+            ...account,
+            ...assetMap[account.mint] // merges metadata if available
+        }));
+
+        const combinedResponse = {
+            ...tokenAccountsResponse,
+            token_accounts: enrichedAccounts
+        };
+
+        res.json(combinedResponse);
+    } catch (error) {
+        console.error("Error in /token/accounts/with-assets:", error);
+        res.status(500).json({ error: "Failed to fetch combined token and asset data" });
     }
 });
 

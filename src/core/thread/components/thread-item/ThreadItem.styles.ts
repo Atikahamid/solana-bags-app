@@ -9,16 +9,25 @@ export function getThreadItemBaseStyles(
   return StyleSheet.create({
     threadItemContainer: {
       flexDirection: 'row',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: COLORS.borderDarkColor,
-      backgroundColor: COLORS.background,
+      padding: 12,
+      margin: 4,
+      marginRight:4,
+      marginLeft:4,
+      marginVertical: 8,
+      backgroundColor: '#0A0F1C', // dark background
+      borderWidth: 1,
+      borderColor: '#00E6FF',    // neon cyan border
+      borderRadius: 16,
+      shadowColor: '#00E6FF',    // glow effect
+      shadowOpacity: 0.8,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 10,
     },
     avatarColumn: {
       width: 40,
       alignItems: 'flex-start',
-      marginRight: 12,
+      marginRight: 3,
       paddingTop: 2, // Slight adjustment to align with text baseline
     },
     contentColumn: {
@@ -28,8 +37,8 @@ export function getThreadItemBaseStyles(
     threadItemReplyLine: {
       borderLeftWidth: 1,
       borderLeftColor: COLORS.borderDarkColor,
-      marginLeft: 12,
-      paddingLeft: 12,
+      marginLeft: 2,
+      paddingLeft: 2,
     },
     threadItemAvatar: {
       width: 40,
@@ -38,8 +47,8 @@ export function getThreadItemBaseStyles(
     },
     replyingContainer: {
       backgroundColor: COLORS.lighterBackground,
-      padding: 8,
-      marginVertical: 8,
+      padding: 1,
+      marginVertical: 1,
       borderRadius: 6,
     },
     replyingText: {

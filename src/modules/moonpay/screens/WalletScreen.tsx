@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
 import { HELIUS_STAKED_URL } from '@env';
 import { useWallet } from '@/modules/wallet-providers/hooks/useWallet';
 import COLORS from '@/assets/colors';
@@ -166,7 +166,7 @@ function WalletScreen({
       setError(null);
 
       // Create a connection to the Solana cluster
-      const connection = new Connection(HELIUS_STAKED_URL, 'confirmed');
+      const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
       // Get the wallet public key
       const publicKey = new PublicKey(walletAddress);
@@ -307,7 +307,7 @@ function WalletScreen({
 
   const handleQRPress = () => {
     if (walletAddress) {
-      setQrModalVisible(true);
+      setQrModalVisible(true); 
     }
   };
 

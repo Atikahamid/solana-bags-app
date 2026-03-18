@@ -52,7 +52,7 @@ const UserSelectionScreen: React.FC<UserSelectionScreenProps> = () => {
                 userId: currentUserId
             }));
         }, 300);
-
+ 
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery, dispatch, currentUserId]);
 

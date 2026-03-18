@@ -18,6 +18,7 @@ export function createPostHeaderStyles(
     threadItemHeaderLeft: {
       flexDirection: 'row',
       flex: 1,
+      paddingLeft: 7,
       alignItems: 'center',
       ...overrideStyles?.threadItemHeaderLeft,
     },

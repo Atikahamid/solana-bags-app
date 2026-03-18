@@ -139,3 +139,39 @@ export interface TokenDetailData {
     loading: boolean;
     selectedTimeframe: Timeframe;
 } 
+
+export type TokenInfo = {
+  symbol: string;
+  address: string;
+  decimals: number;
+  price: number;
+  amount: string;
+  ui_amount: number;
+  ui_change_amount: number;
+  type_swap: "from" | "to";
+  is_scaled_ui_token: boolean;
+  multiplier: number | null;
+};
+export type TokenRecentTradeData = {
+  base: TokenInfo;
+  quote: TokenInfo;
+  tx_type: "swap" | "buy" | "sell" | string; // extendable
+  tx_hash: string;
+  ins_index: number;
+  inner_ins_index: number | null;
+  block_unix_time: number;
+  block_number: number;
+  volume_usd: number;
+  volume: number;
+  owner: string;
+  signers: string[];
+  source: string;
+  interacted_program_id: string;
+  pool_id: string;
+};
+
+export interface TokenRecentdata {
+    recentTrades: TokenRecentTradeData[];
+    loading: boolean;
+    error?: string;
+}

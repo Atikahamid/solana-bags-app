@@ -184,11 +184,11 @@ export interface BuildCurveByMarketCapParams {
 
 // Token creation parameters
 export interface CreatePoolParams {
-  quoteMint: string;
-  baseMint: string;
+  // quoteMint: string;
+  // baseMint: string;
   config: string;
-  baseTokenType: TokenType;
-  quoteTokenType: TokenType;
+  // baseTokenType: TokenType;
+  // quoteTokenType: TokenType;
   name: string;
   symbol: string;
   uri: string;

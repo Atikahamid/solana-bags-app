@@ -105,7 +105,7 @@ export interface NftListingData {
   /** Whether the NFT is compressed */
   isCompressed?: boolean;
 }
-
+ 
 /**
  * Options for fetching NFTs
  */

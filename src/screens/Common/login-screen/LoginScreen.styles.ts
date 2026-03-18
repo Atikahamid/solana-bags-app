@@ -5,21 +5,40 @@ import TYPOGRAPHY from '../../../assets/typography';
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    position: 'relative',
-  },
+ safeArea: {
+  flex: 1,
+  width: '100%',
+  justifyContent: 'space-between', // ⬅ distribute content vertically
+  alignItems: 'center',
+  paddingVertical: 60, // add breathing room for top/bottom elements
+},
+container: {
+  flex: 1,
+  width: '100%',
+  backgroundColor: COLORS.background,
+},
   headerContainer: {
     position: 'absolute',
     top: SCREEN_HEIGHT * 0.05,
     alignItems: 'center',
+  },
+  loginIconBox:{
+    width: 40,
+    height: 40,
+    borderColor: "#fff",
+    borderWidth: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    borderRadius: 19,
+    backgroundColor: '#464343ff'
+  },
+  loginIcons: {
+    width: 40, 
+    height: 40, 
+    tintColor: '#FFF',
+    padding: 3,
+    borderRadius: 50, 
+    backgroundColor: '#665c5cff' 
   },
   welcomeText: {
     fontFamily: TYPOGRAPHY.fontFamily,
@@ -64,7 +83,7 @@ const styles = StyleSheet.create({
   },
   bottomButtonsContainer: {
     position: 'absolute',
-    bottom: 60,
+    bottom: -150,
     width: '100%',
     alignItems: 'center',
   },
@@ -101,7 +120,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 50,
-    backgroundColor: COLORS.lighterBackground,
+    backgroundColor: '#34393fff',
     justifyContent: 'center',
     alignItems: 'center',
     right: -8,

@@ -14,6 +14,24 @@ export interface MarketParams {
   userPublicKey: string; // <-- Added property
 }
 
+export interface Trade {
+  walletAddress: string;
+  username: string;
+  userProfilePic: string,
+  action: "buy" | "sell";
+  token: {
+    name: string;
+    symbol: string;
+    mintAddress: string;
+    imageUrl: string; // you’ll fetch from metadata API or DB
+  };
+  time: string; // ISO string from Block.Time
+  pnl: number;
+  solPrice: number;
+  marketCapAtTrade: number;
+  currentMarketCap: number;
+}
+
 /**
  * Market information
  */

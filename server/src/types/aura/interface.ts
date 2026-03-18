@@ -41,7 +41,7 @@ export interface GetSignaturesForAssetParams {
 }
 export interface GetTokenAccountsParams {
     mint?: string;
-    owner?: string;
+    ownerAddress?: string;
     limit?: number;
     page?: number;
     cursor?: string;

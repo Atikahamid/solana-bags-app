@@ -32,6 +32,20 @@ import raydiumLaunchpadRoutes from './routes/raydium/launchpad.routes';
 import nftRoutes from './routes/nft';
 import notificationRoutes from './routes/notifications/notificationRoutes';
 import luloRouter from './routes/lulo';
+import tradesRouter from './routes/tradesRoutes';
+import { startTradesIngestor } from './services/tradeServices';
+import { startIndexer } from './services/indexerService';
+import { BitqueryService } from './services/bitQueryService';
+import { custodialRouter } from './routes/custodialWalletsRoutes';
+import tokenRelatedRouter from './routes/tokenListing/tokensRelatedRoutes';
+import { connectRedis, disconnectRedis } from './redis/redisClient';
+import userRoutes from './routes/auth/userRoutes';
+import { startPostgresListener } from './service/ListenerService';
+import coinbaseRoutes from './routes/coinbase/coinbaseRoutes';
+import videoRouter from './routes/videoRoutes';
+// import exportRoutes from './routes/auth/exportWallet';
+// import { startDiscoveryWorker } from './workers/blueChipWorker';
+require('dotenv').config({ path: '../../.env' })
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -55,6 +69,11 @@ const server = http.createServer(app);
 
 // Initialize WebSocket service with improved options
 const webSocketService = new WebSocketService(server);
+
+// Initialize Bitquery service
+// const bitqueryService = new BitqueryService();
+// bitqueryService.start();
+
 
 // Add Socket.IO connection debug logging
 webSocketService.io.engine.on('connection', (socket: any) => {
@@ -119,7 +138,7 @@ async function runMigrationsAndStartServer() {
     if (log.length > 0) {
       console.log('Migrations executed:', log);
     }
-    
+
     // Setup global chat after migrations
     await setupGlobalChat();
   } catch (error) {
@@ -137,12 +156,12 @@ app.get('/api/websocket-status', (req, res) => {
     connections: 0,
     activeTransports: {}
   };
-  
+
   // Count connections and gather transport stats
   if (webSocketService.io) {
     const sockets = webSocketService.io.sockets.sockets;
     engineStats.connections = sockets.size;
-    
+
     // Count transports
     sockets.forEach((socket: any) => {
       const transport = socket.conn.transport.name;
@@ -153,7 +172,7 @@ app.get('/api/websocket-status', (req, res) => {
       }
     });
   }
-  
+
   res.json({
     status: 'active',
     environment: process.env.NODE_ENV,
@@ -213,7 +232,14 @@ app.use('/api/meteora', meteoraDBCRouter);
 app.use('/api/nft', nftRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/lulo', luloRouter);
-
+app.use('/api/trades', tradesRouter);
+app.use('/api/pastTrades', threadRouter);
+app.use('/api/custodial', custodialRouter);
+app.use('/api/tokenRelatedData', tokenRelatedRouter);
+app.use('/api/userRoutess', userRoutes);
+app.use('/api/coinbaseRoutes', coinbaseRoutes);
+app.use('/api/videos', videoRouter);
+// app.use('/api/export', exportRoutes);
 // app.post('/api/build-compressed-nft-listing-tx', async (req: any, res: any) => {
 //   try {
 //     const result = await buildCompressedNftListingTx(req.body);
@@ -227,12 +253,12 @@ app.use('/api/lulo', luloRouter);
 // Start the Express server.
 // Note: We now try connecting to the database and running migrations,
 // but if these fail we log the error and continue to start the server.
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '8', 10);
 const HOST = '0.0.0.0'; // Critical for App Runner health checks
 
 (async function startServer() {
-  // Start server immediately for health checks - critical for App Runner
-  server.listen(PORT, HOST, () => {
+  // Start server immediately for health checks
+  const httpServer = server.listen(PORT, HOST, () => {
     console.log(`Server listening on ${HOST}:${PORT}`);
     console.log(`WebSocket server initialized. Environment: ${process.env.NODE_ENV}`);
     console.log(`Server started at: ${new Date().toISOString()}`);
@@ -240,13 +266,52 @@ const HOST = '0.0.0.0'; // Critical for App Runner health checks
     console.log(`Health checks available at: http://${HOST}:${PORT}/health`);
   });
 
-  // Run async operations after server starts to not block health checks
+  // Handle graceful shutdown
+  const gracefulShutdown = async () => {
+    console.log('\n🛑 Shutting down server gracefully...');
+    try {
+      // Close HTTP server
+      await new Promise<void>((resolve, reject) => {
+        httpServer.close(err => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      // Close Postgres listener if any
+      // if (webSocketService && webSocketService.pgClient) {
+      //   await webSocketService.pgClient.end();
+      //   console.log('Postgres listener closed');
+      // }
+      // Close WebSocket server
+      if (webSocketService && webSocketService.io) {
+        webSocketService.io.close(() => console.log('WebSocket server closed'));
+      }
+      // Close Redis if connected
+      if (typeof disconnectRedis === 'function') {
+        await disconnectRedis();
+        console.log('Redis connection closed');
+      }
+      console.log('✅ Shutdown complete');
+      process.exit(0); // exit cleanly
+    } catch (err) {
+      console.error('⚠️ Error during shutdown:', err);
+      process.exit(1);
+    }
+  };
+
+  // Listen for termination signals
+  process.on('SIGINT', gracefulShutdown);  // Ctrl + C
+  process.on('SIGTERM', gracefulShutdown); // Kill command / Docker stop
+
+  // Run async operations after server starts
   try {
     await testDbConnection();
     await runMigrationsAndStartServer();
+    await connectRedis();
+    await startPostgresListener(webSocketService);
     console.log('✅ Database and migrations completed successfully');
   } catch (error) {
     console.error('⚠️ Database/migration setup failed, but server is running:', error);
-    // Server continues running even if DB fails - important for App Runner
   }
 })();
+

@@ -5,11 +5,11 @@ import TYPOGRAPHY from '@/assets/typography';
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   headerContainer: {
     flexDirection: 'row',
@@ -55,17 +55,17 @@ export const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.lighterBackground,
-    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderWidth: 1,
-    borderColor: COLORS.borderDarkColor,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   searchInput: {
     flex: 1,
@@ -84,9 +84,7 @@ export const styles = StyleSheet.create({
   },
   chatItem: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderDarkColor,
+    paddingVertical: 14,
   },
   avatarContainer: {
     position: 'relative',
@@ -96,7 +94,7 @@ export const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: COLORS.lighterBackground,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   groupIndicator: {
     position: 'absolute',
@@ -120,7 +118,7 @@ export const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: COLORS.background,
+    borderColor: 'rgba(0,0,0,0.55)',
   },
   chatInfo: {
     flex: 1,
@@ -130,7 +128,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   nameContainer: {
     flex: 1,
@@ -143,24 +141,20 @@ export const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily,
   },
   memberCount: {
-    color: COLORS.greyMid,
-    fontSize: TYPOGRAPHY.size.xs,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
     fontFamily: TYPOGRAPHY.fontFamily,
     marginTop: 2,
   },
-  chatTime: {
-    color: COLORS.lightGrey,
-    fontSize: TYPOGRAPHY.size.xs,
-    fontFamily: TYPOGRAPHY.fontFamily,
-  },
+  chatTime: { display: 'none' },
   lastMessageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   lastMessage: {
-    color: COLORS.greyMid,
-    fontSize: TYPOGRAPHY.size.sm,
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
     flex: 1,
     marginRight: 8,
     fontFamily: TYPOGRAPHY.fontFamily,
@@ -238,18 +232,6 @@ export const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily,
   },
   fab: {
-    position: 'absolute',
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.brandBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    display: 'none',
   },
 }); 

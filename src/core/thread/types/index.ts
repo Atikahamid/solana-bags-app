@@ -91,9 +91,9 @@ export interface ThreadCTAButton {
 // Component props types
 export interface ThreadProps {
   /** Array of root-level posts to display in the thread */
-  rootPosts: ThreadPost[];
+  // rootPosts: ThreadPost[];
   /** Current user information */
-  currentUser: ThreadUser;
+  // currentUser: ThreadUser;
   /** Whether to show the thread header */
   showHeader?: boolean;
   /** Callback fired when a new post is created */
@@ -101,11 +101,11 @@ export interface ThreadProps {
   /** Whether to hide the post composer */
   hideComposer?: boolean;
   /** Callback fired when a post is pressed */
-  onPressPost?: (post: ThreadPost) => void;
+  // onPressPost?: (post: ThreadPost) => void;
   /** Array of call-to-action buttons to display */
   ctaButtons?: ThreadCTAButton[];
   /** Theme overrides for customizing appearance */
-  themeOverrides?: Partial<Record<string, any>>;
+  // themeOverrides?: Partial<Record<string, any>>;
   styleOverrides?: { [key: string]: object };
   userStyleSheet?: { [key: string]: object };
   refreshing?: boolean;
@@ -113,7 +113,7 @@ export interface ThreadProps {
   /**
    * Callback fired when the user's avatar/username is pressed
    */
-  onPressUser?: (user: ThreadUser) => void;
+  // onPressUser?: (user: ThreadUser) => void;
   /**
    * If true, do NOT show sub replies or reply composers within each post
    * (used for feed, or anywhere we only want a preview).

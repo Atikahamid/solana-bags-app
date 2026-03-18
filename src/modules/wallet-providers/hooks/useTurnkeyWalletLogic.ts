@@ -53,7 +53,7 @@ export function useTurnkeyWalletLogic() {
   
   // Get Turnkey SDK hooks
   const { createEmbeddedKey, createSession, clearSession } = useTurnkey();
-  
+   
   const { auth: { turnkey: turnkeyConfig } } = useCustomization();
   
   // Monitor for authenticated user
@@ -112,7 +112,7 @@ export function useTurnkeyWalletLogic() {
         }
       }
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://localhost:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/initOtpAuth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,7 +178,7 @@ export function useTurnkeyWalletLogic() {
       // Generate public key for the embedded key
       const targetPublicKey = await createEmbeddedKey();
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://localhost:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/otpAuth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -265,7 +265,7 @@ export function useTurnkeyWalletLogic() {
       // Generate public key for the embedded key
       const targetPublicKey = await createEmbeddedKey();
       
-      const SERVER_BASE_URL = SERVER_URL || 'http://localhost:8080';
+      const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
       const response = await fetch(`${SERVER_BASE_URL}/api/auth/oAuthLogin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

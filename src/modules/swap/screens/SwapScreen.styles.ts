@@ -7,7 +7,7 @@ const { width, height } = Dimensions.get('window');
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#051c35ff',
   },
   contentContainer: {
     flex: 1,
@@ -154,7 +154,7 @@ export const styles = StyleSheet.create({
     fontWeight: String(TYPOGRAPHY.bold) as any,
   },
   keypadContainer: {
-    backgroundColor: COLORS.background,
+    backgroundColor: '#0a335fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 10,

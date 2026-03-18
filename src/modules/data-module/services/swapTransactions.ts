@@ -4,8 +4,8 @@
  * Service for fetching and processing swap transactions for a user
  */
 
-import {CLUSTER, HELIUS_STAKED_URL} from '@env';
-import {PublicKey, Connection, clusterApiUrl, Cluster} from '@solana/web3.js';
+import { CLUSTER, HELIUS_STAKED_URL } from '@env';
+import { PublicKey, Connection, clusterApiUrl, Cluster } from '@solana/web3.js';
 import { ENDPOINTS } from '@/shared/config/constants';
 
 export interface TokenMetadata {
@@ -31,7 +31,7 @@ export interface SwapTransaction {
   fee?: number;
 }
 
-/**
+/** 
  * Fetches recent swap transactions for a wallet
  */
 export const fetchRecentSwaps = async (
@@ -65,7 +65,8 @@ export const fetchRecentSwaps = async (
     });
 
     const swapsData = await swapsResponse.json();
-
+    console.log("-------------------------------------------------");
+    console.log('Swaps Data:', swapsData);
     if (!swapsData.result || !Array.isArray(swapsData.result)) {
       console.log('No transaction signatures found');
       return [];
@@ -107,7 +108,7 @@ export const fetchRecentSwaps = async (
               method: 'getTransaction',
               params: [
                 sig.signature,
-                {encoding: 'jsonParsed', maxSupportedTransactionVersion: 0},
+                { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 },
               ],
             }),
           });
@@ -192,6 +193,47 @@ export const fetchRecentSwaps = async (
   }
 };
 
+export const fetchRecentSwapsByHelius = async (
+  walletAddress: string,
+): Promise<SwapTransaction[]> => {
+  try {
+    const baseUrl = `https://api.helius.xyz/v0/addresses/${walletAddress}/transactions?api-key=863cf9a9-ec8a-49a3-9346-a4fe28ad2fa8`;
+    let url = baseUrl;
+    let lastSignature = null;
+    let allTransactions = [];
+
+    while (true) {
+      if (lastSignature) {
+        url = baseUrl + `&before=${lastSignature}`;
+      }
+
+      const response = await fetch(url);
+      console.log('fetching transaction by helius: ', response);
+      // Check response status
+      if (!response.ok) {
+        console.error(`API error: ${response.status}`);
+        break;
+      }
+
+      const transactions = await response.json();
+      console.log('Fetched transactions:', transactions);
+      if (transactions && transactions.length > 0) {
+        console.log(`Fetched batch of ${transactions.length} transactions`);
+        allTransactions = [...allTransactions, ...transactions];
+        lastSignature = transactions[transactions.length - 1].signature;
+      } else {
+        console.log(`Finished! Total transactions: ${allTransactions.length}`);
+        break;
+      }
+    }
+
+    return allTransactions;
+  } catch (error) {
+    console.error('Error fetching recent swaps by helius:', error);
+    return [];
+  }
+}
+
 /**
  * Enriches swap transactions with token metadata
  */
@@ -237,7 +279,7 @@ export const enrichSwapTransactions = async (
     // Enrich each swap with the fetched metadata
     const enrichedSwaps = swaps.map(swap => {
       try {
-        const enrichedSwap = {...swap};
+        const enrichedSwap = { ...swap };
 
         // Enrich input token
         if (
@@ -509,22 +551,22 @@ function parseSwapFromTransaction(
     // Construct final token information
     const finalInput = inputToken
       ? {
-          mint: inputToken.mint,
-          symbol: defaultInput.symbol, // Will be enriched later via metadata
-          name: defaultInput.name,
-          decimals: inputToken.decimals,
-          amount: inputToken.difference,
-        }
+        mint: inputToken.mint,
+        symbol: defaultInput.symbol, // Will be enriched later via metadata
+        name: defaultInput.name,
+        decimals: inputToken.decimals,
+        amount: inputToken.difference,
+      }
       : defaultInput;
 
     const finalOutput = outputToken
       ? {
-          mint: outputToken.mint,
-          symbol: defaultOutput.symbol, // Will be enriched later via metadata
-          name: defaultOutput.name,
-          decimals: outputToken.decimals,
-          amount: outputToken.difference,
-        }
+        mint: outputToken.mint,
+        symbol: defaultOutput.symbol, // Will be enriched later via metadata
+        name: defaultOutput.name,
+        decimals: outputToken.decimals,
+        amount: outputToken.difference,
+      }
       : defaultOutput;
 
     // Use the transaction's blockTime if available, converting to milliseconds for consistency
@@ -534,8 +576,7 @@ function parseSwapFromTransaction(
 
     // Debug log
     console.log(
-      `Swap identified: ${finalInput.mint.substring(0, 6)}... (${
-        finalInput.amount
+      `Swap identified: ${finalInput.mint.substring(0, 6)}... (${finalInput.amount
       }) → ${finalOutput.mint.substring(0, 6)}... (${finalOutput.amount})`,
     );
 

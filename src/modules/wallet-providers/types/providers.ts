@@ -7,7 +7,7 @@
  */
 export type WalletProviderType = 'privy' | 'dynamic' | 'turnkey' | 'mwa';
 
-/**
+/** 
  * Dynamic client configuration
  */
 export interface DynamicClientConfig {

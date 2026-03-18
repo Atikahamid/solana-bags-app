@@ -12,6 +12,9 @@ export function createPostBodyStyles(
       marginVertical: 8,
       width: '100%',
       alignItems: 'flex-start',
+      borderWidth: 1,
+      marginLeft: 0,
+      borderColor: COLORS.brandPink,
       ...overrideStyles?.extraContentContainer,
     },
     threadItemText: {
@@ -22,8 +25,8 @@ export function createPostBodyStyles(
       ...overrideStyles?.threadItemText,
     },
     threadItemImage: {
-      width: '70%', // Consider making this customizable
-      height: 120, // Consider making this customizable
+      width: '30%', // Consider making this customizable
+      height: 50, // Consider making this customizable
       borderRadius: 8,
       resizeMode: 'cover',
       marginTop: 4,
@@ -94,14 +97,14 @@ export function createPostBodyStyles(
       ...overrideStyles?.nftListingCard,
     },
     nftListingImageContainer: {
-      width: 150,
-      height: 150,
+      width: 70,
+      height: 70,
       backgroundColor: '#f0f0f0', // Consider theme variable
       ...overrideStyles?.nftListingImageContainer,
     },
     nftListingImage: {
-      width: '100%',
-      height: '100%',
+      width: '50%',
+      height: '50%',
       resizeMode: 'cover',
       ...overrideStyles?.nftListingImage,
     },

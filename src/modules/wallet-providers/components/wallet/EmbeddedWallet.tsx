@@ -1,41 +1,47 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, Platform, Image } from 'react-native';
+// path: src/screens/Common/login-screen/EmbeddedWalletAuth.tsx
+'use client';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  Image,
+  Button,
+} from 'react-native';
 import Icons from '@/assets/svgs';
-import { useAuth } from '@/modules/wallet-providers/hooks/useAuth';
+import {
+  syncUserToBackend,
+  useAuth,
+} from '@/modules/wallet-providers/hooks/useAuth';
 import styles from '@/screens/Common/login-screen/LoginScreen.styles';
-import { useCustomization } from '@/shared/config/CustomizationProvider';
-import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { useAppDispatch } from '@/shared/hooks/useReduxHooks';
-import { loginSuccess } from '@/shared/state/auth/reducer';
+import {useCustomization} from '@/shared/config/CustomizationProvider';
+import {useAppNavigation} from '@/shared/hooks/useAppNavigation';
+import {useAppDispatch} from '@/shared/hooks/useReduxHooks';
+import {loginSuccess} from '@/shared/state/auth/reducer';
 import COLORS from '@/assets/colors';
 
-import type { Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
-import type { Cluster, PublicKey as SolanaPublicKey } from '@solana/web3.js';
-
-// Add Solana Mobile image import
+import type {Web3MobileWallet} from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import type {Cluster, PublicKey as SolanaPublicKey} from '@solana/web3.js';
 import SolanaMobileImage from '@/assets/images/solana-mobile.jpg';
+import {hasError, useLoginWithOAuth, usePrivy} from '@privy-io/expo';
+import {usePrivyWalletLogic} from '../../services/walletProviders';
+import LoadingScreen from '@/shared/navigation/LoadingScreen';
 
-type TransactFunction = <T>(
-  callback: (wallet: Web3MobileWallet) => Promise<T>
-) => Promise<T>;
+let transact: any;
+let PublicKey: any;
+let Buffer: any;
 
-let transact: TransactFunction | undefined;
-let PublicKey: typeof SolanaPublicKey | undefined;
-let Buffer: { from: (data: string, encoding: string) => Uint8Array } | undefined;
-
-// Only attempt to load Android-specific modules if we're on Android
-// And wrap in try/catch to handle Expo Go environment
 if (Platform.OS === 'android') {
   try {
-    // Attempt to load MWA module
     const mwaModule = require('@solana-mobile/mobile-wallet-adapter-protocol-web3js');
-    transact = mwaModule.transact as TransactFunction;
+    transact = mwaModule.transact;
   } catch (error) {
     console.warn('Mobile Wallet Adapter not available:', error);
   }
 
   try {
-    // Attempt to load Web3 module
     const web3Module = require('@solana/web3.js');
     PublicKey = web3Module.PublicKey;
   } catch (error) {
@@ -43,7 +49,6 @@ if (Platform.OS === 'android') {
   }
 
   try {
-    // Attempt to load Buffer module
     const bufferModule = require('buffer');
     Buffer = bufferModule.Buffer;
   } catch (error) {
@@ -68,239 +73,237 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
     loginWithGoogle,
     loginWithApple,
     loginWithEmail,
+    loginWithTikTok,
+    loginWithGitHub,
+    loginWithTwitter,
     user,
     solanaWallet,
   } = useAuth();
 
-  const { auth: authConfig } = useCustomization();
+  const {state} = useLoginWithOAuth();
+  const {isReady} = usePrivy();
+  console.log('isReady: ', isReady);
+  console.log('user: ', user);
+  const {monitorSolanaWallet} = usePrivyWalletLogic();
+  // const {user} = usePrivy();
+  const {auth: authConfig} = useCustomization();
   const navigation = useAppNavigation();
   const dispatch = useAppDispatch();
 
-  // For Dynamic, if user is already authenticated, trigger onWalletConnected immediately
+  const [isLoading, setIsLoading] = useState(false);
+  console.log('isLoadin state: ', isLoading);
+
   useEffect(() => {
-    if (authConfig.provider === 'dynamic' && status === 'authenticated' && user?.id) {
-      console.log('User already authenticated with Dynamic, triggering callback and navigating');
-      onWalletConnected({ provider: 'dynamic', address: user.id });
-
-      // Navigate to PlatformSelectionScreen after a short delay
-      // The delay ensures the onWalletConnected callback has time to complete
-      setTimeout(() => {
-        navigation.navigate('MainTabs' as never);
-      }, 100);
+    if (user && isReady) {
+      handleMonitorWallet();
     }
-  }, [authConfig.provider, status, user, onWalletConnected, navigation]);
+  }, [user, isReady]);
 
-  const loginWithMWA = async () => {
-    // Check if we're on Android AND if all required modules are available
-    if (Platform.OS !== 'android') {
-      Alert.alert('Not Supported', 'Mobile Wallet Adapter is only available on Android devices');
-      return;
-    }
+  const handleMonitorWallet = async () => {
+    console.log('[useAuth] Privy user became available:', user);
+    setIsLoading(true);
+    // once the user becomes available, now safely handle wallet setup or backend sync
+    await monitorSolanaWallet({
+      selectedProvider: 'privy',
+      setStatusMessage: msg => console.log(msg),
+      onWalletConnected: async walletInfo => {
+        console.log('Wallet connected after user available:', walletInfo);
+        let res: Awaited<ReturnType<typeof syncUserToBackend>> | null = null;
+        if (user && walletInfo?.address) {
+          res = await syncUserToBackend(user, {
+            ...walletInfo,
+            publicKey: walletInfo.address,
+            chain_type: 'solana',
+            chain_id: 'solana-devnet',
+            wallet_client: 'privy',
+            wallet_client_type: 'embedded',
+            recovery_method: 'privy',
+            wallet_index: 0,
+            delegated: false, 
+            imported: false,
+            status: 'connected',
+          });
+          console.log("syncuser backend response: ", res);
+        } else {
+          console.warn('[useAuth] Missing user or wallet data, skipping sync');
+        }
 
-    // Check if MWA modules are available (might not be in Expo Go)
-    if (!transact || !PublicKey || !Buffer) {
-      Alert.alert(
-        'Not Available',
-        'Mobile Wallet Adapter is not available in this environment. Please use another login method.'
-      );
-      return;
-    }
+        const email = user?.linked_accounts?.find(
+          (a: any) => a.type === 'google_oauth',
+        )?.name;
+        // const initialUsername = walletInfo.address.substring(0, 6);
+        const initialUsername = email;
+        console.log('[useAuth] Setting initial username:', initialUsername);
 
-    const APP_IDENTITY = {
-      name: 'Solana App Kit',
-      uri: 'https://solanaappkit.com',
-      icon: 'favicon.ico',
-    };
-
-    try {
-      const authorizationResult = await transact(async (wallet: Web3MobileWallet) => {
-        return await wallet.authorize({
-          chain: 'solana:mainnet',
-          identity: APP_IDENTITY,
-          sign_in_payload: {
-            domain: 'solanaappkit.com',
-            statement: 'You are signing in to Solana App Kit',
-            uri: 'https://solanaappkit.com',
-          },
-        });
-      });
-
-      if (authorizationResult?.accounts?.length) {
-        // Convert base64 pubkey to a Solana PublicKey
-        const encodedPublicKey = authorizationResult.accounts[0].address;
-        const publicKeyBuffer = Buffer.from(encodedPublicKey, 'base64');
-        const publicKey = new PublicKey(publicKeyBuffer);
-        const base58Address = publicKey.toBase58();
-
-        console.log('MWA connection successful, address:', base58Address);
-
-        // First dispatch the loginSuccess action directly
-        // This ensures the address is immediately available in the Redux store
         dispatch(
           loginSuccess({
-            provider: 'mwa',
-            address: base58Address,
-          })
+            provider: 'privy',
+            address: walletInfo.address,
+            username: initialUsername,
+          }),
         );
-
-        // Then call the onWalletConnected callback
-        onWalletConnected({
-          provider: 'mwa',
-          address: base58Address,
-        });
-
-        // Navigate to MainTabs after a short delay
-        setTimeout(() => {
-          navigation.navigate('MainTabs' as never);
-        }, 100);
-      } else {
-        Alert.alert('Connection Error', 'No accounts found in wallet');
-      }
-    } catch (error) {
-      console.error('MWA connection error:', error);
-      Alert.alert('Connection Error', 'Failed to connect to wallet');
-    }
+        setIsLoading(false);
+        if (res?.needsReferral) {
+          navigation.replace('RefferralCodeScreen');
+        } else {
+          navigation.replace('MainTabs');
+        }
+      },
+    });
   };
 
-  // If user + solanaWallet are present, it implies a Privy login
   useEffect(() => {
-    if (authConfig.provider === 'privy' && user && onWalletConnected) {
-      console.log('Checking Privy wallet status after auth...');
-      
-      if (!solanaWallet) {
-        console.log('Solana wallet not available yet');
-        return;
-      }
-      
-      // Check if it's the Privy SDK wallet type with status property
-      const isPrivySDKWallet = solanaWallet && 'status' in solanaWallet;
-      console.log('Is Privy SDK wallet:', isPrivySDKWallet);
-      
-      // Handle case where wallet isn't created yet (if it's the SDK type)
-      if (isPrivySDKWallet && solanaWallet.status === 'not-created') {
-        console.log('Wallet not created, waiting for creation...');
-        // We'll let the monitorSolanaWallet function in useAuth handle creation
-        return;
-      }
-      
-      // If we have a connected wallet with wallets in the array, use it
-      if (solanaWallet.wallets && solanaWallet.wallets.length > 0) {
-        const wallet = solanaWallet.wallets[0];
-        const walletPublicKey = wallet.publicKey;
-        
-        // Only proceed if we have a valid public key
-        if (walletPublicKey) {
-          console.log('Found Solana wallet with public key:', walletPublicKey);
-          onWalletConnected({ provider: 'privy', address: walletPublicKey });
-        } else {
-          console.log('Wallet found but public key is null');
-        }
-      } else if (isPrivySDKWallet && solanaWallet.status === 'connected') {
-        console.log('Wallet shows connected but no wallets in array');
-        Alert.alert('Wallet Error', 'Wallet appears connected but no addresses found');
-      }
+    if (
+      authConfig.provider === 'dynamic' &&
+      status === 'authenticated' &&
+      user?.id
+    ) {
+      onWalletConnected({provider: 'dynamic', address: user.id});
+      setTimeout(() => navigation.navigate('MainTabs' as never), 100);
     }
-  }, [user, onWalletConnected, solanaWallet, authConfig.provider]);
+  }, [authConfig.provider, status, onWalletConnected, navigation]);
 
-  // Handle login with error handling
+  // --- LOGIN HANDLERS ---
+  // const {authenticated, logout, user} = usePrivy();
+
+  // const {state, login: loginWithOAuth} = useLoginWithOAuth({
+  //   onSuccess: isNewUser => {
+  //     console.log('User logged in successfully: ', user);
+  //     if (isNewUser) {
+  //       console.log('new User logged in successfully: ', isNewUser);
+  //     }
+  //   },
+  //   onError: error => {
+  //     console.error('Login failed', error);
+  //   },
+  // });
+
   const handleGoogleLogin = async () => {
     try {
       if (loginWithGoogle) {
-        console.log('Logging in with Google and passing navigation');
         await loginWithGoogle();
-        // Navigation will now be handled inside loginWithGoogle
+      } else {
+        Alert.alert(
+          'Unavailable',
+          'Google login not supported in this environment',
+        );
       }
     } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Authentication Error', 'Failed to authenticate with Google. Please try again.');
+      console.error('Google login error:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with Google. Please try again.',
+      );
     }
   };
 
   const handleAppleLogin = async () => {
     try {
-      if (loginWithApple) {
-        console.log('Starting Apple login in EmbeddedWallet...');
-        
-        // Check if we're on iOS
-        if (Platform.OS !== 'ios') {
-          Alert.alert('Warning', 'Native Apple login is only available on iOS devices');
-          return;
-        }
-        
-        await loginWithApple();
-        // Navigation will now be handled inside loginWithApple
+      if (Platform.OS !== 'ios') {
+        Alert.alert('Warning', 'Apple login is only available on iOS devices');
+        return;
       }
+      if (loginWithApple) await loginWithApple();
     } catch (error) {
-      console.error('Apple login error in EmbeddedWallet:', error);
-      
-      // Provide more specific error messages based on error type
-      if (error instanceof Error) {
-        if (error.message.includes('cancelled') || error.message.includes('cancel')) {
-          // User cancelled the login, no need to show an error
-          console.log('User cancelled Apple login');
-          return;
-        } else if (error.message.includes('auth') || error.message.includes('verif')) {
-          Alert.alert('Authentication Error', 'Failed to authenticate with Apple. Please check your Apple ID and try again.');
-        } else if (error.message.includes('network') || error.message.includes('connect')) {
-          Alert.alert('Connection Error', 'Network problem detected. Please check your internet connection and try again.');
-        } else if (error.message.includes('No tokens') || error.message.includes('failed to complete')) {
-          Alert.alert('Authentication Failed', 'The Apple authentication process did not complete successfully. Please make sure you are signed in to your Apple ID on this device.');
-        } else {
-          Alert.alert('Authentication Error', 'Failed to authenticate with Apple. Please try again later.');
-        }
-      } else {
-        Alert.alert('Authentication Error', 'Failed to authenticate with Apple. Please try again.');
-      }
+      console.error('Apple login error:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with Apple. Please try again.',
+      );
     }
   };
 
   const handleEmailLogin = async () => {
     try {
-      console.log('Starting email login process...');
-      if (loginWithEmail) {
-        await loginWithEmail();
-        console.log('Email login successful, proceeding to wallet monitoring');
-        // The onWalletConnected callback in monitorSolanaWallet will handle the next steps
-      }
+      if (loginWithEmail) await loginWithEmail();
     } catch (error) {
       console.error('Email login error:', error);
-      
-      // Provide more specific error messages based on error type
-      if (error instanceof Error) {
-        if (error.message.includes('auth') || error.message.includes('verif')) {
-          Alert.alert('Authentication Error', 'Failed to authenticate with Email. Please check your email and password.');
-        } else if (error.message.includes('network') || error.message.includes('connect')) {
-          Alert.alert('Connection Error', 'Network problem detected. Please check your internet connection and try again.');
-        } else {
-          Alert.alert('Authentication Error', 'Failed to authenticate with Email. Please try again later.');
-        }
-      } else {
-        Alert.alert('Authentication Error', 'Failed to authenticate with Email. Please try again.');
-      }
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with Email. Please try again.',
+      );
     }
   };
 
-  // Arrow component for the right side of buttons
+  const handleTikTokLogin = async () => {
+    try {
+      if (loginWithTikTok) {
+        await loginWithTikTok();
+      } else {
+        Alert.alert(
+          'Unavailable',
+          'TikTok login not supported in this environment',
+        );
+      }
+    } catch (error) {
+      console.error('TikTok login error:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with TikTok. Please try again.',
+      );
+    }
+  };
+
+  const handleGitHubLogin = async () => {
+    try {
+      if (loginWithGitHub) {
+        await loginWithGitHub();
+      } else {
+        Alert.alert(
+          'Unavailable',
+          'GitHub login not supported in this environment',
+        );
+      }
+    } catch (error) {
+      console.error('GitHub login error:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with GitHub. Please try again.',
+      );
+    }
+  };
+
+  const handleTwitterLogin = async () => {
+    try {
+      if (loginWithTwitter) {
+        await loginWithTwitter();
+      } else {
+        Alert.alert(
+          'Unavailable',
+          'Twitter login not supported in this environment',
+        );
+      }
+    } catch (error) {
+      console.error('Twitter login error:', error);
+      Alert.alert(
+        'Authentication Error',
+        'Failed to authenticate with Twitter. Please try again.',
+      );
+    }
+  };
+
+  // --- UI ---
+
   const ArrowIcon = () => (
     <View style={styles.arrowCircle}>
       <Text style={styles.arrowText}>›</Text>
     </View>
   );
 
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <View style={styles.bottomButtonsContainer}>
-      {Platform.OS === 'android' && transact && PublicKey && Buffer && (
-        <TouchableOpacity style={styles.loginButton} onPress={loginWithMWA}>
-          <View style={styles.buttonContent}>
-            <Image 
-              source={SolanaMobileImage} 
-              style={{ width: 24, height: 24, borderRadius: 12 }} 
-            />
-            <Text style={styles.buttonText}>Continue with MWA</Text>
-          </View>
-          <ArrowIcon />
-        </TouchableOpacity>
-      )}
+      {/* Twitter */}
+      <TouchableOpacity style={styles.loginButton} onPress={handleTwitterLogin}>
+        <View style={styles.buttonContent}>
+          <Icons.Twittericon width={24} height={24} fill={COLORS.white} />
+          <Text style={styles.buttonText}>Continue with Twitter</Text>
+        </View>
+        <ArrowIcon />
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.loginButton} onPress={handleGoogleLogin}>
         <View style={styles.buttonContent}>
@@ -309,7 +312,10 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
         </View>
         <ArrowIcon />
       </TouchableOpacity>
+      {/* Google */}
 
+      {/* {hasError(state) && <Text>Error: {state.error.message}</Text>} */}
+      {/* Apple */}
       {Platform.OS === 'ios' && (
         <TouchableOpacity style={styles.loginButton} onPress={handleAppleLogin}>
           <View style={styles.buttonContent}>
@@ -320,13 +326,40 @@ const EmbeddedWalletAuth: React.FC<EmbeddedWalletAuthProps> = ({
         </TouchableOpacity>
       )}
 
+      {/* <Text>{JSON.stringify(user, null, 2)}</Text> */}
+      {/* Email */}
       <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
         <View style={styles.buttonContent}>
-          <Icons.Device width={24} height={24} stroke={COLORS.white} />
+          <Icons.EmailIcon width={24} height={24} stroke={COLORS.white} />
           <Text style={styles.buttonText}>Continue with Email</Text>
         </View>
         <ArrowIcon />
       </TouchableOpacity>
+
+      {/* TikTok */}
+      <TouchableOpacity style={styles.loginButton} onPress={handleTikTokLogin}>
+        <View style={styles.buttonContent}>
+          <Icons.TiktokIcon width={24} height={24} fill={COLORS.white} />
+          <Text style={styles.buttonText}>Continue with TikTok</Text>
+        </View>
+        <ArrowIcon />
+      </TouchableOpacity>
+
+      {/* GitHub */}
+      <TouchableOpacity style={styles.loginButton} onPress={handleGitHubLogin}>
+        <View style={styles.buttonContent}>
+          <Icons.GithubIcon width={24} height={24} fill={COLORS.white} />
+          <Text style={styles.buttonText}>Continue with GitHub</Text>
+        </View>
+        <ArrowIcon />
+      </TouchableOpacity>
+      {/* {hasError(state) && <Text>Error: {state.error.message}</Text>} */}
+
+      {/* {hasError(state) && (
+        <Text style={{ color: '#db0e0eff', marginTop: 10 }}>
+          Error: {state.error.message}
+        </Text>
+      )} */}
     </View>
   );
 };

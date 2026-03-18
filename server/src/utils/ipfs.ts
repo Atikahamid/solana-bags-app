@@ -113,7 +113,7 @@ export async function uploadToPinata(
     pinataJwt: process.env.PINATA_JWT!,
     pinataGateway: process.env.PINATA_GATEWAY,
   });
-  
+  // console.log("pinata: ", pinata);
   console.log('Uploading image to Pinata...');
   
   // Create a temp file to upload using FormData
@@ -124,9 +124,10 @@ export async function uploadToPinata(
   try {
     // Use low-level API with FormData to upload the image
     const formData = new FormData();
+    
     const readStream = fs.createReadStream(tempFilePath);
     formData.append('file', readStream, { filename: fileName });
-    
+    // console.log("formData: ", formData);
     // Upload to Pinata using FormData
     const imageResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
       method: 'POST',
@@ -135,7 +136,7 @@ export async function uploadToPinata(
       },
       body: formData,
     });
-    
+    console.log("image response: ", imageResponse);
     if (!imageResponse.ok) {
       throw new Error(`Failed to upload image to Pinata: ${imageResponse.statusText}`);
     }

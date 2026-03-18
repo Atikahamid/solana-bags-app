@@ -9,6 +9,7 @@
  */
 import { Server as HttpServer } from 'http';
 import { Server as SocketServer, Socket } from 'socket.io';
+import knex from '../db/knex';
 
 // Interface for chat message
 interface ChatMessage {
@@ -61,12 +62,12 @@ export class WebSocketService {
 
     this.initializeEventHandlers();
     console.log('WebSocket service initialized with WebSocket and polling support');
-    
+
     // Log transport-related details on startup
     setInterval(() => {
       const activeSockets = this.io.sockets.sockets.size;
       console.log(`Active connections: ${activeSockets}`);
-      
+
       // Log transport distribution
       const transports: Record<string, number> = { 'websocket': 0, 'polling': 0 };
       this.io.sockets.sockets.forEach(socket => {
@@ -75,10 +76,12 @@ export class WebSocketService {
           transports[transport] = (transports[transport] || 0) + 1;
         }
       });
-      
+
       console.log('Transport distribution:', transports);
     }, 60000); // Log every minute
   }
+
+  
 
   /**
    * Initialize Socket.IO event handlers
@@ -95,7 +98,7 @@ export class WebSocketService {
     this.io.on('connection', (socket: Socket) => {
       const transport = socket.conn.transport.name; // 'websocket' or 'polling'
       console.log(`New socket connection: ${socket.id} using transport: ${transport}`);
-      
+
       // Keep track of the client's IP for debugging App Engine proxy issues
       const clientInfo = {
         transport,
@@ -135,7 +138,7 @@ export class WebSocketService {
       socket.on('user_status', (data: { userId: string, isOnline: boolean }) => {
         this.handleUserStatus(socket, data);
       });
-
+ 
       // Handle disconnect
       socket.on('disconnect', (reason) => {
         console.log(`Socket ${socket.id} disconnected due to: ${reason}`);
@@ -146,7 +149,7 @@ export class WebSocketService {
       socket.on('error', (error) => {
         console.error(`Socket ${socket.id} error:`, error);
       });
-      
+
       // Handle transport upgrade
       socket.conn.on('upgrade', (transport) => {
         console.log(`Socket ${socket.id} upgraded transport to: ${transport.name}`);
@@ -162,37 +165,81 @@ export class WebSocketService {
   /**
    * Handle user authentication
    */
-  private handleAuthentication(socket: Socket, userId: string): void {
+  private async handleAuthentication(socket: Socket, userId: string): Promise<void> {
     console.log(`Authenticating user: ${userId} for socket: ${socket.id}`);
-    
+ 
+    // Check if user exists, if not, create
+    try {
+      const existingUser = await knex('users').where('privy_id', userId).first();
+      if (!existingUser) {
+        await knex('users').insert({
+          privy_id: userId,
+          username: `user_${userId.slice(0, 8)}`, // Default username
+          profile_image_url: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+        console.log(`Created new user: ${userId}`);
+      }
+    } catch (error) {
+      console.error('Error checking/creating user:', error);
+      socket.emit('error', { message: 'Authentication failed' });
+      return;
+    }
+
     // Store mapping of socket to user
     this.socketUserMap.set(socket.id, userId);
-    
+
     // Store mapping of user to sockets (a user can have multiple active connections)
     const userSockets = this.userSocketMap.get(userId) || [];
     userSockets.push(socket.id);
     this.userSocketMap.set(userId, userSockets);
-    
+
     // Acknowledge successful authentication
     socket.emit('authenticated', { success: true });
-    
+
     console.log(`User ${userId} authenticated with socket ${socket.id}`);
   }
 
   /**
    * Handle joining a chat room
    */
-  private joinChat(socket: Socket, chatId: string): void {
+  private async joinChat(socket: Socket, chatId: string): Promise<void> {
     const userId = this.socketUserMap.get(socket.id);
     if (!userId) {
       socket.emit('error', { message: 'Not authenticated' });
       return;
     }
-    
+
+    // Check if user exists
+    const userExists = await knex('users').where('privy_id', userId).first();
+    if (!userExists) {
+      console.error('User not found in database:', userId);
+      socket.emit('error', { message: 'User not registered' });
+      return;
+    }
+
+    // Add user as participant if not already
+    try {
+      await knex('chat_participants')
+        .insert({
+          chat_room_id: chatId,
+          user_id: userId,
+          is_admin: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .onConflict(['chat_room_id', 'user_id'])
+        .ignore();
+    } catch (error) {
+      console.error('Error adding participant:', error);
+      // Continue anyway, as the join might still work for socket
+    }
+
     // Join the socket.io room for this chat
     socket.join(`chat:${chatId}`);
     console.log(`User ${userId} joined chat room: ${chatId}`);
-    
+
     // Notify other participants that this user joined
     socket.to(`chat:${chatId}`).emit('user_joined', {
       chatId,
@@ -206,11 +253,11 @@ export class WebSocketService {
   private leaveChat(socket: Socket, chatId: string): void {
     const userId = this.socketUserMap.get(socket.id);
     if (!userId) return;
-    
+
     // Leave the socket.io room
     socket.leave(`chat:${chatId}`);
     console.log(`User ${userId} left chat room: ${chatId}`);
-    
+
     // Notify other participants
     socket.to(`chat:${chatId}`).emit('user_left', {
       chatId,
@@ -227,15 +274,15 @@ export class WebSocketService {
       socket.emit('error', { message: 'Not authenticated' });
       return;
     }
-    
+
     if (userId !== message.senderId) {
       socket.emit('error', { message: 'Sender ID mismatch' });
       return;
     }
-    
+
     // Broadcast message to all users in the chat room
     this.io.to(`chat:${message.chatId}`).emit('new_message', message);
-    
+
     console.log(`Message sent in chat ${message.chatId} by user ${userId}`);
   }
 
@@ -245,7 +292,7 @@ export class WebSocketService {
   private handleTypingIndicator(socket: Socket, data: { chatId: string, isTyping: boolean }): void {
     const userId = this.socketUserMap.get(socket.id);
     if (!userId) return;
-    
+
     // Broadcast typing status to other users in the chat
     socket.to(`chat:${data.chatId}`).emit('user_typing', {
       chatId: data.chatId,
@@ -259,15 +306,15 @@ export class WebSocketService {
    */
   private handleUserStatus(socket: Socket, data: { userId: string, isOnline: boolean }): void {
     const userId = this.socketUserMap.get(socket.id);
-    
+
     // Verify the user is authenticated and the userId matches
     if (!userId || userId !== data.userId) {
       socket.emit('error', { message: 'User ID mismatch or not authenticated' });
       return;
     }
-    
+
     console.log(`User ${userId} status changed to ${data.isOnline ? 'online' : 'offline'}`);
-    
+
     // Broadcast to all connected clients that this user's status changed
     // This is a global broadcast to all sockets
     this.io.emit('user_status_change', {
@@ -286,24 +333,24 @@ export class WebSocketService {
     // Remove this socket from user's socket list
     const userSockets = this.userSocketMap.get(userId) || [];
     const updatedSockets = userSockets.filter(id => id !== socket.id);
-    
+
     // Remove userId -> socketId mapping if no sockets left
     if (updatedSockets.length === 0) {
       this.userSocketMap.delete(userId);
-      
+
       // Broadcast that user is offline
       this.io.emit('user_status_change', {
         userId,
         isOnline: false
       });
-      
+
       console.log(`User ${userId} is now fully offline (no active sockets)`);
     } else {
       // User still has active sockets
       this.userSocketMap.set(userId, updatedSockets);
       console.log(`User ${userId} still has ${updatedSockets.length} active sockets`);
     }
-    
+
     // Remove socketId -> userId mapping
     this.socketUserMap.delete(socket.id);
   }
@@ -316,13 +363,126 @@ export class WebSocketService {
     this.io.to(`chat:${chatId}`).emit(event, data);
   }
 
+  // =====================
+  // LAUNCHPAD
+  // =====================
+
+  public broadcastLaunchpadNew(token: any): void {
+    this.io.emit("launchpad:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastAlmostBondedToken(token: any): void {
+    this.io.emit("launchpad:almost_bonded:new", {
+      type: "almost_bonded_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastMigratedToken(token: any): void {
+    this.io.emit("launchpad:migrated:new", {
+      type: "migrated_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastLaunchpadUpdate(token: any): void {
+    this.io.emit("launchpad:update", {
+      type: "stats_update",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // =====================
+  // DISCOVERY
+  // =====================
+
+  public broadcastDiscoveryTrending(token: any): void {
+    this.io.emit("discovery:trending:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryAI(token: any): void {
+    this.io.emit("discovery:ai:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryBluechipMeme(token: any): void {
+    this.io.emit("discovery:bluechip_meme:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryPopular(token: any): void {
+    this.io.emit("discovery:popular:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryXStock(token: any): void {
+    this.io.emit("discovery:xstock:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryLSTS(token: any): void {
+    this.io.emit("discovery:lsts:new", {
+      type: "new_insert",
+      payload: token,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  public broadcastDiscoveryUpdate(data: {
+    mint: string;
+    category: string;
+    payload: any;
+  }): void {
+    this.io.emit("discovery:update", {
+      type: "stats_update",
+      payload: data,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  // =====================
+  // TRANSACTIONS
+  // =====================
+
+  public broadcastTransaction(row: any): void {
+    this.io.emit("transaction:new", {
+      type: "transaction_insert",
+      payload: row,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+
+
   /**
    * Public method to send a direct message to a specific user
    * Used by external services to send notifications
    */
   public sendToUser(userId: string, event: string, data: any): void {
     const userSockets = this.userSocketMap.get(userId) || [];
-    
+
     userSockets.forEach(socketId => {
       const socket = this.io.sockets.sockets.get(socketId);
       if (socket) {
@@ -330,4 +490,5 @@ export class WebSocketService {
       }
     });
   }
-} 
+}
+

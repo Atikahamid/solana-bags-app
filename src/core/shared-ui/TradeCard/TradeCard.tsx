@@ -24,7 +24,7 @@ export interface TradeData {
   inputAmountLamports?: string;
   outputAmountLamports?: string;
   aggregator?: string;
-  inputSymbol: string;
+  inputSymbol: string; 
   inputQuantity: string;
   inputUsdValue?: string;
   outputSymbol: string;

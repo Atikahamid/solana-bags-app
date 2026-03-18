@@ -175,7 +175,7 @@ export class TransactionService {
             );
           }
           break;
-        case 'privy':
+        case 'privy': 
           signature = await this.signAndSendWithPrivy(
             transaction,
             connection,
@@ -187,7 +187,7 @@ export class TransactionService {
             transaction,
             connection,
             normalizedProvider.walletAddress
-          );
+          ); 
           break;
         case 'turnkey':
           // Implementation for Turnkey would go here

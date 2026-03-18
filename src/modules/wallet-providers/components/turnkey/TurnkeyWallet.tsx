@@ -17,7 +17,7 @@ export interface TurnkeyWalletAuthProps {
   }) => void;
   authMode?: 'login' | 'signup';
 }
-
+ 
 const TurnkeyWalletAuth: React.FC<TurnkeyWalletAuthProps> = ({
   onWalletConnected,
   authMode = 'login',

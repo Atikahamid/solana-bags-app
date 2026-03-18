@@ -1,3 +1,4 @@
+import { FeedScreen } from '@/screens/sample-ui/Threads/feed-screen';
 import { useDevMode } from '@/shared/context/DevModeContext';
 import React, { useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Text, Dimensions } from 'react-native';
@@ -33,7 +34,7 @@ const DevModeTrigger = () => {
                 { bottom: bottomPadding }
             ]}
             activeOpacity={0.8}
-            onPress={toggleDevDrawer}
+            onPress={FeedScreen}
         >
             <View style={styles.button}>
                 {/* Background Gradient */}

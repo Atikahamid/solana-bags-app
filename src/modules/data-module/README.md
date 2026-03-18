@@ -111,6 +111,7 @@ import { View, Text, FlatList, Image } from 'react-native';
 function UserTokenList() {
   const { publicKey } = useWallet();
   const walletAddress = publicKey?.toBase58();
+  console.log("wallet address:", walletAddress);
   const { tokens, loading, error, refetch } = useFetchTokens(walletAddress);
 
   if (loading) return <Text>Loading tokens...</Text>;

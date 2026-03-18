@@ -1,4 +1,5 @@
 // File: /src/services/walletProviders/privy.ts
+"use client";
 import {
   useLogin,
   usePrivy,
@@ -7,20 +8,26 @@ import {
   isNotCreated,
   needsRecovery,
   useLoginWithOAuth,
+  hasError,
 } from '@privy-io/expo';
-import {useCallback} from 'react';
-import {useCustomization} from '@/shared/config/CustomizationProvider';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCustomization } from '@/shared/config/CustomizationProvider';
+import { syncUserToBackend } from '../../hooks/useAuth';
+
 
 export function usePrivyWalletLogic() {
-  const {login} = useLogin();
-  const {login: loginWithOAuth} = useLoginWithOAuth();
-  const {user, isReady, logout} = usePrivy();
+  const { user, isReady, logout } = usePrivy();
+  const { login } = useLogin();
+  const [currentUser, setCurrentuser] = useState({});
+  // const userRef = useRef<any>(null);
+  const { login: loginWithOAuth, state } = useLoginWithOAuth();
   const solanaWallet = useEmbeddedSolanaWallet();
-  const {recover} = useRecoverEmbeddedWallet();
+  const { recover } = useRecoverEmbeddedWallet();
 
-  // For example, if you needed the config:
+ 
+
   const {
-    auth: {privy: privyConfig},
+    auth: { privy: privyConfig },
   } = useCustomization();
 
   const handlePrivyLogin = useCallback(
@@ -28,40 +35,45 @@ export function usePrivyWalletLogic() {
       loginMethod = 'email',
       setStatusMessage,
     }: {
-      loginMethod?: 'email' | 'sms' | 'apple' | 'google';
+      loginMethod?: 'email' | 'sms' | 'apple' | 'google' | 'tiktok' | 'github' | 'twitter';
       setStatusMessage?: (msg: string) => void;
     }) => {
       if (user) {
         setStatusMessage?.(`You are already logged in as ${user?.id}`);
+        // await logout();
         return;
       }
       try {
         setStatusMessage?.(`Connecting with privy via ${loginMethod}...`);
-        
+
         // For Apple and Google, use the OAuth method directly 
-        if (loginMethod === 'apple' || loginMethod === 'google') {
-          const result = await loginWithOAuth({ 
+        if (loginMethod === 'apple' || loginMethod === 'google'
+          || loginMethod === 'tiktok' || loginMethod === 'github' || loginMethod === 'twitter'
+        ) {
+          await loginWithOAuth({
             provider: loginMethod,
-            // For Apple, don't set isLegacyAppleIosBehaviorEnabled to use native flow
           });
-          
-          console.log(`Privy ${loginMethod} login result:`, result);
-          
-          if (!result) {
-            const errorMsg = `${loginMethod} authentication did not complete successfully`;
-            console.error(errorMsg);
-            throw new Error(errorMsg);
-          }
-          
-          if (result) {
-            setStatusMessage?.(`Connected via ${loginMethod}`);
-            return result;
-          }
+           setStatusMessage?.(`Waiting for user info after ${loginMethod} OAuth...`);
+          // console.log("state.status: ", state.status);
+
+          // console.log("result: ", result);
+
+          // if (!result) {
+          //   const errorMsg = `${loginMethod} authentication did not complete successfully`;
+          //   console.error(errorMsg);
+          //   throw new Error(errorMsg);
+          // }
+
+          // if (result) {
+          //   setStatusMessage?.(`Connected via ${loginMethod}`);
+          //   return result;
+          // }
         } else {
           // For email and other methods, use the regular login 
           const session = await login({
             loginMethods: [loginMethod],
-            appearance: {logo: ''},
+            appearance: { logo: '©' },
+
           });
           if (session?.user) {
             setStatusMessage?.(`Connected user: ${session.user.id}`);
@@ -85,23 +97,24 @@ export function usePrivyWalletLogic() {
     }: {
       selectedProvider: string;
       setStatusMessage?: (msg: string) => void;
-      onWalletConnected?: (info: {provider: 'privy'; address: string}) => void;
+      onWalletConnected?: (info: { provider: 'privy'; address: string }) => void;
     }) => {
+      console.log("selected provider: ", selectedProvider);
       if (selectedProvider !== 'privy') {
         console.log('Not using Privy provider, skipping wallet monitoring');
         return;
       }
-
+      console.log("user: ", user);
       if (!user) {
         console.log('No user logged in, cannot monitor wallet');
         return;
       }
-
+      console.log("isReady: ", isReady);
       if (!isReady) {
         console.log('Privy SDK not ready, cannot monitor wallet');
         return;
       }
-
+      console.log("solana wallet: ", solanaWallet);
       if (!solanaWallet) {
         console.log('Solana wallet object not available');
         return;
@@ -135,12 +148,12 @@ export function usePrivyWalletLogic() {
         if (isNotCreated(solanaWallet)) {
           console.log('Wallet not created, creating new wallet');
           setStatusMessage?.('Creating new Solana wallet...');
-          
+
           try {
             // Using the create method directly from the Solana wallet
             const result = await solanaWallet.create();
             console.log('Wallet creation result:', result);
-            
+
             // Verify wallet was created successfully
             if (solanaWallet.wallets && solanaWallet.wallets.length > 0) {
               const newWallet = solanaWallet.wallets[0];
@@ -204,11 +217,11 @@ export function usePrivyWalletLogic() {
       recoveryMethod: 'user-passcode' | 'google-drive' | 'icloud';
       password: string;
       setStatusMessage?: (msg: string) => void;
-      onWalletRecovered?: (info: {provider: 'privy'; address: string}) => void;
+      onWalletRecovered?: (info: { provider: 'privy'; address: string }) => void;
     }) => {
       try {
         setStatusMessage?.('Recovering wallet...');
-        await recover({recoveryMethod, password});
+        await recover({ recoveryMethod, password });
         const provider = solanaWallet.getProvider
           ? await solanaWallet.getProvider().catch(() => null)
           : null;

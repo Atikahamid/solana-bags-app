@@ -16,6 +16,7 @@ export interface AuthState {
       name?: string;
     };
   };
+  hasCompletedReferral: boolean, // ✅ ADD
 }
 
 const initialState: AuthState = {
@@ -26,9 +27,10 @@ const initialState: AuthState = {
   username: null,
   description: null,
   attachmentData: {},
+  hasCompletedReferral: false, // ✅ ADD
 };
 
-const SERVER_BASE_URL = SERVER_URL || 'http://localhost:3000';
+const SERVER_BASE_URL = SERVER_URL || 'https://solana-bags-app-production.up.railway.app';
 
 // Debug environment variable loading
 console.log('[Auth Reducer] SERVER_URL from @env:', SERVER_URL);
@@ -306,6 +308,10 @@ const authSlice = createSlice({
       state.attachmentData = {};
       console.log('[AuthReducer] State after logoutSuccess:', JSON.stringify(state));
     },
+    // ✅ ADD THIS BLOCK HERE
+    setReferralCompleted: (state) => {
+      state.hasCompletedReferral = true;
+    },
     updateProfilePic(state, action: PayloadAction<string>) {
       state.profilePicUrl = action.payload;
     },
@@ -378,6 +384,6 @@ const authSlice = createSlice({
   },
 });
 
-export const {loginSuccess, logoutSuccess, updateProfilePic} =
+export const {loginSuccess, logoutSuccess, updateProfilePic, setReferralCompleted} =
   authSlice.actions;
 export default authSlice.reducer;

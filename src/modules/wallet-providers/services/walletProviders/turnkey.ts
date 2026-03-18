@@ -10,7 +10,7 @@ export async function handleTurnkeyConnect(
   setStatusMessage?: (msg: string) => void,
 ) {
   setStatusMessage?.('Connecting with Turnkey...');
-  try {
+  try { 
     const authenticatorParams = await createPasskey({
       authenticatorName: 'End-User Passkey',
       rp: {

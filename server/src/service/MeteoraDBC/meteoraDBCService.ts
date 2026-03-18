@@ -1,12 +1,17 @@
-import { PublicKey, Connection, Transaction, Keypair } from '@solana/web3.js';
+import { PublicKey, Connection, Transaction, Keypair, SystemProgram } from '@solana/web3.js';
 import { DynamicBondingCurveClient, deriveDbcPoolAddress } from '@meteora-ag/dynamic-bonding-curve-sdk';
 import BN from 'bn.js';
 import * as types from './types';
 import bs58 from 'bs58';
 import { METEORA_DBC_PROGRAM_ID } from '../../utils/connection';
-
+// import { buildCurveWithMarketCap } from '@meteora-ag/dynamic-bonding-curve-sdk';
+import {
+  buildCurveWithMarketCap, MigrationOption, TokenDecimal, BaseFeeMode, ActivationType, CollectFeeMode, MigrationFeeOption, TokenType
+  , TokenUpdateAuthorityOption, DammV2DynamicFeeMode
+} from '@meteora-ag/dynamic-bonding-curve-sdk';
 // Add environment variable imports
-const COMMISSION_WALLET = process.env.COMMISSION_WALLET || '4iFgpVYSqxjyFekFP2XydJkxgXsK7NABJcR7T6zNa1Ty';
+
+const COMMISSION_WALLET = process.env.COMMISSION_WALLET || '9nD1tYqzohcYwmnxEwq3fRBs1WBavDVQbTWbsRBC5SND';
 const COMMISSION_PERCENTAGE = parseFloat(process.env.COMMISSION_PERCENTAGE || '0.005'); // Default to 0.5%
 const COMMISSION_AMOUNT = parseInt(process.env.COMMISSION_AMOUNT || '5000000', 10); // Default to 0.005 SOL in lamports
 const MIN_COMMISSION = parseInt(process.env.MIN_COMMISSION || '1000000', 10); // Default to 0.001 SOL
@@ -35,19 +40,19 @@ export class MeteoraDBCService {
       // Make sure we're working with a string
       const valueStr = String(value);
       console.log(`Converting to BN: ${valueStr}`);
-      
+
       // Check if it looks like a hexadecimal value (starts with 0x)
       if (valueStr.toLowerCase().startsWith('0x')) {
         return new BN(valueStr.slice(2), 16);
       }
-      
+
       // Check if it could be an unintentional hex value (all hex chars)
       const hexRegex = /^[0-9a-f]+$/i;
       if (hexRegex.test(valueStr) && isNaN(Number(valueStr))) {
         console.log(`Detected possible hex string: ${valueStr}, converting as hex`);
         return new BN(valueStr, 16);
       }
-      
+
       // Check if it contains a decimal point
       if (valueStr.includes('.')) {
         // Convert float to integer considering decimals
@@ -55,7 +60,7 @@ export class MeteoraDBCService {
         if (isNaN(floatVal)) {
           throw new Error(`Invalid amount format: ${valueStr}`);
         }
-        
+
         // Default to 9 decimals (like for SOL)
         const decimals = 9;
         const intVal = Math.floor(floatVal * Math.pow(10, decimals));
@@ -112,10 +117,10 @@ export class MeteoraDBCService {
 
     // Serialize the transaction
     const serializedTransaction = transaction.serialize({
-      requireAllSignatures: false, 
+      requireAllSignatures: false,
       verifySignatures: false
     });
-    
+
     return serializedTransaction.toString('base64');
   }
 
@@ -130,10 +135,10 @@ export class MeteoraDBCService {
     try {
       // Create the transaction
       const transaction = await createTransactionFn();
-      
+
       // Prepare the transaction with a blockhash and serialize it
       const serializedTransaction = await this.prepareTransaction(transaction);
-      
+
       return {
         success: true,
         transaction: serializedTransaction,
@@ -152,76 +157,192 @@ export class MeteoraDBCService {
   /**
    * Create a configuration for Dynamic Bonding Curve
    */
-  async createConfig(params: types.CreateConfigParam): Promise<types.ApiResponse> {
+  // async createConfig(params: types.CreateConfigParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.createConfig({
+  //       payer: this.toPublicKey(params.payer),
+  //       config: this.toPublicKey(params.config),
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
+  //       quoteMint: this.toPublicKey(params.quoteMint),
+  //       poolFees: {
+  //         baseFee: {
+  //           cliffFeeNumerator: this.toBN(params.poolFees.baseFee.cliffFeeNumerator),
+  //           numberOfPeriod: params.poolFees.baseFee.numberOfPeriod,
+  //           reductionFactor: this.toBN(params.poolFees.baseFee.reductionFactor),
+  //           periodFrequency: this.toBN(params.poolFees.baseFee.periodFrequency),
+  //           feeSchedulerMode: params.poolFees.baseFee.feeSchedulerMode,
+  //         },
+  //         dynamicFee: params.poolFees.dynamicFee ? {
+  //           binStep: params.poolFees.dynamicFee.binStep,
+  //           binStepU128: this.toBN(params.poolFees.dynamicFee.binStepU128),
+  //           filterPeriod: params.poolFees.dynamicFee.filterPeriod,
+  //           decayPeriod: params.poolFees.dynamicFee.decayPeriod,
+  //           reductionFactor: params.poolFees.dynamicFee.reductionFactor,
+  //           variableFeeControl: params.poolFees.dynamicFee.variableFeeControl,
+  //           maxVolatilityAccumulator: params.poolFees.dynamicFee.maxVolatilityAccumulator,
+  //         } : null,
+  //       },
+  //       activationType: params.activationType,
+  //       collectFeeMode: params.collectFeeMode,
+  //       migrationOption: params.migrationOption,
+  //       tokenType: params.tokenType,
+  //       tokenDecimal: params.tokenDecimal,
+  //       migrationQuoteThreshold: this.toBN(params.migrationQuoteThreshold),
+  //       partnerLpPercentage: params.partnerLpPercentage,
+  //       creatorLpPercentage: params.creatorLpPercentage,
+  //       partnerLockedLpPercentage: params.partnerLockedLpPercentage,
+  //       creatorLockedLpPercentage: params.creatorLockedLpPercentage,
+  //       sqrtStartPrice: this.toBN(params.sqrtStartPrice),
+  //       lockedVesting: {
+  //         amountPerPeriod: this.toBN(params.lockedVesting.amountPerPeriod),
+  //         cliffDurationFromMigrationTime: this.toBN(params.lockedVesting.cliffDurationFromMigrationTime),
+  //         frequency: this.toBN(params.lockedVesting.frequency),
+  //         numberOfPeriod: this.toBN(params.lockedVesting.numberOfPeriod),
+  //         cliffUnlockAmount: this.toBN(params.lockedVesting.cliffUnlockAmount),
+  //       },
+  //       migrationFeeOption: params.migrationFeeOption,
+  //       tokenSupply: params.tokenSupply ? {
+  //         preMigrationTokenSupply: this.toBN(params.tokenSupply.preMigrationTokenSupply),
+  //         postMigrationTokenSupply: this.toBN(params.tokenSupply.postMigrationTokenSupply),
+  //       } : null,
+  //       creatorTradingFeePercentage: params.creatorTradingFeePercentage,
+  //       padding0: [],
+  //       padding1: [],
+  //       curve: params.curve.map(curve => ({
+  //         sqrtPrice: this.toBN(curve.sqrtPrice),
+  //         liquidity: this.toBN(curve.liquidity),
+  //       })),
+  //     });
+
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
+
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in createConfig:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
+
+  async myTestFunc() {
     try {
-      const transaction = await this.client.partner.createConfig({
-        payer: this.toPublicKey(params.payer),
-        config: this.toPublicKey(params.config),
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
-        quoteMint: this.toPublicKey(params.quoteMint),
-        poolFees: {
-          baseFee: {
-            cliffFeeNumerator: this.toBN(params.poolFees.baseFee.cliffFeeNumerator),
-            numberOfPeriod: params.poolFees.baseFee.numberOfPeriod,
-            reductionFactor: this.toBN(params.poolFees.baseFee.reductionFactor),
-            periodFrequency: this.toBN(params.poolFees.baseFee.periodFrequency),
-            feeSchedulerMode: params.poolFees.baseFee.feeSchedulerMode,
+      // 1️⃣ Generate new config account keypair
+      const configKeypair = Keypair.generate();
+      const configPubkey = configKeypair.publicKey;
+      console.log("Generated Config Pubkey:", configPubkey.toString());
+
+      // 2️⃣ Build curve config with hardcoded params
+      const curveConfig = buildCurveWithMarketCap({
+        totalTokenSupply: 1_000_000_000,
+        initialMarketCap: 100,
+        migrationMarketCap: 3000,
+        migrationOption: MigrationOption.MET_DAMM_V2,
+        tokenBaseDecimal: TokenDecimal.SIX,
+        tokenQuoteDecimal: TokenDecimal.NINE,
+        lockedVestingParam: {
+          totalLockedVestingAmount: 0,
+          numberOfVestingPeriod: 0,
+          cliffUnlockAmount: 0,
+          totalVestingDuration: 0,
+          cliffDurationFromMigrationTime: 0,
+        },
+        baseFeeParams: {
+          baseFeeMode: BaseFeeMode.FeeSchedulerLinear,
+          feeSchedulerParam: {
+            startingFeeBps: 100,
+            endingFeeBps: 100,
+            numberOfPeriod: 0,
+            totalDuration: 0,
           },
-          dynamicFee: params.poolFees.dynamicFee ? {
-            binStep: params.poolFees.dynamicFee.binStep,
-            binStepU128: this.toBN(params.poolFees.dynamicFee.binStepU128),
-            filterPeriod: params.poolFees.dynamicFee.filterPeriod,
-            decayPeriod: params.poolFees.dynamicFee.decayPeriod,
-            reductionFactor: params.poolFees.dynamicFee.reductionFactor,
-            variableFeeControl: params.poolFees.dynamicFee.variableFeeControl,
-            maxVolatilityAccumulator: params.poolFees.dynamicFee.maxVolatilityAccumulator,
-          } : null,
         },
-        activationType: params.activationType,
-        collectFeeMode: params.collectFeeMode,
-        migrationOption: params.migrationOption,
-        tokenType: params.tokenType,
-        tokenDecimal: params.tokenDecimal,
-        migrationQuoteThreshold: this.toBN(params.migrationQuoteThreshold),
-        partnerLpPercentage: params.partnerLpPercentage,
-        creatorLpPercentage: params.creatorLpPercentage,
-        partnerLockedLpPercentage: params.partnerLockedLpPercentage,
-        creatorLockedLpPercentage: params.creatorLockedLpPercentage,
-        sqrtStartPrice: this.toBN(params.sqrtStartPrice),
-        lockedVesting: {
-          amountPerPeriod: this.toBN(params.lockedVesting.amountPerPeriod),
-          cliffDurationFromMigrationTime: this.toBN(params.lockedVesting.cliffDurationFromMigrationTime),
-          frequency: this.toBN(params.lockedVesting.frequency),
-          numberOfPeriod: this.toBN(params.lockedVesting.numberOfPeriod),
-          cliffUnlockAmount: this.toBN(params.lockedVesting.cliffUnlockAmount),
+        dynamicFeeEnabled: true,
+        activationType: ActivationType.Slot,
+        collectFeeMode: CollectFeeMode.QuoteToken,
+        migrationFeeOption: MigrationFeeOption.Customizable,
+        tokenType: TokenType.SPL,
+        partnerLpPercentage: 0,
+        creatorLpPercentage: 0,
+        partnerLockedLpPercentage: 100,
+        creatorLockedLpPercentage: 0,
+        creatorTradingFeePercentage: 0,
+        leftover: 0,
+        tokenUpdateAuthority: TokenUpdateAuthorityOption.Immutable,
+        migrationFee: {
+          feePercentage: 0,
+          creatorFeePercentage: 0,
         },
-        migrationFeeOption: params.migrationFeeOption,
-        tokenSupply: params.tokenSupply ? {
-          preMigrationTokenSupply: this.toBN(params.tokenSupply.preMigrationTokenSupply),
-          postMigrationTokenSupply: this.toBN(params.tokenSupply.postMigrationTokenSupply),
-        } : null,
-        creatorTradingFeePercentage: params.creatorTradingFeePercentage,
-        padding0: [],
-        padding1: [],
-        curve: params.curve.map(curve => ({
-          sqrtPrice: this.toBN(curve.sqrtPrice),
-          liquidity: this.toBN(curve.liquidity),
-        })),
+        migratedPoolFee: {
+          collectFeeMode: CollectFeeMode.QuoteToken,
+          dynamicFee: DammV2DynamicFeeMode.Enabled,
+          poolFeeBps: 250,
+        },
       });
 
-      // Prepare the transaction with a blockhash and serialize it
+      // 3️⃣ Define fixed addresses
+      const feeClaimer = new PublicKey("FfGV6BR1Jk9dJRq59xFi4G2fQRcieCFTxmD5AB6t2gwv");
+      const leftoverReceiver = new PublicKey("FfGV6BR1Jk9dJRq59xFi4G2fQRcieCFTxmD5AB6t2gwv");
+      const payer = new PublicKey("9nD1tYqzohcYwmnxEwq3fRBs1WBavDVQbTWbsRBC5SND");
+      const quoteMint = new PublicKey("So11111111111111111111111111111111111111112");
+
+      // 4️⃣ Build transaction
+      let transaction = await this.client.partner.createConfig({
+        config: configPubkey, // use generated keypair
+        feeClaimer,
+        leftoverReceiver,
+        payer,
+        quoteMint,
+        ...curveConfig,
+      });
+
+      // 5️⃣ Add commission transfer (optional)
+      const commissionWallet = new PublicKey(COMMISSION_WALLET);
+      const fixedCommissionAmount = COMMISSION_AMOUNT;
+
+      const finalCommissionAmount = Math.max(MIN_COMMISSION, Math.min(fixedCommissionAmount, MAX_COMMISSION));
+      console.log(`[buildCurveAndCreateConfigByMarketCap] Adding commission of ${finalCommissionAmount / 1_000_000_000} SOL to:`, commissionWallet.toString());
+
+      const transferIx = SystemProgram.transfer({
+        fromPubkey: payer,
+        toPubkey: commissionWallet,
+        lamports: finalCommissionAmount,
+      });
+
+      transaction.add(transferIx);
+
+      // 6️⃣ Set blockhash & fee payer
+      transaction.feePayer = payer;
+      if (!transaction.recentBlockhash) {
+        const { blockhash } = await this.client.connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+      }
+
+      // 7️⃣ Partial sign with config keypair
+      transaction.partialSign(configKeypair);
+
+      // 8️⃣ Serialize for frontend
+      // const serializedTransaction = transaction.serialize({
+      //   requireAllSignatures: false,
+      //   verifySignatures: false,
+      // }).toString("base64");
       const serializedTransaction = await this.prepareTransaction(transaction);
 
       return {
         success: true,
-        transaction: serializedTransaction,
+        transaction: serializedTransaction, // frontend will sign & send
+        configAddress: configPubkey.toString(),
       };
     } catch (error) {
-      console.error('Error in createConfig:', error);
+      console.error("Error in myTestFunc:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -229,63 +350,63 @@ export class MeteoraDBCService {
   /**
    * Build curve and create config
    */
-  async buildCurveAndCreateConfig(params: types.BuildCurveAndCreateConfigParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.partner.buildCurveAndCreateConfig({
-        buildCurveParam: {
-          totalTokenSupply: params.buildCurveParam.totalTokenSupply,
-          percentageSupplyOnMigration: params.buildCurveParam.percentageSupplyOnMigration,
-          migrationQuoteThreshold: params.buildCurveParam.migrationQuoteThreshold,
-          migrationOption: params.buildCurveParam.migrationOption,
-          tokenBaseDecimal: params.buildCurveParam.tokenBaseDecimal,
-          tokenQuoteDecimal: params.buildCurveParam.tokenQuoteDecimal,
-          lockedVesting: {
-            amountPerPeriod: this.toBN(params.buildCurveParam.lockedVesting.amountPerPeriod),
-            cliffDurationFromMigrationTime: this.toBN(params.buildCurveParam.lockedVesting.cliffDurationFromMigrationTime),
-            frequency: this.toBN(params.buildCurveParam.lockedVesting.frequency),
-            numberOfPeriod: this.toBN(params.buildCurveParam.lockedVesting.numberOfPeriod),
-            cliffUnlockAmount: this.toBN(params.buildCurveParam.lockedVesting.cliffUnlockAmount),
-          },
-          feeSchedulerParam: {
-            numberOfPeriod: params.buildCurveParam.feeSchedulerParam.numberOfPeriod,
-            reductionFactor: params.buildCurveParam.feeSchedulerParam.reductionFactor,
-            periodFrequency: params.buildCurveParam.feeSchedulerParam.periodFrequency,
-            feeSchedulerMode: params.buildCurveParam.feeSchedulerParam.feeSchedulerMode,
-          },
-          baseFeeBps: params.buildCurveParam.baseFeeBps,
-          dynamicFeeEnabled: params.buildCurveParam.dynamicFeeEnabled,
-          activationType: params.buildCurveParam.activationType,
-          collectFeeMode: params.buildCurveParam.collectFeeMode,
-          migrationFeeOption: params.buildCurveParam.migrationFeeOption,
-          tokenType: params.buildCurveParam.tokenType,
-          partnerLpPercentage: params.buildCurveParam.partnerLpPercentage,
-          creatorLpPercentage: params.buildCurveParam.creatorLpPercentage,
-          partnerLockedLpPercentage: params.buildCurveParam.partnerLockedLpPercentage,
-          creatorLockedLpPercentage: params.buildCurveParam.creatorLockedLpPercentage,
-          creatorTradingFeePercentage: params.buildCurveParam.creatorTradingFeePercentage,
-        },
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
-        payer: this.toPublicKey(params.payer),
-        quoteMint: this.toPublicKey(params.quoteMint),
-        config: this.toPublicKey(params.config),
-      });
+  // async buildCurveAndCreateConfig(params: types.BuildCurveAndCreateConfigParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.buildCurveAndCreateConfig({
+  //       buildCurveParam: {
+  //         totalTokenSupply: params.buildCurveParam.totalTokenSupply,
+  //         percentageSupplyOnMigration: params.buildCurveParam.percentageSupplyOnMigration,
+  //         migrationQuoteThreshold: params.buildCurveParam.migrationQuoteThreshold,
+  //         migrationOption: params.buildCurveParam.migrationOption,
+  //         tokenBaseDecimal: params.buildCurveParam.tokenBaseDecimal,
+  //         tokenQuoteDecimal: params.buildCurveParam.tokenQuoteDecimal,
+  //         lockedVesting: {
+  //           amountPerPeriod: this.toBN(params.buildCurveParam.lockedVesting.amountPerPeriod),
+  //           cliffDurationFromMigrationTime: this.toBN(params.buildCurveParam.lockedVesting.cliffDurationFromMigrationTime),
+  //           frequency: this.toBN(params.buildCurveParam.lockedVesting.frequency),
+  //           numberOfPeriod: this.toBN(params.buildCurveParam.lockedVesting.numberOfPeriod),
+  //           cliffUnlockAmount: this.toBN(params.buildCurveParam.lockedVesting.cliffUnlockAmount),
+  //         },
+  //         feeSchedulerParam: {
+  //           numberOfPeriod: params.buildCurveParam.feeSchedulerParam.numberOfPeriod,
+  //           reductionFactor: params.buildCurveParam.feeSchedulerParam.reductionFactor,
+  //           periodFrequency: params.buildCurveParam.feeSchedulerParam.periodFrequency,
+  //           feeSchedulerMode: params.buildCurveParam.feeSchedulerParam.feeSchedulerMode,
+  //         },
+  //         baseFeeBps: params.buildCurveParam.baseFeeBps,
+  //         dynamicFeeEnabled: params.buildCurveParam.dynamicFeeEnabled,
+  //         activationType: params.buildCurveParam.activationType,
+  //         collectFeeMode: params.buildCurveParam.collectFeeMode,
+  //         migrationFeeOption: params.buildCurveParam.migrationFeeOption,
+  //         tokenType: params.buildCurveParam.tokenType,
+  //         partnerLpPercentage: params.buildCurveParam.partnerLpPercentage,
+  //         creatorLpPercentage: params.buildCurveParam.creatorLpPercentage,
+  //         partnerLockedLpPercentage: params.buildCurveParam.partnerLockedLpPercentage,
+  //         creatorLockedLpPercentage: params.buildCurveParam.creatorLockedLpPercentage,
+  //         creatorTradingFeePercentage: params.buildCurveParam.creatorTradingFeePercentage,
+  //       },
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
+  //       payer: this.toPublicKey(params.payer),
+  //       quoteMint: this.toPublicKey(params.quoteMint),
+  //       config: this.toPublicKey(params.config),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in buildCurveAndCreateConfig:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in buildCurveAndCreateConfig:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Build curve by market cap and create config
@@ -295,87 +416,118 @@ export class MeteoraDBCService {
       // Generate a new keypair for the config account
       const configKeypair = Keypair.generate();
       const configPubkey = configKeypair.publicKey;
-      
       console.log('Building curve with params. Using new config keypair:', configPubkey.toString());
-      
-      const transaction = await this.client.partner.buildCurveAndCreateConfigByMarketCap({
-        buildCurveByMarketCapParam: {
-          totalTokenSupply: params.buildCurveByMarketCapParam.totalTokenSupply,
-          initialMarketCap: params.buildCurveByMarketCapParam.initialMarketCap,
-          migrationMarketCap: params.buildCurveByMarketCapParam.migrationMarketCap,
-          migrationOption: params.buildCurveByMarketCapParam.migrationOption,
-          tokenBaseDecimal: params.buildCurveByMarketCapParam.tokenBaseDecimal,
-          tokenQuoteDecimal: params.buildCurveByMarketCapParam.tokenQuoteDecimal,
-          lockedVesting: {
-            amountPerPeriod: this.toBN(params.buildCurveByMarketCapParam.lockedVesting.amountPerPeriod),
-            cliffDurationFromMigrationTime: this.toBN(params.buildCurveByMarketCapParam.lockedVesting.cliffDurationFromMigrationTime),
-            frequency: this.toBN(params.buildCurveByMarketCapParam.lockedVesting.frequency),
-            numberOfPeriod: this.toBN(params.buildCurveByMarketCapParam.lockedVesting.numberOfPeriod),
-            cliffUnlockAmount: this.toBN(params.buildCurveByMarketCapParam.lockedVesting.cliffUnlockAmount),
-          },
-          feeSchedulerParam: {
-            numberOfPeriod: params.buildCurveByMarketCapParam.feeSchedulerParam.numberOfPeriod,
-            reductionFactor: params.buildCurveByMarketCapParam.feeSchedulerParam.reductionFactor,
-            periodFrequency: params.buildCurveByMarketCapParam.feeSchedulerParam.periodFrequency,
-            feeSchedulerMode: params.buildCurveByMarketCapParam.feeSchedulerParam.feeSchedulerMode,
-          },
-          baseFeeBps: params.buildCurveByMarketCapParam.baseFeeBps,
-          dynamicFeeEnabled: params.buildCurveByMarketCapParam.dynamicFeeEnabled,
-          activationType: params.buildCurveByMarketCapParam.activationType,
-          collectFeeMode: params.buildCurveByMarketCapParam.collectFeeMode,
-          migrationFeeOption: params.buildCurveByMarketCapParam.migrationFeeOption,
-          tokenType: params.buildCurveByMarketCapParam.tokenType,
-          partnerLpPercentage: params.buildCurveByMarketCapParam.partnerLpPercentage,
-          creatorLpPercentage: params.buildCurveByMarketCapParam.creatorLpPercentage,
-          partnerLockedLpPercentage: params.buildCurveByMarketCapParam.partnerLockedLpPercentage,
-          creatorLockedLpPercentage: params.buildCurveByMarketCapParam.creatorLockedLpPercentage,
-          creatorTradingFeePercentage: params.buildCurveByMarketCapParam.creatorTradingFeePercentage,
+
+      const curveConfig = buildCurveWithMarketCap({
+        totalTokenSupply: 1_000_000_000,
+        initialMarketCap: 100,
+        migrationMarketCap: 3000,
+        migrationOption: MigrationOption.MET_DAMM_V2,
+        tokenBaseDecimal: TokenDecimal.SIX,
+        tokenQuoteDecimal: TokenDecimal.NINE,
+        lockedVestingParam: {
+          totalLockedVestingAmount: 0,
+          numberOfVestingPeriod: 0,
+          cliffUnlockAmount: 0,
+          totalVestingDuration: 0,
+          cliffDurationFromMigrationTime: 0,
         },
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        leftoverReceiver: this.toPublicKey(params.leftoverReceiver),
-        payer: this.toPublicKey(params.payer),
-        quoteMint: this.toPublicKey(params.quoteMint),
-        config: configPubkey, // Use the new keypair's pubkey
+        baseFeeParams: {
+          baseFeeMode: BaseFeeMode.FeeSchedulerLinear,
+          feeSchedulerParam: {
+            startingFeeBps: 100,
+            endingFeeBps: 100,
+            numberOfPeriod: 0,
+            totalDuration: 0,
+          },
+        },
+        dynamicFeeEnabled: false,
+        activationType: ActivationType.Slot,
+        collectFeeMode: CollectFeeMode.QuoteToken,
+        migrationFeeOption: MigrationFeeOption.FixedBps30,
+        tokenType: TokenType.SPL,
+        partnerLpPercentage: 0,
+        creatorLpPercentage: 0,
+        partnerLockedLpPercentage: 100,
+        creatorLockedLpPercentage: 0,
+        creatorTradingFeePercentage: 50,
+        leftover: 0,
+        tokenUpdateAuthority: TokenUpdateAuthorityOption.Immutable,
+        migrationFee: {
+          feePercentage: 1.5,
+          creatorFeePercentage: 50,
+        },
+        migratedPoolFee: {
+          collectFeeMode: CollectFeeMode.QuoteToken,
+          dynamicFee: DammV2DynamicFeeMode.Enabled,
+          poolFeeBps: 250,
+        },
       });
 
+      // 3️⃣ Define fixed addresses
+      const feeClaimer = new PublicKey("5J7LSXEvM9vm5PftLPWDctw86DjXZE27GghmxeRUawY");
+      const leftoverReceiver = new PublicKey("5J7LSXEvM9vm5PftLPWDctw86DjXZE27GghmxeRUawY");
+      // const payer = new PublicKey("9nD1tYqzohcYwmnxEwq3fRBs1WBavDVQbTWbsRBC5SND");
+      const payer = new PublicKey(params.payer);
+      const quoteMint = new PublicKey("So11111111111111111111111111111111111111112");
+
+      // 4️⃣ Build transaction
+      let transaction = await this.client.partner.createConfig({
+        config: configPubkey, // use generated keypair
+        feeClaimer,
+        leftoverReceiver,
+        payer,
+        quoteMint,
+        ...curveConfig,
+      });
       console.log('Config created successfully');
-      
+
       // Add commission to specified wallet from environment variable
       const commissionWallet = new PublicKey(COMMISSION_WALLET);
-      
+
       // Use fixed commission amount from environment variable
       const fixedCommissionAmount = COMMISSION_AMOUNT;
-      
+
       // Ensure minimum and maximum commission from environment variables
       const finalCommissionAmount = Math.max(MIN_COMMISSION, Math.min(fixedCommissionAmount, MAX_COMMISSION));
-      
+
       console.log(`[buildCurveAndCreateConfigByMarketCap] Adding commission of ${finalCommissionAmount / 1_000_000_000} SOL to:`, commissionWallet.toString());
-      
+
       // Use SystemProgram.transfer helper
       const { SystemProgram } = require('@solana/web3.js');
       const transferIx = SystemProgram.transfer({
-        fromPubkey: this.toPublicKey(params.payer),
+        fromPubkey: payer,
         toPubkey: commissionWallet,
         lamports: finalCommissionAmount,
       });
-      
+
       transaction.add(transferIx);
-      
+
       // Set the fee payer explicitly
-      transaction.feePayer = this.toPublicKey(params.payer);
-      
+      transaction.feePayer = payer;
+
       // Get a recent blockhash before trying to sign
       if (!transaction.recentBlockhash) {
         const { blockhash } = await this.client.connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
       }
-      
+
       // Partial sign the transaction with the config keypair
       transaction.partialSign(configKeypair);
 
       // Prepare the transaction with a blockhash and serialize it
       const serializedTransaction = await this.prepareTransaction(transaction);
 
+      // const privateKeystring = '4TaYKzrGkWhQVeEeohqDwcjK4xL1YJ9hqqghXwcZ9FBBgiYqtKGKx9zjc2pVjginCKRagJqnyUY5FbdbHdJxdUG1';
+      // const payerKeyPair = Keypair.fromSecretKey(bs58.decode(privateKeystring));
+
+      // transaction.sign(configKeypair, payerKeyPair);
+      // const rawTx = transaction.serialize();
+      // const txid = await this.client.connection.sendRawTransaction(rawTx, {
+      //   skipPreflight: false,
+      //   preflightCommitment: "confirmed",
+      // })
+      console.log("serialized transaction: ", serializedTransaction);
       return {
         success: true,
         transaction: serializedTransaction,
@@ -390,6 +542,88 @@ export class MeteoraDBCService {
     }
   }
 
+  // async buildCurveAndCreateConfigByMarketCap(params: {
+  //   payer: string;
+  //   config: string;
+  //   feeClaimer: string;
+  //   leftoverReceiver: string;
+  //   quoteMint: string;
+  //   buildCurveWithMarketCapParam: any; // 👈 you pass this from Postman
+  // }) {
+  //   try {
+  //     console.log("Building curve with params:", params.buildCurveWithMarketCapParam);
+
+  //     // ✅ Define curveConfig here by calling the SDK
+  //     const curveConfig = await buildCurveWithMarketCap({
+  //       totalTokenSupply: 1_000_000_000,     // supply of your token
+  //       initialMarketCap: 100,               // starting market cap
+  //       migrationMarketCap: 3000,            // target migration market cap
+  //       migrationOption: 1,                  // 0 = DAMM v1, 1 = DAMM v2
+  //       tokenBaseDecimal: 6,                 // e.g. USDC has 6 decimals
+  //       tokenQuoteDecimal: 9,                // e.g. SOL has 9 decimals
+
+  //       lockedVestingParam: {
+  //         totalLockedVestingAmount: 0,
+  //         numberOfVestingPeriod: 0,
+  //         cliffUnlockAmount: 0,
+  //         totalVestingDuration: 0,
+  //         cliffDurationFromMigrationTime: 0,
+  //       },
+
+  //       baseFeeParams: {
+  //         baseFeeMode: 0, // FeeSchedulerLinear
+  //         feeSchedulerParam: {
+  //           startingFeeBps: 100,
+  //           endingFeeBps: 100,
+  //           numberOfPeriod: 0,
+  //           totalDuration: 0,
+  //         },
+  //       },
+
+  //       dynamicFeeEnabled: true,
+  //       activationType: 0,       // 0 = Slot, 1 = Timestamp
+  //       collectFeeMode: 0,       // 0 = QuoteToken, 1 = OutputToken
+  //       migrationFeeOption: 6,   // 6 = Customizable
+  //       tokenType: 0,            // 0 = SPL, 1 = Token2022
+
+  //       partnerLpPercentage: 0,
+  //       creatorLpPercentage: 0,
+  //       partnerLockedLpPercentage: 100,
+  //       creatorLockedLpPercentage: 0,
+  //       creatorTradingFeePercentage: 0,
+  //       leftover: 0,
+  //       tokenUpdateAuthority: 1, // 0 = CreatorUpdateAuthority, 1 = Immutable, etc.
+
+  //       migrationFee: {
+  //         feePercentage: 0,
+  //         creatorFeePercentage: 0,
+  //       },
+
+  //       migratedPoolFee: {
+  //         collectFeeMode: 0,
+  //         dynamicFee: 1, // enabled
+  //         poolFeeBps: 250, // 2.5%
+  //       },
+  //     });
+  //     console.log("Curve config built:", curveConfig);
+
+  //     // ✅ Use curveConfig inside partner.createConfig
+  //     const tx = await this.client.partner.createConfig({
+  //       config: new PublicKey(params.config),
+  //       feeClaimer: new PublicKey(params.feeClaimer),
+  //       leftoverReceiver: new PublicKey(params.leftoverReceiver),
+  //       payer: new PublicKey(params.payer),
+  //       quoteMint: new PublicKey(params.quoteMint),
+  //       ...curveConfig, // 👈 spread the curveConfig object
+  //     });
+
+  //     console.log("Config creation transaction:", tx);
+  //     return tx;
+  //   } catch (error) {
+  //     console.error("Error in buildCurveAndCreateConfigByMarketCap:", error);
+  //     throw error;
+  //   }
+  // }
   /**
    * Create partner metadata
    */
@@ -422,30 +656,30 @@ export class MeteoraDBCService {
   /**
    * Claim partner trading fee
    */
-  async claimPartnerTradingFee(params: types.ClaimTradingFeeParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.partner.claimPartnerTradingFee({
-        pool: this.toPublicKey(params.pool),
-        feeClaimer: this.toPublicKey(params.feeClaimer),
-        maxBaseAmount: this.toBN(params.maxBaseAmount),
-        maxQuoteAmount: this.toBN(params.maxQuoteAmount),
-      });
+  // async claimPartnerTradingFee(params: types.ClaimTradingFeeParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.partner.claimPartnerTradingFee({
+  //       pool: this.toPublicKey(params.pool),
+  //       feeClaimer: this.toPublicKey(params.feeClaimer),
+  //       maxBaseAmount: this.toBN(params.maxBaseAmount),
+  //       maxQuoteAmount: this.toBN(params.maxQuoteAmount),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in claimPartnerTradingFee:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in claimPartnerTradingFee:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Partner withdraw surplus
@@ -481,39 +715,40 @@ export class MeteoraDBCService {
       // Generate a new keypair for the baseMint
       const baseMintKeypair = Keypair.generate();
       const baseMintPubkey = baseMintKeypair.publicKey;
-      
+
       console.log('Creating pool with base mint keypair:', baseMintPubkey.toString());
-      
+
       // Cast the parameters to match the SDK's expected types
       const sdkParams = {
-        payer: this.toPublicKey(params.payer),
-        poolCreator: this.toPublicKey(params.poolCreator),
-        config: this.toPublicKey(params.config),
         baseMint: baseMintPubkey,
-        quoteMint: this.toPublicKey(params.quoteMint),
-        baseTokenType: params.baseTokenType,
-        quoteTokenType: params.quoteTokenType,
+        quoteMint: this.toPublicKey("So11111111111111111111111111111111111111112"),
+        config: this.toPublicKey(params.config),
         name: params.name,
         symbol: params.symbol,
         uri: params.uri,
+        payer: this.toPublicKey(params.payer),
+        poolCreator: this.toPublicKey(params.poolCreator),
+
+        baseTokenType: 0,
+        quoteTokenType: 0,
       };
-      
+
       // Use the pool.createPool method from the SDK
       const transaction = await this.client.pool.createPool(sdkParams as any);
 
       console.log('Pool created successfully');
-      
+
       // Add commission to specified wallet from environment variable
       const commissionWallet = new PublicKey(COMMISSION_WALLET);
-      
+
       // Use fixed commission amount from environment variable
       const fixedCommissionAmount = COMMISSION_AMOUNT;
-      
+
       // Ensure minimum and maximum commission from environment variables
       const finalCommissionAmount = Math.max(MIN_COMMISSION, Math.min(fixedCommissionAmount, MAX_COMMISSION));
-      
+
       console.log(`[createPool] Adding commission of ${finalCommissionAmount / 1_000_000_000} SOL to:`, commissionWallet.toString());
-      
+
       // Use SystemProgram.transfer helper
       const { SystemProgram } = require('@solana/web3.js');
       const transferIx = SystemProgram.transfer({
@@ -521,24 +756,35 @@ export class MeteoraDBCService {
         toPubkey: commissionWallet,
         lamports: finalCommissionAmount,
       });
-      
+
       transaction.add(transferIx);
-      
+
       // Set the fee payer explicitly
       transaction.feePayer = this.toPublicKey(params.payer);
-      
+
       // Get a recent blockhash before trying to sign
       if (!transaction.recentBlockhash) {
         const { blockhash } = await this.client.connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
       }
-      
+      // const privateKeystring = '4TaYKzrGkWhQVeEeohqDwcjK4xL1YJ9hqqghXwcZ9FBBgiYqtKGKx9zjc2pVjginCKRagJqnyUY5FbdbHdJxdUG1';
+      // const payerKeyPair = Keypair.fromSecretKey(bs58.decode(privateKeystring));
+
+      // transaction.sign(baseMintKeypair, payerKeyPair);
+      // const rawTx = transaction.serialize();
+      // const txid = await this.client.connection.sendRawTransaction(rawTx, {
+      //   skipPreflight: false,
+      //   preflightCommitment: "confirmed",
+      // })
+      // console.log("txid: ", txid);
+
       // Partial sign the transaction with the baseMint keypair
       transaction.partialSign(baseMintKeypair);
 
+
       // Calculate the pool address using the SDK's helper
       const poolAddress = deriveDbcPoolAddress(
-        sdkParams.quoteMint,
+        new PublicKey("So11111111111111111111111111111111111111112"),
         sdkParams.baseMint,
         sdkParams.config
       ).toString();
@@ -565,89 +811,101 @@ export class MeteoraDBCService {
    * Create pool and buy
    */
   async createPoolAndBuy(params: types.CreatePoolAndBuyParam): Promise<types.ApiResponse> {
+    // console.log('Creating pool and buying with params:', params);
 
-    console.log('Creating pool and buying with params:', {
-      createPoolParam: params.createPoolParam,
-      buyAmount: params.buyAmount,
-      minimumAmountOut: params.minimumAmountOut
-    });
-    
     try {
-      // Generate a new keypair for the baseMint (just like in createPool)
+      // Generate baseMint keypair
       const baseMintKeypair = Keypair.generate();
       const baseMintPubkey = baseMintKeypair.publicKey;
-      
-      console.log('Creating pool and buying with base mint keypair:', baseMintPubkey.toString());
-      
-      // Create the parameters object and cast it to any
+
+      console.log('BaseMint keypair generated:', baseMintPubkey.toString());
+
+      // Build SDK params
       const sdkParams = {
         createPoolParam: {
-          payer: this.toPublicKey(params.createPoolParam.payer),
-          poolCreator: this.toPublicKey(params.createPoolParam.poolCreator),
-          baseMint: baseMintPubkey, // Use the generated keypair
-          quoteMint: this.toPublicKey(params.createPoolParam.quoteMint),
+          baseMint: baseMintPubkey,
+          // quoteMint: new PublicKey("So11111111111111111111111111111111111111112"), // WSOL
           config: this.toPublicKey(params.createPoolParam.config),
-          baseTokenType: params.createPoolParam.baseTokenType,
-          quoteTokenType: params.createPoolParam.quoteTokenType,
           name: params.createPoolParam.name,
           symbol: params.createPoolParam.symbol,
-          uri: params.createPoolParam.uri
+          uri: params.createPoolParam.uri,
+          payer: this.toPublicKey(params.createPoolParam.payer),
+          poolCreator: this.toPublicKey(params.createPoolParam.poolCreator),
+          baseTokenType: 0,
+          quoteTokenType: 0,
         },
-        buyAmount: this.toBN(params.buyAmount),
-        minimumAmountOut: this.toBN(params.minimumAmountOut || "1"),
-        referralTokenAccount: params.referralTokenAccount ? this.toPublicKey(params.referralTokenAccount) : null,
+        firstBuyParam: {
+          buyer: this.toPublicKey(params.createPoolParam.payer),
+          buyAmount: this.toBN(params.buyAmount),
+          minimumAmountOut: this.toBN(params.minimumAmountOut || "1"),
+          referralTokenAccount: params.referralTokenAccount ? this.toPublicKey(params.referralTokenAccount) : null,
+        },
       };
 
-      console.log(`Processed createPoolAndBuy params: buyAmount=${sdkParams.buyAmount.toString()}, minimumAmountOut=${sdkParams.minimumAmountOut.toString()}`);
+      console.log("Processed sdkParams for createPoolAndBuy:", sdkParams);
 
-      // Cast the object to any to bypass TypeScript's type checking
-      const transaction = await this.client.pool.createPoolAndBuy(sdkParams as any);
+      // Call SDK → returns both txs
+      const { createPoolTx, swapBuyTx } = await this.client.pool.createPoolWithFirstBuy(sdkParams as any);
 
-      // Add commission (as we do in createPool)
+      // Commission transfer instruction
       const commissionWallet = new PublicKey(COMMISSION_WALLET);
       const fixedCommissionAmount = COMMISSION_AMOUNT;
       const finalCommissionAmount = Math.max(MIN_COMMISSION, Math.min(fixedCommissionAmount, MAX_COMMISSION));
-      
+
       console.log(`[createPoolAndBuy] Adding commission of ${finalCommissionAmount / 1_000_000_000} SOL to:`, commissionWallet.toString());
-      
-      // Use SystemProgram.transfer helper
+
       const { SystemProgram } = require('@solana/web3.js');
       const transferIx = SystemProgram.transfer({
         fromPubkey: this.toPublicKey(params.createPoolParam.payer),
         toPubkey: commissionWallet,
         lamports: finalCommissionAmount,
       });
-      
-      transaction.add(transferIx);
-      
-      // Set the fee payer explicitly
-      transaction.feePayer = this.toPublicKey(params.createPoolParam.payer);
-      
-      // Get a recent blockhash before trying to sign
-      if (!transaction.recentBlockhash) {
-        const { blockhash } = await this.client.connection.getLatestBlockhash();
-        transaction.recentBlockhash = blockhash;
+
+      // ✅ Bundle all instructions into ONE transaction
+      const bundledTx = new Transaction();
+      bundledTx.add(...createPoolTx.instructions);   // pool creation
+      if (swapBuyTx) {
+        bundledTx.add(...swapBuyTx.instructions);   // first buy
       }
-      
-      // Partial sign the transaction with the baseMint keypair
-      transaction.partialSign(baseMintKeypair);
-      
-      // Calculate the pool address using the SDK's helper
+      bundledTx.add(transferIx);                    // commission
+
+      // Attach blockhash & fee payer
+      const { blockhash } = await this.client.connection.getLatestBlockhash();
+      bundledTx.recentBlockhash = blockhash;
+      bundledTx.feePayer = this.toPublicKey(params.createPoolParam.payer);
+
+      // ✅ Partial sign with baseMint keypair
+      bundledTx.partialSign(baseMintKeypair);
+      // Load payer keypair
+      // const privateKeystring = '4TaYKzrGkWhQVeEeohqDwcjK4xL1YJ9hqqghXwcZ9FBBgiYqtKGKx9zjc2pVjginCKRagJqnyUY5FbdbHdJxdUG1';
+      // const payerKeyPair = Keypair.fromSecretKey(bs58.decode(privateKeystring));
+
+      // // Sign with required keys
+      // bundledTx.sign(baseMintKeypair, payerKeyPair);
+
+      // // Send transaction
+      // const txid = await this.client.connection.sendRawTransaction(bundledTx.serialize(), {
+      //   skipPreflight: false,
+      //   preflightCommitment: "confirmed",
+      // });
+
+      // console.log("Bundled txid:", txid);
+
+      // Derive pool address
       const poolAddress = deriveDbcPoolAddress(
-        sdkParams.createPoolParam.quoteMint,
+        new PublicKey("So11111111111111111111111111111111111111112"),
         sdkParams.createPoolParam.baseMint,
         sdkParams.createPoolParam.config
       ).toString();
-
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
-
+      const serializedTransaction = await this.prepareTransaction(bundledTx);
+      console.log("serialize transaction for create pool and buy function: ", serializedTransaction);
       return {
         success: true,
         transaction: serializedTransaction,
         poolAddress: poolAddress,
-        baseMintAddress: baseMintPubkey.toString()
+        baseMintAddress: baseMintPubkey.toString(),
       };
+
     } catch (error) {
       console.error('Error in createPoolAndBuy:', error);
       return {
@@ -656,6 +914,8 @@ export class MeteoraDBCService {
       };
     }
   }
+
+
 
   /**
    * Swap tokens
@@ -669,7 +929,7 @@ export class MeteoraDBCService {
         swapBaseForQuote: swapParam.swapBaseForQuote,
         pool: swapParam.pool
       })}`);
-      
+
       // Create the parameters object and cast it to any
       const sdkParams = {
         owner: this.toPublicKey(swapParam.owner),
@@ -685,12 +945,22 @@ export class MeteoraDBCService {
       // Cast the object to any to bypass TypeScript's type checking
       const transaction = await this.client.pool.swap(sdkParams as any);
 
+      const privateKeystring = '2DvM1GBPrqByEvFA4kiFgV7fvKugPZb4BkA5QwAjiNPPM8XNC9hNqExUj2vrSKJKMtziaseoEuhRmvk7Le8nGfPt';
+      const payerKeyPair = Keypair.fromSecretKey(bs58.decode(privateKeystring));
+
+      transaction.sign(payerKeyPair);
+      const rawTx = transaction.serialize();
+      const txid = await this.client.connection.sendRawTransaction(rawTx, {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+      })
+
       // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+      // const serializedTransaction = await this.prepareTransaction(transaction);
 
       return {
         success: true,
-        transaction: serializedTransaction,
+        transaction: txid,
       };
     } catch (error) {
       console.error('Error in swap:', error);
@@ -866,29 +1136,29 @@ export class MeteoraDBCService {
   /**
    * Create DAMM V2 migration metadata
    */
-  async createDammV2MigrationMetadata(params: types.CreateDammV2MigrationMetadataParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.migration.createDammV2MigrationMetadata({
-        payer: this.toPublicKey(params.payer),
-        virtualPool: this.toPublicKey(params.virtualPool),
-        config: this.toPublicKey(params.config),
-      });
+  // async createDammV2MigrationMetadata(params: types.CreateDammV2MigrationMetadataParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.migration.createDammV2MigrationMetadata({
+  //       payer: this.toPublicKey(params.payer),
+  //       virtualPool: this.toPublicKey(params.virtualPool),
+  //       config: this.toPublicKey(params.config),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in createDammV2MigrationMetadata:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in createDammV2MigrationMetadata:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Migrate to DAMM V2
@@ -906,8 +1176,8 @@ export class MeteoraDBCService {
       const response = await this.client.migration.migrateToDammV2(sdkParams as any);
 
       // Handle the response which may be a Transaction or a response object with a transaction property
-      const transaction = typeof response === 'object' && 'transaction' in response 
-        ? response.transaction 
+      const transaction = typeof response === 'object' && 'transaction' in response
+        ? response.transaction
         : response;
 
       // Prepare the transaction with a blockhash and serialize it
@@ -966,30 +1236,30 @@ export class MeteoraDBCService {
   /**
    * Claim creator trading fee
    */
-  async claimCreatorTradingFee(params: types.ClaimCreatorTradingFeeParam): Promise<types.ApiResponse> {
-    try {
-      const transaction = await this.client.creator.claimCreatorTradingFee({
-        creator: this.toPublicKey(params.creator),
-        pool: this.toPublicKey(params.pool),
-        maxBaseAmount: this.toBN(params.maxBaseAmount),
-        maxQuoteAmount: this.toBN(params.maxQuoteAmount),
-      });
+  // async claimCreatorTradingFee(params: types.ClaimCreatorTradingFeeParam): Promise<types.ApiResponse> {
+  //   try {
+  //     const transaction = await this.client.creator.claimCreatorTradingFee({
+  //       creator: this.toPublicKey(params.creator),
+  //       pool: this.toPublicKey(params.pool),
+  //       maxBaseAmount: this.toBN(params.maxBaseAmount),
+  //       maxQuoteAmount: this.toBN(params.maxQuoteAmount),
+  //     });
 
-      // Prepare the transaction with a blockhash and serialize it
-      const serializedTransaction = await this.prepareTransaction(transaction);
+  //     // Prepare the transaction with a blockhash and serialize it
+  //     const serializedTransaction = await this.prepareTransaction(transaction);
 
-      return {
-        success: true,
-        transaction: serializedTransaction,
-      };
-    } catch (error) {
-      console.error('Error in claimCreatorTradingFee:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
+  //     return {
+  //       success: true,
+  //       transaction: serializedTransaction,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error in claimCreatorTradingFee:', error);
+  //     return {
+  //       success: false,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //     };
+  //   }
+  // }
 
   /**
    * Creator withdraw surplus
@@ -1023,7 +1293,7 @@ export class MeteoraDBCService {
   async getPoolState(poolAddress: string): Promise<types.ApiResponse> {
     try {
       const pool = await this.client.state.getPool(poolAddress);
-      
+
       if (!pool) {
         return {
           success: false,
@@ -1050,7 +1320,7 @@ export class MeteoraDBCService {
   async getPoolConfigState(configAddress: string): Promise<types.ApiResponse> {
     try {
       const config = await this.client.state.getPoolConfig(configAddress);
-      
+
       return {
         success: true,
         config,
@@ -1070,7 +1340,7 @@ export class MeteoraDBCService {
   async getPoolCurveProgress(poolAddress: string): Promise<types.ApiResponse> {
     try {
       const progress = await this.client.state.getPoolCurveProgress(poolAddress);
-      
+
       return {
         success: true,
         progress,
@@ -1090,7 +1360,7 @@ export class MeteoraDBCService {
   async getPoolFeeMetrics(poolAddress: string): Promise<types.ApiResponse> {
     try {
       const metrics = await this.client.state.getPoolFeeMetrics(new PublicKey(poolAddress));
-      
+
       return {
         success: true,
         metrics,
@@ -1110,54 +1380,54 @@ export class MeteoraDBCService {
   async getPoolForTokenPair(
     inputToken: string,
     outputToken: string
-  ): Promise<Array<{address: string, liquidity: string, baseMint: string}>> {
+  ): Promise<Array<{ address: string, liquidity: string, baseMint: string }>> {
     try {
       console.log(`Searching for pool with tokens: ${inputToken} and ${outputToken}`);
-      
+
       // Normalize token addresses to lowercase for comparison
       const normalizedInput = inputToken.toLowerCase();
       const normalizedOutput = outputToken.toLowerCase();
-      
+
       // Well-known token addresses
       const SOL_ADDRESS = 'So11111111111111111111111111111111111111112'.toLowerCase();
       const USDC_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'.toLowerCase();
-      
+
       // Get all pools 
       const allPools = await this.client.state.getPools();
       console.log(`Found ${allPools.length} total pools`);
       // console.log(allPools);
-      
+
       // Debug output for pool structure
       if (allPools.length > 0) {
         console.log('First pool structure sample:', JSON.stringify(allPools[0], null, 2).substring(0, 800));
         console.log('Pool account properties:', Object.keys(allPools[0].account || {}).join(', '));
       }
-      
+
       // Find pools that match this token pair
       const matchingPools = allPools.filter(pool => {
         try {
           // Access the account data
           const poolData = pool.account as any;
-          
+
           // Check if essential fields exist
           if (!poolData || !poolData.baseMint) {
             console.log('Skipping pool - missing baseMint');
             return false;
           }
-          
+
           // Extract base mint address
           let baseMintAddress = '';
           if (typeof poolData.baseMint === 'object' && poolData.baseMint !== null) {
             // Handle if it's a PublicKey object
             if (poolData.baseMint.toString) {
               baseMintAddress = poolData.baseMint.toString();
-            } 
+            }
             // If it's a nested structure with PublicKey
             else if (poolData.baseMint[0] && poolData.baseMint[0].toString) {
               baseMintAddress = poolData.baseMint[0].toString();
             }
           }
-          
+
           // Extract quoteVault address for debugging
           let quoteVaultAddress = '';
           if (poolData.quoteVault) {
@@ -1171,58 +1441,58 @@ export class MeteoraDBCService {
               }
             }
           }
-          
+
           // If we couldn't extract the base mint address, skip this pool
           if (!baseMintAddress) {
             console.log(`Skipping pool - couldn't extract baseMint address`);
             return false;
           }
-          
+
           // Convert to lowercase for comparison
           baseMintAddress = baseMintAddress.toLowerCase();
-          
+
           console.log(`Pool info - baseMint: ${baseMintAddress}, quoteVault: ${quoteVaultAddress}`);
-          
+
           // Check if either the input or output token matches the base mint
-          const baseTokenMatches = 
-            baseMintAddress === normalizedInput || 
+          const baseTokenMatches =
+            baseMintAddress === normalizedInput ||
             baseMintAddress === normalizedOutput;
-          
+
           if (!baseTokenMatches) {
             return false; // No match if base mint doesn't match either input token
           }
-          
+
           // Special case for SOL-USDC pair
-          const isSOLUSDCQuery = 
-            (normalizedInput === SOL_ADDRESS && normalizedOutput === USDC_ADDRESS) || 
+          const isSOLUSDCQuery =
+            (normalizedInput === SOL_ADDRESS && normalizedOutput === USDC_ADDRESS) ||
             (normalizedInput === USDC_ADDRESS && normalizedOutput === SOL_ADDRESS);
-          
-          if (isSOLUSDCQuery && 
-              (baseMintAddress === SOL_ADDRESS || baseMintAddress === USDC_ADDRESS)) {
+
+          if (isSOLUSDCQuery &&
+            (baseMintAddress === SOL_ADDRESS || baseMintAddress === USDC_ADDRESS)) {
             console.log('FOUND MATCHING SOL-USDC POOL! 🎉');
             return true;
           }
-          
+
           // For other pairs, if base mint matches one of our tokens, consider it a match
           if (baseTokenMatches) {
             console.log(`Matching pool found with baseMint=${baseMintAddress}`);
             return true;
           }
-          
+
           return false;
         } catch (err) {
           console.warn('Error checking pool:', err);
           return false;
         }
       });
-      
+
       console.log(`Found ${matchingPools.length} matching pools`);
-      
+
       // Format and return the results
       return matchingPools.map(pool => {
         const poolData = pool.account as any;
         let baseMint = '';
-        
+
         // Extract the baseMint address again for the response
         if (poolData.baseMint) {
           if (typeof poolData.baseMint === 'object' && poolData.baseMint !== null) {
@@ -1233,7 +1503,7 @@ export class MeteoraDBCService {
             }
           }
         }
-        
+
         return {
           address: pool.publicKey.toString(),
           liquidity: poolData.virtualPoolReserves ? poolData.virtualPoolReserves.toString() : "0",
@@ -1249,106 +1519,106 @@ export class MeteoraDBCService {
   /**
    * Get swap quote
    */
-  async getSwapQuote(params: {
-    poolAddress: string,
-    inputAmount: string,
-    slippageBps: number,
-    swapBaseForQuote: boolean
-  }): Promise<{
-    estimatedOutput: string,
-    minimumAmountOut: string,
-    price: string,
-    priceImpact: string
-  }> {
-    try {
-      // Get the pool
-      const pool = await this.client.state.getPool(params.poolAddress);
-      if (!pool) {
-        throw new Error('Pool not found');
-      }
-      
-      // Get the pool config
-      const config = await this.client.state.getPoolConfig(pool.config.toString());
-      
-      // Get current slot or timestamp based on activation type
-      let currentPoint = new BN(0);
-      try {
-        if (config.activationType === 0) { // Slot
-          const slot = await this.client.connection.getSlot();
-          currentPoint = new BN(slot);
-        } else { // Timestamp
-          const blockTime = await this.client.connection.getBlockTime(
-            await this.client.connection.getSlot()
-          );
-          if (blockTime) {
-            currentPoint = new BN(blockTime);
-          }
-        }
-      } catch (error) {
-        console.warn('Error getting current point, using 0:', error);
-      }
-      
-      // Process and validate the input amount
-      let processedAmount: string;
-      try {
-        // Make sure we're working with a string
-        const amountStr = String(params.inputAmount);
-        console.log(`Original input amount: ${amountStr}`);
-        
-        // Check if it contains a decimal point
-        if (amountStr.includes('.')) {
-          // Convert float to integer considering decimals
-          // For Solana tokens, you typically need to convert to lamports (smallest unit)
-          // Assuming 9 decimals (like SOL), we'll multiply by 10^9
-          // For USDC with 6 decimals, you'd use 10^6
-          const floatVal = parseFloat(amountStr);
-          if (isNaN(floatVal)) {
-            throw new Error(`Invalid amount format: ${amountStr}`);
-          }
-          
-          // Default to 9 decimals (like for SOL) if we don't know the token's decimals
-          const decimals = 9;
-          const intVal = Math.floor(floatVal * Math.pow(10, decimals));
-          processedAmount = intVal.toString();
-        } else {
-          // If it's already an integer string with no decimal, just use it directly
-          // But verify it's actually a number
-          const intVal = parseInt(amountStr, 10);
-          if (isNaN(intVal)) {
-            throw new Error(`Invalid integer amount: ${amountStr}`);
-          }
-          processedAmount = amountStr;
-        }
-        
-        console.log(`Processed amount for BN: ${processedAmount}`);
-      } catch (error) {
-        console.error('Error processing input amount:', error);
-        throw new Error(`Failed to process amount: ${params.inputAmount}`);
-      }
-      
-      // Get the quote using the processed amount
-      const quote = await this.client.pool.swapQuote({
-        virtualPool: pool,
-        config: config,
-        swapBaseForQuote: params.swapBaseForQuote,
-        amountIn: new BN(processedAmount),
-        slippageBps: params.slippageBps, 
-        hasReferral: false,
-        currentPoint: currentPoint
-      });
-      
-      // Return quote information with safe property access
-      return {
-        estimatedOutput: quote.amountOut?.toString() || "0",
-        minimumAmountOut: quote.minimumAmountOut?.toString() || "0",
-        price: "0", // SDK may not provide this directly
-        priceImpact: "0" // SDK may not provide this directly
-      };
-    } catch (error) {
-      console.error('Error getting swap quote:', error);
-      throw new Error('Failed to get swap quote');
-    }
-  }
+  // async getSwapQuote(params: {
+  //   poolAddress: string,
+  //   inputAmount: string,
+  //   slippageBps: number,
+  //   swapBaseForQuote: boolean
+  // }): Promise<{
+  //   estimatedOutput: string,
+  //   minimumAmountOut: string,
+  //   price: string,
+  //   priceImpact: string
+  // }> {
+  //   try {
+  //     // Get the pool
+  //     const pool = await this.client.state.getPool(params.poolAddress);
+  //     if (!pool) {
+  //       throw new Error('Pool not found');
+  //     }
+
+  //     // Get the pool config
+  //     const config = await this.client.state.getPoolConfig(pool.config.toString());
+
+  //     // Get current slot or timestamp based on activation type
+  //     let currentPoint = new BN(0);
+  //     try {
+  //       if (config.activationType === 0) { // Slot
+  //         const slot = await this.client.connection.getSlot();
+  //         currentPoint = new BN(slot);
+  //       } else { // Timestamp
+  //         const blockTime = await this.client.connection.getBlockTime(
+  //           await this.client.connection.getSlot()
+  //         );
+  //         if (blockTime) {
+  //           currentPoint = new BN(blockTime);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.warn('Error getting current point, using 0:', error);
+  //     }
+
+  //     // Process and validate the input amount
+  //     let processedAmount: string;
+  //     try {
+  //       // Make sure we're working with a string
+  //       const amountStr = String(params.inputAmount);
+  //       console.log(`Original input amount: ${amountStr}`);
+
+  //       // Check if it contains a decimal point
+  //       if (amountStr.includes('.')) {
+  //         // Convert float to integer considering decimals
+  //         // For Solana tokens, you typically need to convert to lamports (smallest unit)
+  //         // Assuming 9 decimals (like SOL), we'll multiply by 10^9
+  //         // For USDC with 6 decimals, you'd use 10^6
+  //         const floatVal = parseFloat(amountStr);
+  //         if (isNaN(floatVal)) {
+  //           throw new Error(`Invalid amount format: ${amountStr}`);
+  //         }
+
+  //         // Default to 9 decimals (like for SOL) if we don't know the token's decimals
+  //         const decimals = 9;
+  //         const intVal = Math.floor(floatVal * Math.pow(10, decimals));
+  //         processedAmount = intVal.toString();
+  //       } else {
+  //         // If it's already an integer string with no decimal, just use it directly
+  //         // But verify it's actually a number
+  //         const intVal = parseInt(amountStr, 10);
+  //         if (isNaN(intVal)) {
+  //           throw new Error(`Invalid integer amount: ${amountStr}`);
+  //         }
+  //         processedAmount = amountStr;
+  //       }
+
+  //       console.log(`Processed amount for BN: ${processedAmount}`);
+  //     } catch (error) {
+  //       console.error('Error processing input amount:', error);
+  //       throw new Error(`Failed to process amount: ${params.inputAmount}`);
+  //     }
+
+  //     // Get the quote using the processed amount
+  //     const quote = await this.client.pool.swapQuote({
+  //       virtualPool: pool,
+  //       config: config,
+  //       swapBaseForQuote: params.swapBaseForQuote,
+  //       amountIn: new BN(processedAmount),
+  //       slippageBps: params.slippageBps,
+  //       hasReferral: false,
+  //       currentPoint: currentPoint
+  //     });
+
+  //     // Return quote information with safe property access
+  //     return {
+  //       estimatedOutput: quote.amountOut?.toString() || "0",
+  //       minimumAmountOut: quote.minimumAmountOut?.toString() || "0",
+  //       price: "0", // SDK may not provide this directly
+  //       priceImpact: "0" // SDK may not provide this directly
+  //     };
+  //   } catch (error) {
+  //     console.error('Error getting swap quote:', error);
+  //     throw new Error('Failed to get swap quote');
+  //   }
+  // }
 
   /**
    * Get all pools for a specific token
@@ -1356,50 +1626,50 @@ export class MeteoraDBCService {
   async getAllPoolsForToken(
     token: string
   ): Promise<Array<{
-    address: string, 
-    baseMint: string, 
+    address: string,
+    baseMint: string,
     baseMintSymbol?: string,
     quoteVault: string,
     liquidity: string
   }>> {
     try {
       console.log(`Finding all pools for token: ${token}`);
-      
+
       // Normalize token address to lowercase for comparison
       const normalizedToken = token.toLowerCase();
-      
+
       // Get all pools 
       const allPools = await this.client.state.getPools();
       console.log(`Found ${allPools.length} total pools to check`);
       // console.log(allPools);
-      
+
       // Find pools that have this token as baseMint
       const matchingPools = allPools.filter(pool => {
         try {
           // Access the account data
           const poolData = pool.account as any;
-          
+
           // Check if essential fields exist
           if (!poolData || !poolData.baseMint) {
             return false;
           }
-          
+
           // Extract base mint address
           let baseMintAddress = '';
           if (typeof poolData.baseMint === 'object' && poolData.baseMint !== null) {
             // Handle if it's a PublicKey object
             if (poolData.baseMint.toString) {
               baseMintAddress = poolData.baseMint.toString();
-            } 
+            }
             // If it's a nested structure with PublicKey
             else if (poolData.baseMint[0] && poolData.baseMint[0].toString) {
               baseMintAddress = poolData.baseMint[0].toString();
             }
           }
-          
+
           // Convert to lowercase for comparison
           baseMintAddress = baseMintAddress.toLowerCase();
-          
+
           // Check if this token is the baseMint (exact match only to be safe)
           return baseMintAddress === normalizedToken;
         } catch (err) {
@@ -1407,15 +1677,15 @@ export class MeteoraDBCService {
           return false;
         }
       });
-      
+
       console.log(`Found ${matchingPools.length} pools with baseMint=${token}`);
-      
+
       // Format and return the results
       return matchingPools.map(pool => {
         const poolData = pool.account as any;
         let baseMint = '';
         let quoteVault = '';
-        
+
         // Extract the baseMint
         if (poolData.baseMint) {
           if (typeof poolData.baseMint === 'object' && poolData.baseMint !== null) {
@@ -1426,7 +1696,7 @@ export class MeteoraDBCService {
             }
           }
         }
-        
+
         // Extract the quoteVault
         if (poolData.quoteVault) {
           if (typeof poolData.quoteVault === 'object' && poolData.quoteVault !== null) {
@@ -1437,7 +1707,7 @@ export class MeteoraDBCService {
             }
           }
         }
-        
+
         return {
           address: pool.publicKey.toString(),
           baseMint: baseMint,

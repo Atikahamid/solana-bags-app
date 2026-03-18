@@ -6,6 +6,7 @@ import { SERVER_URL } from '@env';
 import { store } from '@/shared/state/store';
 import { receiveMessage, incrementUnreadCount } from '@/shared/state/chat/slice';
 
+console.log("serverURL: ", SERVER_URL);
 class SocketService {
   private socket: Socket | null = null;
   private userId: string | null = null;
@@ -51,19 +52,26 @@ class SocketService {
         // Don't force SSL - App Engine handles this
         secure: forceSecure,
         forceNew: true,
-        path: '/socket.io/',
+        path: '/socket.io',
         // Remove extraHeaders for Standard
       });
 
       this.setupEventListeners();
 
       // Authenticate after connecting
-      this.socket.on('connect', () => {
+      this.socket.on('connect', async () => {
         console.log('Socket connected, authenticating...');
         console.log('Active transport:', this.socket?.io.engine.transport.name);
-        this.authenticate(userId);
+
+        // Ensure authentication completes before joining rooms
+        try {
+          await this.authenticate(userId);
+        } catch (error) {
+          console.error('Authentication failed on socket connect', error);
+        }
+
         this._isConnected = true;
-        
+
         // Rejoin all active rooms after reconnection
         if (this.activeRooms.size > 0) {
           console.log('Rejoining active rooms after reconnection');
@@ -71,7 +79,7 @@ class SocketService {
             this.joinChat(roomId);
           });
         }
-        
+
         resolve(true);
       });
 
@@ -146,70 +154,75 @@ class SocketService {
     });
 
     // New message received
-    this.socket.on('new_message', (message: any) => {
-      console.log('New message received via WebSocket:', message);
+    // this.socket.on('new_message', (message: any) => {
+    //   console.log('New message received via WebSocket:', message);
       
-      // Ensure message has all required fields before dispatching
-      if (message && message.id && message.chat_room_id) {
-        // Get currently selected chat from Redux store
-        const state = store.getState();
-        const selectedChatId = state.chat.selectedChatId;
+    //   // Ensure message has all required fields before dispatching
+    //   if (message && message.id && message.chat_room_id) {
+    //     // Get currently selected chat from Redux store
+    //     const state = store.getState();
+    //     const selectedChatId = state.chat.selectedChatId;
         
-        // Don't dispatch messages sent by the current user (already in state from API response)
-        if (message.sender_id === this.userId) {
-          console.log('Ignoring own message broadcast from server');
-          return;
-        }
+    //     // Don't dispatch messages sent by the current user (already in state from API response)
+    //     if (message.sender_id === this.userId) {
+    //       console.log('Ignoring own message broadcast from server');
+    //       return;
+    //     }
         
-        // Dispatch to add message to chat's message list
-        store.dispatch(receiveMessage(message));
+    //     // Dispatch to add message to chat's message list
+    //     store.dispatch(receiveMessage(message));
         
-        // Increment unread count if the message is not for the currently viewed chat
-        if (selectedChatId !== message.chat_room_id) {
-          console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
-          store.dispatch(incrementUnreadCount({
-            chatId: message.chat_room_id,
-            senderId: message.sender_id
-          }));
-        }
-      } else {
-        console.error('Received malformed message from socket:', message);
-      }
-    });
+    //     // Increment unread count if the message is not for the currently viewed chat
+    //     if (selectedChatId !== message.chat_room_id) {
+    //       console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
+    //       store.dispatch(incrementUnreadCount({
+    //         chatId: message.chat_room_id,
+    //         senderId: message.sender_id
+    //       }));
+    //     }
+    //   } else {
+    //     console.error('Received malformed message from socket:', message);
+    //   }
+    // });
 
     // Additional listener for message_broadcast event (server might use a different event name)
-    this.socket.on('message_broadcast', (message: any) => {
-      console.log('Message broadcast received:', message);
-      if (message && message.id) {
-        // Get currently selected chat from Redux store
-        const state = store.getState();
-        const selectedChatId = state.chat.selectedChatId;
+    // this.socket.on('message_broadcast', (message: any) => {
+    //   console.log('Message broadcast received:', message);
+    //   if (message && message.id) {
+    //     // Get currently selected chat from Redux store
+    //     const state = store.getState();
+    //     const selectedChatId = state.chat.selectedChatId;
         
-        // Don't dispatch messages sent by the current user (already in state from API response)
-        if (message.sender_id === this.userId || message.senderId === this.userId) {
-          console.log('Ignoring own message broadcast');
-          return;
-        }
+    //     // Don't dispatch messages sent by the current user (already in state from API response)
+    //     if (message.sender_id === this.userId || message.senderId === this.userId) {
+    //       console.log('Ignoring own message broadcast');
+    //       return;
+    //     }
         
-        // Dispatch to add message to chat's message list
-        store.dispatch(receiveMessage(message));
+    //     // Dispatch to add message to chat's message list
+    //     store.dispatch(receiveMessage(message));
         
-        // Increment unread count if the message is not for the currently viewed chat
-        if (selectedChatId !== message.chat_room_id) {
-          console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
-          store.dispatch(incrementUnreadCount({
-            chatId: message.chat_room_id,
-            senderId: message.sender_id || message.senderId
-          }));
-        }
-      }
-    });
+    //     // Increment unread count if the message is not for the currently viewed chat
+    //     if (selectedChatId !== message.chat_room_id) {
+    //       console.log('[socketService] Incrementing unread count for chat:', message.chat_room_id);
+    //       store.dispatch(incrementUnreadCount({
+    //         chatId: message.chat_room_id,
+    //         senderId: message.sender_id || message.senderId
+    //       }));
+    //     }
+    //   }
+    // });
+
+    //listener for recent swaps feed page
+    this.socket.on("token_transfer", (trade: any) => {
+      console.log("New trade events from backend: ", trade);
+    })
 
     // User typing indicator
-    this.socket.on('user_typing', (data: { chatId: string; userId: string; isTyping: boolean }) => {
-      console.log('User typing:', data);
-      // Implement typing indicator in UI if needed
-    });
+    // this.socket.on('user_typing', (data: { chatId: string; userId: string; isTyping: boolean }) => {
+    //   console.log('User typing:', data);
+    //   // Implement typing indicator in UI if needed
+    // });
 
     // Handle disconnection
     this.socket.on('disconnect', (reason: string) => {
@@ -237,14 +250,31 @@ class SocketService {
     }
   }
 
-  // Authenticate with the socket server
-  private authenticate(userId: string): void {
-    if (!this.socket || !this.socket.connected) {
-      console.error('Cannot authenticate: socket not connected');
-      return;
-    }
+  // Authenticate with the socket server and wait for acknowledgement
+  private authenticate(userId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket || !this.socket.connected) {
+        console.error('Cannot authenticate: socket not connected');
+        return reject(new Error('Socket not connected'));
+      }
 
-    this.socket.emit('authenticate', { userId });
+      const timeout = setTimeout(() => {
+        this.socket?.off('authenticated', onAuthenticated);
+        reject(new Error('Socket authentication timed out'));
+      }, 5000);
+
+      const onAuthenticated = (data: { success: boolean }) => {
+        clearTimeout(timeout);
+        if (data?.success) {
+          resolve();
+        } else {
+          reject(new Error('Socket authentication failed'));
+        }
+      };
+
+      this.socket.once('authenticated', onAuthenticated);
+      this.socket.emit('authenticate', { userId });
+    });
   }
 
   // Join a chat room
@@ -374,4 +404,4 @@ class SocketService {
 
 // Create singleton instance
 const socketService = new SocketService();
-export default socketService; 
+export default socketService;  

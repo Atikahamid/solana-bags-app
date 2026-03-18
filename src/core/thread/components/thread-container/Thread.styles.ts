@@ -11,18 +11,308 @@ export function getThreadBaseStyles() {
       backgroundColor: COLORS.background,
       flex: 1,
     },
-    
+    fixedSearch: {
+      position: "absolute",
+      bottom: 63,
+      left: 0,
+      right: 0,
+    },
     // Header styles
     header: {
       width: '100%',
       backgroundColor: COLORS.background,
       alignItems: 'center',
     },
-    
+
     // Thread list container
     threadListContainer: {
       paddingBottom: 100, // Space for composer at bottom
     },
+    // -------------------------------------------
+
+    // card: {
+    //   backgroundColor: '#111',
+    //   marginHorizontal: 12,
+    //   marginVertical: 8,
+    //   padding: 12,
+    //   borderRadius: 12,
+    // },
+    // topRow: {
+    //   flexDirection: 'row',
+    //   alignItems: 'center',
+    //   justifyContent: 'space-between',
+    // },
+    // wallet: { color: '#fff', fontWeight: 'bold' },
+    // tag: {
+    //   paddingHorizontal: 8,
+    //   paddingVertical: 4,
+    //   borderRadius: 6,
+    // },
+    // buyTag: { backgroundColor: 'green' },
+    // sellTag: { backgroundColor: 'red' },
+    // tagText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    // time: { color: '#aaa', fontSize: 12 },
+
+
+    // middleRow: {
+    //   flexDirection: 'row',
+    //   justifyContent: 'space-between',
+    //   alignItems: 'center',
+    //   marginTop: 8,
+    // },
+    // tokenInfo: { flexDirection: 'row', alignItems: 'center' },
+    // tokenIcon: {
+    //   width: 32,
+    //   height: 32,
+    //   borderRadius: 16,
+    //   backgroundColor: '#444',
+    //   marginRight: 8,
+    // },
+    // token: { color: '#fff', fontWeight: 'bold' },
+    // description: { color: '#aaa', fontSize: 12 },
+    // pnlBox: { alignItems: 'flex-end' },
+    // pnl: { color: '#f55', fontWeight: 'bold' },
+    // pnlPercent: { color: '#f5f', fontSize: 12 },
+
+
+    // bottomRow: {
+    //   marginTop: 8,
+    // },
+    // marketCap: { color: '#fff', fontWeight: '600' },
+    // sol: { color: '#aaa', fontSize: 12 },
+
+    // --------------------------------------------------------
+    // card: {
+    //   backgroundColor: '#1A1F25',
+    //   marginHorizontal: 12,
+    //   marginVertical: 8,
+    //   paddingVertical: 8,
+    //   paddingHorizontal: 8,
+    //   borderRadius: 15,
+    //   borderColor: '#3f433bf8',
+    //   borderWidth: 0.75,
+    //   gap: 4, // Space between top row and middle row
+    //   boxShadow: '0 4px 6px 3px #e0d4d4ad',
+    // },
+    card: {
+      // backgroundColor: '#0F141A',
+      // marginHorizontal: 12,
+      // marginVertical: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      // borderRadius: 14,
+      // borderWidth: 0.5,
+      // borderColor: '#2A2F36',
+    },
+    actionText: {
+      color: '#D1D5DB',
+      fontSize: 13,
+      fontWeight: '500',
+    },
+
+    tokenRow: {
+      flexDirection: 'row',
+       alignItems: 'center',
+      justifyContent: 'space-between',
+     
+    },
+    tokenRowOne: {
+      flexDirection: 'column',
+       borderRadius: 11,
+      borderColor: '#3f433bf8',
+      marginTop: 3,
+      borderWidth: 1,
+      padding: 5,
+      marginLeft: 30,
+      marginRight: 3,
+      backgroundColor: '#1A1F25',
+    },
+    rightTokenInfo: {
+      // borderWidth: 3,
+      // width: 150
+      alignItems: 'flex-end',
+      gap: 2,
+      paddingRight: 6,
+    },
+    tokenRight: {
+      color: '#f3dcdc',
+      fontSize: 12
+    },
+
+    pnlRow: {
+      alignItems: 'flex-end',
+    },
+
+    quickBuy: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: '#1F2937',
+      paddingHorizontal: 12,
+      margin: 5,
+      paddingVertical: 6,
+      borderRadius: 999,
+      // width: 80,
+    },
+
+    quickBuyText: {
+      color: '#E5E7EB',
+      fontWeight: '600',
+      // textAlign: 'center'
+    },
+
+
+    actionRow: {
+      flexDirection: 'row',
+      // alignItems: 'center',
+      flexWrap: 'wrap', // important for small screens
+      gap: 6,
+    },
+
+    tokenChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#2A2F36',
+      backgroundColor: '#111827',
+    },
+
+    tokenChipImage: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      marginRight: 4,
+    },
+
+    tokenChipText: {
+      color: '#E5E7EB',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+
+
+
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      // justifyContent: 'space-between',
+      gap: 8, // Space between user icon and details
+    },
+    userIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 50,
+      // marginRight: 6,
+    },
+    userDetails: {
+      // display: 'flex',
+      // flex: 1,
+      flexDirection: 'column',
+      gap: 4, // Space between wallet and tag
+      // borderWidth: 1,
+      // justifyContent: 'space-between',
+    },
+    walletAndTagOuter: {
+      // display: 'flex',
+      // flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      // alignItems: 'center',
+
+    },
+    walletAndTag: {
+      // display: 'flex',
+      // flex: 1,
+      flexDirection: 'row',
+      // justifyContent: 'space-between',
+      alignItems: 'center',
+      // alignItems: 'center',
+    },
+    wallet: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    tag: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginLeft: 8,
+      borderRadius: 6,
+    },
+    buyTag: { color: '#38c71eff', fontWeight: '600', },
+    sellTag: { color: '#e15c5cff', fontWeight: '600', },
+    tagText: { color: '#fff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
+    time: { color: '#fffafaff', fontSize: 12, paddingRight: 7 },
+
+
+    middleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      // marginTop: 8,
+      // borderWidth: 0.5,
+      // borderColor: '#717d66f8',
+      // borderRadius: 12,
+      marginHorizontal: 1,
+      marginVertical: 1,
+      padding: 8,
+    },
+    upperMiddleRow: {
+      flexDirection: 'column',
+      borderWidth: 0.5,
+      borderColor: '#3f433bf8',
+      borderRadius: 15,
+    },
+    button: {
+      marginVertical: 8,
+      marginHorizontal: 12,
+    },
+
+    tokenInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    tokenIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 50,
+      marginRight: 8,
+    },
+    token: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    description: { color: '#fff', fontSize: 14, width: 100, overflow: 'hidden' },
+    pnlBox: { alignItems: 'flex-end', flexDirection: 'row' },
+    pnl: { color: '#fc7979ff', fontWeight: 'bold' },
+    pnlPercent: { color: '#fc7979ff', fontSize: 13 },
+    arrowPnl: { paddingTop: 5, paddingBottom: 0, marginBottom: 0 },
+    pnlBoxOuter: {
+      flexDirection: 'column',
+      gap: 4, // Space between pnl and marketCap
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#374151',
+      borderWidth: 0.5,
+      borderColor: '#3f433bf8',
+      borderRadius: 15,
+      padding: 8,
+      gap: 4, // Space between left SVG and title
+    },
+    text: {
+      color: '#fff',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+
+    // bottomRow: {
+    //   marginTop: 8,
+    // },
+    marketCap: { color: '#fff', fontWeight: '600', alignSelf: 'flex-end' },
+    sol: { color: '#fff', fontSize: 14 },
   });
   // Merging logic removed, will be handled by the utility function
 }
@@ -35,17 +325,20 @@ export const headerStyles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     position: 'relative',
+    // backgroundColor: COLORS.greyDark,
   },
   profileContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
     overflow: 'hidden',
+    // backgroundColor: COLORS.greyDark,
   },
   profileImage: {
     width: '100%',
     height: '100%',
     borderRadius: 18,
+    backgroundColor: COLORS.greyDark,
   },
   absoluteLogoContainer: {
     position: 'absolute',
@@ -69,13 +362,15 @@ export const tabStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     height: 48,
+    width: '100%',
     borderBottomWidth: 0,
     backgroundColor: COLORS.background,
     position: 'relative',
+    overflow: 'scroll'
   },
   tab: {
-    flex: 1,
-    justifyContent: 'center',
+    // flex: 1,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     position: 'relative',
   },

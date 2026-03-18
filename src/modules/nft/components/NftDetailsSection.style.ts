@@ -5,12 +5,12 @@ import TYPOGRAPHY from '@/assets/typography';
 export default StyleSheet.create({
   container: {
     width: '100%',
-    marginVertical: 4,
+    marginVertical: 1,
   },
   card: {
     backgroundColor: COLORS.lighterBackground,
     borderRadius: 12,
-    padding: 12,
+    padding: 5,
     flexDirection: 'row',
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 1 },
@@ -21,16 +21,16 @@ export default StyleSheet.create({
     borderColor: COLORS.borderDarkColor,
   },
   imageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 50,
     overflow: 'hidden',
     backgroundColor: COLORS.darkerBackground,
   },
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    borderRadius: 50,
   },
   placeholder: {
     width: '100%',

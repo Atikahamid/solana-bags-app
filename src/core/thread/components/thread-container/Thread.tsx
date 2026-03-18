@@ -1,421 +1,542 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, Animated, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Animated,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ThreadComposer } from '../thread-composer/ThreadComposer';
-import { getThreadBaseStyles, headerStyles, tabStyles } from './Thread.styles';
+import { getThreadBaseStyles, headerStyles } from './Thread.styles';
 import { mergeStyles } from '../../utils';
 import Icons from '../../../../assets/svgs';
 import { ThreadProps } from '../../types';
-import { ThreadItem } from '../thread-item/ThreadItem';
 import { IPFSAwareImage, getValidImageSource } from '@/shared/utils/IPFSImage';
 import { useAppSelector } from '@/shared/hooks/useReduxHooks';
 import { DEFAULT_IMAGES } from '@/shared/config/constants';
-import { Platform } from 'react-native';
-import SearchScreen from '@/screens/sample-ui/Threads/SearchScreen';
 import COLORS from '@/assets/colors';
-import TYPOGRAPHY from '@/assets/typography';
+import { useTrades } from '../../hooks/useTrades';
+import { formatTimeAgo } from '../../utils';
+import { formatCompactNumber } from '@/screens/sample-ui/Threads/SearchScreen';
+import SearchBox from '@/screens/sample-ui/Threads/SearchBox';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/modules/wallet-providers';
+import { Trade } from '@/shared/services/tradeService';
+import SearchBoxButton from '@/screens/sample-ui/Threads/SearchBox';
 
 export const Thread: React.FC<ThreadProps> = ({
-  rootPosts,
-  currentUser,
+  // rootPosts,
+  // currentUser,
   showHeader = true,
-  onPostCreated,
-  hideComposer = false,
-  onPressPost,
-  ctaButtons,
-  themeOverrides,
+  // themeOverrides,
   styleOverrides,
   userStyleSheet,
-  refreshing: externalRefreshing,
-  onRefresh: externalOnRefresh,
-  onPressUser,
-  disableReplies = false,
-  scrollUI,
 }) => {
-  // Local fallback for refreshing if not provided
-  const [localRefreshing, setLocalRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'feed' | 'search'>('feed');
+  const { trades, isLoading, refetch } = useTrades();
+  const { profile } = useAuth();
+  const listRef = useRef<FlatList<Trade>>(null);
+  // console.log('trades: ', trades);
+  // const isLoading = !trades || trades.length === 0;
+  const [refreshing, setRefreshing] = useState(false);
+  // const [headerRefreshing, setHeaderRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
+  useEffect(() => {
+    if (trades.length > 0) {
+      listRef.current?.scrollToOffset({
+        offset: 0,
+        animated: true,
+      });
+    }
+  }, [trades[0]?.transactionId]);
+  const handleOpenChats = () => {
+    navigation.navigate('ChatListScreen' as never);
+  };
   const navigation = useNavigation();
-
-  // Scroll-based UI hiding state
-  const lastScrollY = useRef(0);
-  const scrollDirection = useRef<'up' | 'down'>('up');
-  const isUIHidden = useRef(false);
-  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // Animation values for hiding/showing UI elements
-  const headerTranslateY = useRef(new Animated.Value(0)).current;
-  const composerTranslateY = useRef(new Animated.Value(0)).current;
-  const tabsTranslateY = useRef(new Animated.Value(0)).current;
-
-  // Opacity values to handle visibility
-  const headerOpacity = useRef(new Animated.Value(1)).current;
-  const composerOpacity = useRef(new Animated.Value(1)).current;
-  const tabsOpacity = useRef(new Animated.Value(1)).current;
-
-  // Get the stored profile pic from Redux
+  const [searchQuery, setSearchQuery] = useState('');
   const storedProfilePic = useAppSelector(state => state.auth.profilePicUrl);
 
-  // 1. Get the base styles for this component (doesn't need theme argument anymore)
   const baseComponentStyles = getThreadBaseStyles();
-
-  // 2. Use the utility function to merge base styles, overrides, and user sheet
-  const styles = mergeStyles(baseComponentStyles, styleOverrides, userStyleSheet);
-
-  // Local onRefresh if external prop is not provided
-  const localOnRefresh = () => {
-    setLocalRefreshing(true);
-    setTimeout(() => {
-      setLocalRefreshing(false);
-    }, 800);
-  };
-
-  const finalRefreshing =
-    externalRefreshing !== undefined ? externalRefreshing : localRefreshing;
-  const finalOnRefresh =
-    externalOnRefresh !== undefined ? externalOnRefresh : localOnRefresh;
-
-  const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen' as never);
-  };
-
-  // Handler for wallet icon press
-  const handleWalletPress = () => {
-    navigation.navigate('WalletScreen' as never);
-  };
-
-  // Hide UI elements
-  const hideUI = useCallback(() => {
-    if (isUIHidden.current) return;
-    isUIHidden.current = true;
-
-    console.log('🔽 Hiding UI elements');
-
-    Animated.parallel([
-      // Translate elements off screen
-      Animated.timing(headerTranslateY, {
-        toValue: -80,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabsTranslateY, {
-        toValue: -48,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(composerTranslateY, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      // Fade out elements
-      Animated.timing(headerOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabsOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(composerOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Hide tab bar if scrollUI is available
-    if (scrollUI) {
-      scrollUI.hideTabBar();
-    }
-  }, [headerTranslateY, tabsTranslateY, composerTranslateY, headerOpacity, tabsOpacity, composerOpacity, scrollUI]);
-
-  // Show UI elements
-  const showUI = useCallback(() => {
-    if (!isUIHidden.current) return;
-    isUIHidden.current = false;
-
-    console.log('🔼 Showing UI elements');
-
-    Animated.parallel([
-      // Translate elements back to original position
-      Animated.timing(headerTranslateY, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabsTranslateY, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(composerTranslateY, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      // Fade in elements
-      Animated.timing(headerOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tabsOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(composerOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Show tab bar if scrollUI is available
-    if (scrollUI) {
-      scrollUI.showTabBar();
-    }
-  }, [headerTranslateY, tabsTranslateY, composerTranslateY, headerOpacity, tabsOpacity, composerOpacity, scrollUI]);
-
-  // Handle scroll events for UI hiding/showing
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const currentScrollY = event.nativeEvent.contentOffset.y;
-    const scrollDiff = currentScrollY - lastScrollY.current;
-
-    // Clear any existing timeout
-    if (scrollTimeout.current) {
-      clearTimeout(scrollTimeout.current);
-    }
-
-    // Don't trigger if scroll diff is too small (less than 3px)
-    if (Math.abs(scrollDiff) < 3) {
-      lastScrollY.current = currentScrollY;
-      return;
-    }
-
-    const newDirection = scrollDiff > 0 ? 'down' : 'up';
-
-    console.log(`📊 Scroll: ${currentScrollY.toFixed(1)}px, Diff: ${scrollDiff.toFixed(1)}px, Direction: ${newDirection}`);
-
-    // Immediate actions based on scroll position and direction
-    if (currentScrollY <= 20) {
-      // At the very top - always show UI
-      if (isUIHidden.current) {
-        showUI();
-      }
-    } else if (newDirection === 'down' && currentScrollY > 50 && scrollDiff > 3) {
-      // Scrolling down with enough momentum - hide UI
-      if (!isUIHidden.current) {
-        hideUI();
-      }
-    } else if (newDirection === 'up' && scrollDiff < -3) {
-      // Scrolling up with enough momentum - show UI
-      if (isUIHidden.current) {
-        showUI();
-      }
-    }
-
-    // Update stored values
-    scrollDirection.current = newDirection;
-    lastScrollY.current = currentScrollY;
-
-    // Set a timeout to handle edge cases
-    scrollTimeout.current = setTimeout(() => {
-      if (currentScrollY <= 30 && isUIHidden.current) {
-        showUI();
-      }
-    }, 100);
-  }, [hideUI, showUI]);
-
-  // Reset UI state when tab changes
-  React.useEffect(() => {
-    if (activeTab === 'feed') {
-      showUI();
-    }
-  }, [activeTab, showUI]);
-
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
-  const renderItem = ({ item }: { item: any }) => (
-    <ThreadItem
-      post={item}
-      currentUser={currentUser}
-      rootPosts={rootPosts}
-      themeOverrides={themeOverrides}
-      styleOverrides={styleOverrides}
-      userStyleSheet={userStyleSheet}
-      onPressPost={onPressPost}
-      ctaButtons={ctaButtons}
-      onPressUser={onPressUser}
-      disableReplies={disableReplies}
-    />
+  const styles = mergeStyles(
+    baseComponentStyles,
+    styleOverrides,
+    userStyleSheet,
   );
 
+  // animations (header only now)
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+
+  const handleProfilePress = () => {
+    navigation.navigate('ProfileScreenNew' as never);
+  };
+
+  // show loader first
+  if (isLoading) {
+    return (
+      <View style={styles.threadRootContainer}>
+        {showHeader && (
+          <SafeAreaView edges={['top']}>
+            <Animated.View style={[styles.header, { padding: 16, height: 40 }]}>
+              <View style={headerStyles.container}>
+                <TouchableOpacity
+                  onPress={handleProfilePress}
+                  style={headerStyles.profileContainer}>
+                  <IPFSAwareImage
+                    source={profile?.profile_image_url}
+                    defaultSource={DEFAULT_IMAGES.user}
+                    style={styles.userIcon}
+                    key={
+                      Platform.OS === 'android'
+                        ? `profile-${Date.now()}`
+                        : 'profile'
+                    }
+                  />
+                </TouchableOpacity>
+
+                <View style={headerStyles.iconsContainer}>
+                  <TouchableOpacity
+                    onPress={handleOpenChats}
+                    style={headerStyles.profileContainer}>
+                    <Icons.EmailIcon
+                      width={21}
+                      height={21}
+                      color={COLORS.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={headerStyles.absoluteLogoContainer}>
+                  <Icons.AppLogo width={28} height={28} />
+                </View>
+              </View>
+            </Animated.View>
+          </SafeAreaView>
+        )}
+
+        <View
+          style={{
+            padding: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: 100,
+            width: '100%',
+            height: '70%',
+          }}>
+          <ActivityIndicator size="large" color={COLORS.brandPrimary} />
+          <Text style={{ color: COLORS.greyMid, marginTop: 10 }}>
+            Loading Trades...
+          </Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.threadRootContainer}>
       {showHeader && (
-        <Animated.View
-          style={[
-            styles.header,
-            { padding: 16 },
-            {
-              transform: [{ translateY: headerTranslateY }],
-              opacity: headerOpacity,
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 1000,
-              backgroundColor: COLORS.background,
-              height: 80, // Fixed height to prevent layout issues
-            }
-          ]}
-        >
-          <View style={headerStyles.container}>
-            {/* Left: User Profile Image */}
-            <TouchableOpacity onPress={handleProfilePress} style={headerStyles.profileContainer}>
-              <IPFSAwareImage
-                source={
-                  storedProfilePic
-                    ? getValidImageSource(storedProfilePic)
-                    : currentUser && 'avatar' in currentUser && currentUser.avatar
-                      ? getValidImageSource(currentUser.avatar)
-                      : DEFAULT_IMAGES.user
-                }
-                style={headerStyles.profileImage}
-                defaultSource={DEFAULT_IMAGES.user}
-                key={Platform.OS === 'android' ? `profile-${Date.now()}` : 'profile'}
-              />
-            </TouchableOpacity>
-
-            {/* Right: Copy and Wallet Icons */}
-            <View style={headerStyles.iconsContainer}>
+        <SafeAreaView edges={['top']}>
+          <Animated.View style={[styles.header, { padding: 16, height: 40 }]}>
+            <View style={headerStyles.container}>
+              {/* Left */}
               <TouchableOpacity
-                style={headerStyles.iconButton}
-                onPress={handleWalletPress}
-                activeOpacity={0.7}
-              >
-                <Icons.walletIcon width={35} height={35} color={COLORS.white} />
+                onPress={handleProfilePress}
+                style={headerStyles.profileContainer}>
+                <IPFSAwareImage
+                  source={profile?.profile_image_url}
+                  defaultSource={DEFAULT_IMAGES.user}
+                  style={styles.userIcon}
+                  key={
+                    Platform.OS === 'android'
+                      ? `profile-${Date.now()}`
+                      : 'profile'
+                  }
+                />
               </TouchableOpacity>
-            </View>
 
-            {/* Center: App Logo - Using absolute positioning to keep centered */}
-            <View style={headerStyles.absoluteLogoContainer}>
-              <Icons.AppLogo width={40} height={40} />
+              {/* Right */}
+              <View style={headerStyles.iconsContainer}>
+                <TouchableOpacity
+                  onPress={handleOpenChats}
+                  style={headerStyles.profileContainer}>
+                  <Icons.EmailIcon
+                    width={21}
+                    height={21}
+                    color={COLORS.white}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Center Logo */}
+              <View style={headerStyles.absoluteLogoContainer}>
+                <Icons.AppLogo width={28} height={28} />
+              </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        </SafeAreaView>
       )}
 
-      {/* Tab Slider */}
-      <Animated.View
-        style={[
-          tabStyles.container,
-          {
-            transform: [{ translateY: tabsTranslateY }],
-            opacity: tabsOpacity,
-            position: 'absolute',
-            top: showHeader ? 80 : 0,
-            left: 0,
-            right: 0,
-            zIndex: 999,
-            backgroundColor: COLORS.background,
-            height: 48, // Fixed height to prevent layout issues
+      {/* Feed only */}
+      <View
+        style={{ flex: 1, paddingTop: showHeader ? 20 : 40, paddingBottom: 100 }}>
+        <FlatList
+          ref={listRef}
+          data={trades}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          keyExtractor={(item, index) =>
+            `${item.username}-${item.createdAt}-${item.mint || index}`
           }
-        ]}
-      >
-        <TouchableOpacity
-          style={[tabStyles.tab, activeTab === 'feed' && tabStyles.activeTab]}
-          onPress={() => setActiveTab('feed')}
-        >
-          <Text style={[tabStyles.tabText, activeTab === 'feed' && tabStyles.activeTabText]}>
-            For You
-          </Text>
-          {activeTab === 'feed' && <View style={tabStyles.indicator} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[tabStyles.tab, activeTab === 'search' && tabStyles.activeTab]}
-          onPress={() => setActiveTab('search')}
-        >
-          <Icons.searchIcon
-            width={24}
-            height={24}
-            color={activeTab === 'search' ? COLORS.brandBlue : COLORS.greyMid}
-          />
-          {activeTab === 'search' && <View style={tabStyles.indicator} />}
-        </TouchableOpacity>
-
-        {/* Bottom gradient border */}
-        <LinearGradient
-          colors={['transparent', COLORS.lightBackground]}
-          style={tabStyles.bottomGradient}
-        />
-      </Animated.View>
-
-      {activeTab === 'feed' ? (
-        <View style={{ flex: 1 }}>
-          {!hideComposer && (
-            <Animated.View
+          ListEmptyComponent={
+            <Text
               style={{
-                transform: [{ translateY: composerTranslateY }],
-                opacity: composerOpacity,
-                position: 'absolute',
-                top: showHeader ? 128 : 48,
-                left: 0,
-                right: 0,
-                zIndex: 998,
-                backgroundColor: COLORS.background,
-                minHeight: 120, // Fixed minimum height to prevent layout issues
-              }}
-            >
-              <ThreadComposer
-                currentUser={currentUser}
-                onPostCreated={onPostCreated}
-                themeOverrides={themeOverrides}
-                styleOverrides={styleOverrides}
-              />
-            </Animated.View>
-          )}
+                color: COLORS.greyMid,
+                textAlign: 'center',
+                marginTop: 80,
+              }}>
+              No Trades found.
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              {/* Top row */}
+              {/* <View style={styles.topRow}>
+                <View style={styles.userInfo}>
+                  <IPFSAwareImage
+                    source={getValidImageSource(item.userProfilePic)}
+                    style={styles.userIcon}
+                    defaultSource={DEFAULT_IMAGES.user}
+                    key={
+                      Platform.OS === 'android' ? `user-${item.mint}` : 'user'
+                    }
+                  />
+                  <View style={styles.userDetails}>
+                    <View style={styles.walletAndTag}>
+                      <Text style={styles.wallet}>{item.username}</Text>
+                      <View
+                        style={[
+                          styles.tag,
+                          item.type === 'BUY' ? styles.buyTag : styles.sellTag,
+                        ]}>
+                        <Text style={styles.tagText}>{item.type}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.sol}>
+                      {Number(item.priceSol ?? 0).toFixed(2)} SOL at $
+                      {formatCompactNumber(Number(item.marketcapAtTrade))}{' '}
+                      market cap
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
+              </View> */}
 
-          <FlatList
-            data={rootPosts}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[
-              styles.threadListContainer,
-              {
-                paddingTop: !hideComposer
-                  ? (showHeader ? 248 : 168) // Header(80) + Tabs(48) + Composer(120) + minimal spacing
-                  : (showHeader ? 128 : 48), // Header(80) + Tabs(48) OR just Tabs(48)
-              }
-            ]}
-            refreshing={finalRefreshing}
-            onRefresh={finalOnRefresh}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      ) : (
-        <View style={{ flex: 1, paddingTop: showHeader ? 136 : 80 }}>
-          <SearchScreen showHeader={false} />
-        </View>
-      )}
+              <View style={styles.topRow}>
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate(
+                      'LeaderBoardUserDetailScreen' as never,
+                      { user: item } as never,
+                    )
+                  }
+                  style={styles.row}>
+                  <View style={styles.userInfo}>
+                    <IPFSAwareImage
+                      source={getValidImageSource(item.userProfilePic)}
+                      style={styles.userIcon}
+                      defaultSource={DEFAULT_IMAGES.user}
+                      key={
+                        Platform.OS === 'android' ? `user-${item.mint}` : 'user'
+                      }
+                    />
+                    <View style={styles.actionRow}>
+                      <Text style={styles.actionText}>
+                        <Text style={styles.wallet}>{item.username}</Text>{' '}
+                        <Text
+                          style={
+                            item.type === 'BUY' ? styles.buyTag : styles.sellTag
+                          }>
+                          {item.type === 'BUY' ? 'bought' : 'sold'}
+                        </Text>{' '}
+                        ${formatCompactNumber(item.tradeSizeUsd ?? 0)}
+                      </Text>
+
+                      {/* Token chip */}
+                      <View style={styles.tokenChip}>
+                        <IPFSAwareImage
+                          source={getValidImageSource(item.tokenImage)}
+                          defaultSource={DEFAULT_IMAGES.token}
+                          style={styles.tokenChipImage}
+                        />
+                        <Text style={styles.tokenChipText}>
+                          {item.tokenSymbol}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
+              </View>
+
+              {/* Token row */}
+              {/* <View style={styles.upperMiddleRow}>
+                <View style={styles.middleRow}>
+                  <TouchableOpacity
+                    style={styles.tokenInfo}
+                    onPress={() =>
+                      navigation.navigate(
+                        'TokenDetailScreen' as never,
+                        {
+                          token: {
+                            mint: item.mint,
+                            name: item.tokenName,
+                            symbol: item.tokenSymbol,
+                            tokenDecimal: item.tokenDecimal,
+                            logo: item.tokenImage,
+                            mc: item.currentMarketCap
+                              ? `$${formatCompactNumber(
+                                  Number(item.currentMarketCap),
+                                )}`
+                              : '-',
+                            // change: item.priceChange24h,
+                          },
+                        } as never,
+                      )
+                    }>
+                    <IPFSAwareImage
+                      source={getValidImageSource(item.tokenImage)}
+                      style={styles.tokenIcon}
+                      defaultSource={DEFAULT_IMAGES.token}
+                      key={
+                        Platform.OS === 'android'
+                          ? `token-${item.mint}`
+                          : 'token'
+                      }
+                    />
+                    <View style={{gap: 4}}>
+                      <Text style={styles.token}>{item.tokenSymbol}</Text>
+                      <Text
+                        style={styles.description}
+                        numberOfLines={1}
+                        ellipsizeMode="tail">
+                        {item.tokenName}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.pnlBoxOuter}>
+                    <View style={styles.pnlBox}>
+                      <Text
+                        style={[
+                          styles.pnl,
+                          {
+                            color: item.pnlUsd < 0 ? '#FF4C4C' : '#4CAF50',
+                          },
+                        ]}>
+                        {item.pnlUsd < 0
+                          ? `-$${Math.abs(item.pnlUsd ?? 0).toFixed(2)}`
+                          : `+$${item.pnlUsd?.toFixed(2)}`}{' '}
+                        PNL
+                      </Text>
+
+                      <Text
+                        style={[
+                          styles.pnlPercent,
+                          {
+                            color: item.pnlPercent < 0 ? '#FF4C4C' : '#4CAF50',
+                          },
+                        ]}>
+                        {item.pnlPercent < 0 ? (
+                          <Icons.DownArrowIcon width={13} height={10} />
+                        ) : (
+                          <Icons.UpArrowIcon width={13} height={10} />
+                        )}
+                        {item.pnlPercent < 0
+                          ? `-${Math.abs(item.pnlPercent ?? 0).toFixed(2)}`
+                          : `+${Math.abs(item.pnlPercent ?? 0).toFixed(2)}`}
+                        %
+                      </Text>
+                    </View>
+
+                    <Text style={styles.marketCap}>
+                      ${formatCompactNumber(Number(item.currentMarketCap))} MC
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() =>
+                    navigation.navigate(
+                      'TradeScreen' as never,
+                      {
+                        mode: 'buy', // or "sell"
+                        token: {
+                          mintaddress: item.mint,
+                          tokendecimal: item.tokenDecimal,
+                          symbol: item.tokenSymbol,
+                          name: item.tokenName,
+                          logoURI: item.tokenImage,
+                          marketcapAtTrade: item.currentMarketCap,
+                        },
+                      } as never,
+                    )
+                  }>
+                  <View style={styles.content}>
+                    <Icons.ThunderBtn width={15} height={15} />
+                    <Text style={styles.text}>1.00</Text>
+                    <Icons.BarsBTN width={20} height={20} />
+                  </View>
+                </TouchableOpacity>
+              </View> */}
+
+              <View style={styles.tokenRowOne}>
+                <View style={styles.tokenRow}>
+                  <TouchableOpacity
+                    style={styles.tokenInfo}
+                    onPress={() =>
+                      navigation.navigate(
+                        'TokenDetailScreen' as never,
+                        {
+                          token: {
+                            mint: item.mint,
+                            name: item.tokenName,
+                            symbol: item.tokenSymbol,
+                            tokenDecimal: item.tokenDecimal,
+                            logo: item.tokenImage,
+                            mc: `$${formatCompactNumber(
+                              Number(item.currentMarketCap),
+                            )}`,
+                          },
+                        } as never,
+                      )
+                    }>
+                    <IPFSAwareImage
+                      source={getValidImageSource(item.tokenImage)}
+                      style={styles.tokenIcon}
+                      defaultSource={DEFAULT_IMAGES.token}
+                      key={
+                        Platform.OS === 'android'
+                          ? `token-${item.mint}`
+                          : 'token'
+                      }
+                    />
+                    <View>
+                      <Text style={styles.token}>{item.tokenSymbol}</Text>
+                      <Text style={styles.description}>
+                        ${formatCompactNumber(Number(item.currentMarketCap))} MC
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.rightTokenInfo}>
+                    {/* <View style={styles.pnlRow}>
+                    <Text
+                      style={[
+                        styles.pnl,
+                        {color: item.pnlUsd < 0 ? '#FF4C4C' : '#4CAF50'},
+                      ]}>
+                      {item.pnlUsd < 0 ? '-' : '+'}$
+                      {Math.abs(item.pnlUsd ?? 0).toFixed(2)}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.pnlPercent,
+                        {color: item.pnlPercent < 0 ? '#FF4C4C' : '#4CAF50'},
+                      ]}>
+                      {item.pnlPercent < 0 ? '↓' : '↑'}
+                      {Math.abs(item.pnlPercent ?? 0).toFixed(2)}%
+                    </Text>
+                  </View> */}
+                    {/* <View style={styles.pnlBoxOuter}>
+                      <View style={styles.pnlBox}>
+                        <Text
+                          style={[
+                            styles.pnl,
+                            {
+                              color: item.pnlUsd < 0 ? '#FF4C4C' : '#4CAF50',
+                            },
+                          ]}>
+                          {item.pnlUsd < 0
+                            ? `-$${Math.abs(item.pnlUsd ?? 0).toFixed(2)}`
+                            : `+$${item.pnlUsd?.toFixed(2)}`}{' '}
+                          PNL
+                        </Text>
+
+                        <Text
+                          style={[
+                            styles.pnlPercent,
+                            {
+                              color:
+                                item.pnlPercent < 0 ? '#FF4C4C' : '#4CAF50',
+                            },
+                          ]}>
+                          {item.pnlPercent < 0 ? (
+                            <Icons.DownArrowIcon width={13} height={10} />
+                          ) : (
+                            <Icons.UpArrowIcon width={13} height={10} />
+                          )}
+                          {item.pnlPercent < 0
+                            ? `-${Math.abs(item.pnlPercent ?? 0).toFixed(2)}`
+                            : `+${Math.abs(item.pnlPercent ?? 0).toFixed(2)}`}
+                          %
+                        </Text>
+                      </View>
+                    </View> */}
+                    <Text style={styles.tokenRight}>${item.tokenCurrentPriceUsd}</Text>
+                    <Text style={styles.tokenRight}>
+                      {item.tokenAmount} {item.tokenSymbol}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Quick Buy */}
+                <TouchableOpacity
+                  style={styles.quickBuy}
+                  onPress={() =>
+                    navigation.navigate(
+                      'TradeScreen' as never,
+                      {
+                        mode: 'buy',
+                        token: {
+                          mintaddress: item.mint,
+                          tokendecimal: item.tokenDecimal,
+                          symbol: item.tokenSymbol,
+                          name: item.tokenName,
+                          logoURI: item.tokenImage,
+                          marketcapAtTrade: item.currentMarketCap,
+                        },
+                      } as never,
+                    )
+                  }>
+                  <Icons.ThunderBtn width={14} height={14} />
+                  <Text style={styles.quickBuyText}>1.00</Text>
+                </TouchableOpacity>
+                {/* PNL */}
+              </View>
+
+              <View
+                style={{ height: 1, backgroundColor: '#3f433bf8', marginTop: 10 }}
+              />
+            </View>
+          )}
+        />
+      </View>
+
+      <View style={styles.fixedSearch}>
+        <SearchBoxButton
+          placeholder="Search tokens..."
+          onPress={() => navigation.navigate('GlobalSearchScreen' as never)}
+        />
+      </View>
     </View>
   );
-}
+};
 
-// Also export as default for backward compatibility
 export default Thread;

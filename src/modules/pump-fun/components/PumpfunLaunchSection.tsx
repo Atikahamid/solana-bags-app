@@ -39,6 +39,9 @@ export const PumpfunLaunchSection: React.FC<PumpfunLaunchSectionProps> = ({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
+  // Video upload state
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+
   // Add a new state variable to track whether social fields are visible
   const [showSocials, setShowSocials] = useState(false);
 

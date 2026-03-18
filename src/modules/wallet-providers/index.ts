@@ -4,7 +4,7 @@ export { default as TurnkeyWalletAuth } from './components/turnkey/TurnkeyWallet
 export { createWalletStyles as WalletStyles } from './components/wallet/wallet.styles';
 export { WALLET_DEFAULT_THEME as WalletTheme } from './components/wallet/wallet.theme';
 
-// Hooks
+// Hooks 
 export { useAuth } from './hooks/useAuth';
 export { useWallet } from './hooks/useWallet';
 export { useTurnkeyWalletLogic } from './hooks/useTurnkeyWalletLogic';

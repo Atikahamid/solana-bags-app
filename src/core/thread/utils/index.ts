@@ -69,6 +69,19 @@ export function removePostRecursive(
     });
 }
 
+export function formatTimeAgo(isoTime: string): string {
+  const now = new Date();
+  const past = new Date(isoTime);
+  const seconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
 /**
  * Flattens all nested replies into a single array.
  */
@@ -122,10 +135,10 @@ export function gatherDescendants(
  * @returns A new object with merged styles.
  */
 export function mergeStyles(
-  baseStyles: {[key: string]: any},
-  styleOverrides?: {[key: string]: object},
-  userStyleSheet?: {[key: string]: object},
-): {[key: string]: any} {
+  baseStyles: { [key: string]: any },
+  styleOverrides?: { [key: string]: object },
+  userStyleSheet?: { [key: string]: object },
+): { [key: string]: any } {
   // Start with a copy of base styles
   let mergedStyles = { ...baseStyles };
 

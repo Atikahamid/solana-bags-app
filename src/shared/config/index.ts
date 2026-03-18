@@ -37,7 +37,7 @@ export interface TurnkeyConfig {
 /** The shape of our custom AuthProviderConfig */
 export interface AuthProviderConfig {
   provider: 'privy' | 'dynamic' | 'turnkey';
-  loginMethods: Array<'email' | 'sms' | 'google' | 'apple'>;
+  loginMethods: Array<'email' | 'sms' | 'google' | 'apple' | 'tiktok' | 'github' | 'twitter'>;
   privy: PrivyConfig;
   dynamic: DynamicConfig;
   turnkey: TurnkeyConfig;
@@ -67,12 +67,12 @@ export interface MockDataConfig {
 /** Provide default auth config, reading from env or fallback. */
 export const DefaultAuthConfig: AuthProviderConfig = {
   provider: 'privy', // or 'dynamic', 'turnkey', etc.
-  loginMethods: ['email', 'google', 'apple'],
+  loginMethods: ['email', 'google', 'apple', 'tiktok', 'github', 'twitter'],
 
   privy: {
     // Read from environment variables or fallback
-    appId: PRIVY_APP_ID || '',
-    clientId: PRIVY_CLIENT_ID || '',
+    appId: PRIVY_APP_ID || 'cmgmo11sz019tld0cebj5wc1b',
+    clientId: PRIVY_CLIENT_ID || 'client-WY6RbyAaRL8Qt9VE83YR82x3r35GLt2aJcFJYxdAoCjxZ',
   },
 
   dynamic: {

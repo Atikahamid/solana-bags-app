@@ -675,6 +675,16 @@ export const ChatComposer = forwardRef<{ focus: () => void }, ChatComposerProps>
       {renderAttachmentPreviews()}
 
       <View style={styles.composerContainer}>
+        <IPFSAwareImage
+          // @ts-ignore
+          source={
+            currentUser?.avatar
+              ? (getValidImageSource(currentUser.avatar) as any)
+              : DEFAULT_IMAGES.user
+          }
+          style={styles.composerAvatar || { width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
+          defaultSource={DEFAULT_IMAGES.user}
+        />
         <View style={styles.inputContainer}>
           <TextInput
             ref={inputRef}

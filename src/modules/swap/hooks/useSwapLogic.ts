@@ -27,9 +27,10 @@ export function useSwapLogic(
   routeParams: SwapRouteParams = {},
   userPublicKey: PublicKey | null,
   connected: boolean,
-  transactionSender: { 
+  isBuy: boolean,
+  transactionSender: {
     sendTransaction: (transaction: any, connection: any, options?: any) => Promise<string>,
-    sendBase64Transaction: (base64Tx: string, connection: any, options?: any) => Promise<string> 
+    sendBase64Transaction: (base64Tx: string, connection: any, options?: any) => Promise<string>
   },
   navigation: any
 ) {
@@ -40,7 +41,7 @@ export function useSwapLogic(
   const [selectingWhichSide, setSelectingWhichSide] = useState<'input' | 'output'>('input');
   const [poolAddress, setPoolAddress] = useState('');
   const [slippage, setSlippage] = useState(10);
-
+// console.log("slipagggggggggggggggggggggggggggggggge: ", slippage);
   // Token States
   const [inputToken, setInputToken] = useState<TokenInfo | null>(null);
   const [outputToken, setOutputToken] = useState<TokenInfo | null>(null);
@@ -59,7 +60,8 @@ export function useSwapLogic(
   // Refs
   const isMounted = useRef(true);
   const [pendingTokenOps, setPendingTokenOps] = useState<{ input: boolean, output: boolean }>({ input: false, output: false });
-  
+  // console.log("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO");
+  // console.log("isBuy: ", isBuy);
   // Caching refs to prevent unnecessary state updates
   const currentPriceRef = useRef<number | null>(null);
   const lastCalculatedPriceRef = useRef<{
@@ -73,7 +75,7 @@ export function useSwapLogic(
     outputAmount: '',
     outputPrice: null
   });
-  
+
   // Debounce timer refs
   const priceUpdateTimer = useRef<NodeJS.Timeout | null>(null);
   const estimateSwapTimer = useRef<NodeJS.Timeout | null>(null);
@@ -85,7 +87,7 @@ export function useSwapLogic(
       console.log('[SwapScreen] Component unmounting, cleaning up');
       isMounted.current = false;
       setPendingTokenOps({ input: false, output: false });
-      
+
       // Clear any pending timers
       if (priceUpdateTimer.current) {
         clearTimeout(priceUpdateTimer.current);
@@ -95,9 +97,17 @@ export function useSwapLogic(
       }
     };
   }, []);
+  useEffect(() => {
+    setTokensInitialized(false);
+    setInputToken(null);
+    setOutputToken(null);
+    initializeTokens();
+  }, [isBuy]);
 
   // Initialize tokens with details
   const initializeTokens = useCallback(async () => {
+    // console.log("----------------initialized token function------------------------");
+    // console.log("is BUY: ", isBuy);
     // Don't initialize if already initializing or completed
     if (!isMounted.current || (pendingTokenOps.input && pendingTokenOps.output)) {
       return;
@@ -108,37 +118,57 @@ export function useSwapLogic(
       setPendingTokenOps({ input: true, output: true });
       console.log('[SwapScreen] Initializing tokens...', routeParams);
 
-      // Fetch initial tokens
       let initialInputToken: TokenInfo | null = null;
       let initialOutputToken: TokenInfo | null = null;
 
-      // Use tokens from route params if available, otherwise fetch SOL and USDC
+      // Define SOL mint (for convenience)
+      const SOL_MINT = 'So11111111111111111111111111111111111111112';
+      const { mode, token } = routeParams || {};
+      // console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+      // console.log("mode: ", mode);
+      // console.log("token: ", token);
       try {
-        if (routeParams.inputToken && routeParams.inputToken.address) {
-          console.log('[SwapScreen] Using input token from route params:', routeParams.inputToken);
-          initialInputToken = await fetchTokenMetadata(routeParams.inputToken.address);
-        } else {
-          // Default to SOL if not specified
-          initialInputToken = await fetchTokenMetadata('So11111111111111111111111111111111111111112');
+        if (!token || !token.mintaddress) {
+          throw new Error('Invalid token in routeParams');
         }
-      } catch (err) {
-        console.error('[SwapScreen] Error fetching input token:', err);
-        // If we can't fetch the input token, try with SOL as a fallback
-        initialInputToken = await fetchTokenMetadata('So11111111111111111111111111111111111111112');
-      }
 
-      try {
-        if (routeParams.outputToken && routeParams.outputToken.address) {
-          console.log('[SwapScreen] Using output token from route params:', routeParams.outputToken);
-          initialOutputToken = await fetchTokenMetadata(routeParams.outputToken.address);
+        // Build token info objects directly (no fetch)
+        const selectedToken: TokenInfo = {
+          address: token.mintaddress,
+          symbol: token.symbol || 'UNKNOWN',
+          name: token.name || 'Unknown Token',
+          decimals: token.tokendecimal, // default decimals if not known
+          logoURI:
+            token.logoURI ||
+            token.logo ||
+            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png',
+        };
+
+        const solToken: TokenInfo = {
+          address: SOL_MINT,
+          symbol: 'SOL',
+          name: 'Solana',
+          decimals: 9,
+          logoURI:
+            'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png',
+        };
+
+        if (isBuy === true) {
+          // User is buying the token with SOL
+          initialInputToken = solToken;
+          initialOutputToken = selectedToken;
+          console.log('[SwapScreen] Mode = BUY, input = SOL, output =', token.symbol);
         } else {
-          // Default to USDC if not specified
-          initialOutputToken = await fetchTokenMetadata('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+          // User is selling the token for SOL
+          initialInputToken = selectedToken;
+          initialOutputToken = solToken;
+          console.log('[SwapScreen] Mode = SELL, input =', token.symbol, ', output = SOL');
         }
       } catch (err) {
-        console.error('[SwapScreen] Error fetching output token:', err);
-        // If we can't fetch the output token, try with USDC as a fallback
-        initialOutputToken = await fetchTokenMetadata('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+        console.error('[SwapScreen] Error fetching tokens:', err);
+        // Fallback to SOL -> USDC in case of total failure
+        // initialInputToken = await fetchTokenMetadata(SOL_MINT);
+        // initialOutputToken = await fetchTokenMetadata('6kxAhE21iHJGxeikShJTkeYKJudtT7vmXKdbZnCZpump');
       }
 
       // Handle case where token fetching fails
@@ -164,28 +194,30 @@ export function useSwapLogic(
 
         // Fetch balance and price only if wallet is connected
         if (userPublicKey && initialInputToken) {
-          // Load token details in sequence to avoid parallel fetch issues
           const balance = await fetchTokenBalance(userPublicKey, initialInputToken);
-            if (isMounted.current && balance !== null) {
-              setCurrentBalance(balance);
-            
+          if (isMounted.current && balance !== null) {
+            setCurrentBalance(balance);
+
             // Fetch price after balance is loaded
             const price = await fetchTokenPrice(initialInputToken);
-                  if (isMounted.current && price !== null) {
-                    setCurrentTokenPrice(price);
-              currentPriceRef.current = price; // Update the price ref
-                  }
-              }
+            console.log("Fetched price:", price);
+            if (isMounted.current && price !== null) {
+              setCurrentTokenPrice(price);
+              currentPriceRef.current = price;
+            }
+          }
         }
       }
     } catch (error) {
       console.error('[SwapScreen] Error initializing tokens:', error);
       setPendingTokenOps({ input: false, output: false });
     }
-  }, [userPublicKey, routeParams, setPendingTokenOps]);
+  }, [userPublicKey, routeParams, setPendingTokenOps, isBuy]);
+
 
   // Fetch token balance
   const fetchBalance = useCallback(async (tokenToUse?: TokenInfo | null) => {
+    // console.log("----------------fetch balance------------------------");
     if (!connected || !userPublicKey) {
       console.log("[SwapScreen] No wallet connected, cannot fetch balance");
       return null;
@@ -207,8 +239,8 @@ export function useSwapLogic(
       if (isMounted.current) {
         // Only update if the balance actually changed
         if (balance !== null && balance !== currentBalance) {
-        console.log(`[SwapScreen] Token balance fetched for ${tokenForBalance.symbol}: ${balance}`);
-        setCurrentBalance(balance);
+          console.log(`[SwapScreen] Token balance fetched for ${tokenForBalance.symbol}: ${balance}`);
+          setCurrentBalance(balance);
         }
         return balance;
       }
@@ -225,6 +257,7 @@ export function useSwapLogic(
 
   // Fetch token price
   const getTokenPrice = useCallback(async (tokenToUse?: TokenInfo | null): Promise<number | null> => {
+    // console.log("----------------getTokenPrice------------------------");
     const tokenForPrice = tokenToUse || inputToken;
 
     // Cannot fetch price if token is null
@@ -236,26 +269,26 @@ export function useSwapLogic(
     try {
       console.log(`[SwapScreen] Fetching price for ${tokenForPrice.symbol}...`);
       const price = await fetchTokenPrice(tokenForPrice);
-      
+      console.log("price for ")
       if (isMounted.current) {
         console.log(`[SwapScreen] Token price fetched for ${tokenForPrice.symbol}: ${price}`);
-        
+
         // Only update state if it's the input token and the price actually changed
         if (tokenForPrice === inputToken && price !== null && price !== currentPriceRef.current) {
           // Clear any pending price update timer
           if (priceUpdateTimer.current) {
             clearTimeout(priceUpdateTimer.current);
           }
-          
+
           // Update price with debounce to prevent frequent re-renders
           priceUpdateTimer.current = setTimeout(() => {
             if (isMounted.current) {
-        setCurrentTokenPrice(price);
+              setCurrentTokenPrice(price);
               currentPriceRef.current = price;
             }
           }, PRICE_UPDATE_DEBOUNCE);
         }
-        
+
         return price;
       }
     } catch (err) {
@@ -270,6 +303,7 @@ export function useSwapLogic(
 
   // Calculate USD value for a given token amount
   const calculateUsdValue = useCallback((amount: string, tokenPrice: number | null) => {
+    // console.log("----------------calculateUSD value------------------------");
     // Add better error handling for invalid inputs
     if (!tokenPrice || tokenPrice <= 0 || !amount || isNaN(parseFloat(amount))) {
       return '$0.00';
@@ -297,6 +331,8 @@ export function useSwapLogic(
 
   // Estimate the output amount based on input
   const estimateSwap = useCallback(async () => {
+    // console.log("----------------estimate swap------------------------");
+    console.log("connected: ", connected, "\n inputvalue: ", inputValue, "\n input token: ", inputToken, "\n outpput tpoken: ", outputToken,)
     if (!connected || parseFloat(inputValue) <= 0 || !inputToken || !outputToken) {
       // Reset values when conditions aren't met
       if (estimatedOutputAmount !== '0') {
@@ -307,12 +343,13 @@ export function useSwapLogic(
       }
       return;
     }
-    
+
     // Check if we need to recalculate based on cached values
-    const shouldRecalculate = 
+    const shouldRecalculate =
       inputValue !== lastCalculatedPriceRef.current.inputAmount ||
       currentPriceRef.current !== lastCalculatedPriceRef.current.inputPrice;
-    
+
+    console.log("should recalculate: ", shouldRecalculate);
     if (!shouldRecalculate) {
       return; // Skip calculation if nothing has changed
     }
@@ -322,14 +359,18 @@ export function useSwapLogic(
       if (estimateSwapTimer.current) {
         clearTimeout(estimateSwapTimer.current);
       }
-      
+
       // Update with debounce to prevent frequent recalculations
       estimateSwapTimer.current = setTimeout(async () => {
         if (!isMounted.current) return;
-        
+
         // Get prices for both tokens
+        console.log("input token: ", inputToken);
+        console.log("output token: ", outputToken);
         const inputPrice = await getTokenPrice(inputToken);
         const outputPrice = await getTokenPrice(outputToken);
+        console.log("input price of token: ", inputPrice);
+        console.log("output price of toen: ", outputPrice);
 
         if (inputPrice && outputPrice && isMounted.current) {
           const inputValueNum = parseFloat(inputValue);
@@ -342,13 +383,15 @@ export function useSwapLogic(
 
           // Format the number properly based on token decimals
           const formattedOutput = estimatedOutput.toFixed(outputToken.decimals <= 6 ? outputToken.decimals : 6);
+          // console.log("*****************************************************");
+          console.log("formateed output: ", formattedOutput);
           const formattedUsdValue = calculateUsdValue(formattedOutput, outputPrice);
-
+          console.log("formatted USD value: ", formattedUsdValue);
           // Update state only if values have changed
           if (formattedOutput !== estimatedOutputAmount) {
             setEstimatedOutputAmount(formattedOutput);
           }
-          
+
           if (formattedUsdValue !== outputTokenUsdValue) {
             setOutputTokenUsdValue(formattedUsdValue);
           }
@@ -371,6 +414,7 @@ export function useSwapLogic(
 
   // Handle token selection
   const handleTokenSelected = useCallback(async (token: TokenInfo) => {
+    // console.log("----------------handleTokenSelected------------------------");
     if (!isMounted.current) return;
 
     try {
@@ -388,7 +432,7 @@ export function useSwapLogic(
         clearTimeout(priceUpdateTimer.current);
         priceUpdateTimer.current = null;
       }
-      
+
       if (estimateSwapTimer.current) {
         clearTimeout(estimateSwapTimer.current);
         estimateSwapTimer.current = null;
@@ -396,7 +440,7 @@ export function useSwapLogic(
 
       // Ensure we have complete token info - add timeout protection
       let completeToken: TokenInfo | null = null;
-      
+
       // Set up a timeout promise that will resolve after 8 seconds
       const timeoutPromise = new Promise<TokenInfo>(resolve => {
         setTimeout(() => {
@@ -404,7 +448,7 @@ export function useSwapLogic(
           resolve(token); // Return original token on timeout
         }, 8000);
       });
-      
+
       // Race the token fetch against the timeout
       try {
         completeToken = await Promise.race([
@@ -417,7 +461,7 @@ export function useSwapLogic(
       }
 
       if (!isMounted.current) return;
-      
+
       // Safely proceed with either complete token or original token
       if (!completeToken) {
         throw new Error('Failed to get token information');
@@ -445,23 +489,23 @@ export function useSwapLogic(
             try {
               // First fetch balance
               const newBalance = await fetchBalance(completeToken);
-              
+
               if (!isMounted.current) return;
-              
+
               // Then fetch price (sequentially to avoid race conditions)
               if (newBalance !== null) {
                 const price = await getTokenPrice(completeToken);
-                
+
                 if (!isMounted.current) return;
-                
+
                 if (price !== null) {
                   currentPriceRef.current = price;
-                  
+
                   // Update price state with debounce
                   priceUpdateTimer.current = setTimeout(() => {
                     if (isMounted.current) {
                       setCurrentTokenPrice(price);
-                      
+
                       // Finally trigger output calculation
                       setTimeout(() => {
                         if (isMounted.current && parseFloat(inputValue) > 0) {
@@ -474,7 +518,7 @@ export function useSwapLogic(
               }
             } catch (error) {
               console.error('[SwapScreen] Error during token change updates:', error);
-              
+
               // Clean up and set some default values to prevent UI being stuck
               if (isMounted.current) {
                 setCurrentBalance(0);
@@ -487,18 +531,18 @@ export function useSwapLogic(
         }, 200);
       } else {
         console.log('[SwapScreen] Output token changed to', completeToken.symbol);
-        
+
         // Update output token state
         setOutputToken(completeToken);
         setPendingTokenOps(prev => ({ ...prev, output: false }));
 
         // Close the modal immediately
-      setShowSelectTokenModal(false);
-        
+        setShowSelectTokenModal(false);
+
         // Reset estimated output
         setEstimatedOutputAmount('');
         setOutputTokenUsdValue('$0.00');
-        
+
         // Trigger new output estimate after a short delay
         setTimeout(() => {
           if (isMounted.current && inputToken && parseFloat(inputValue) > 0) {
@@ -526,6 +570,7 @@ export function useSwapLogic(
 
   // Handle max button click
   const handleMaxButtonClick = useCallback(async () => {
+    // console.log("----------------handle MAx button click------------------------");
     console.log("[SwapScreen] MAX button clicked, current balance:", currentBalance);
 
     if (isMounted.current) {
@@ -587,6 +632,7 @@ export function useSwapLogic(
 
   // Handle percentage button clicks (25%, 50%)
   const handlePercentageButtonClick = useCallback(async (percentage: number) => {
+    // console.log("----------------handle percentage button click------------------------");
     console.log(`[SwapScreen] ${percentage}% button clicked, current balance:`, currentBalance);
 
     if (isMounted.current) {
@@ -650,6 +696,7 @@ export function useSwapLogic(
 
   // Handle clear button click
   const handleClearButtonClick = useCallback(() => {
+    // console.log("----------------handle clear button clicked------------------------");
     console.log("[SwapScreen] Clear button clicked");
     setInputValue('0');
     if (isMounted.current) {
@@ -659,6 +706,7 @@ export function useSwapLogic(
 
   // Calculate conversion rate
   const getConversionRate = useCallback(() => {
+    // console.log("----------------get conversion rate------------------------");
     if (!inputToken || !outputToken || !estimatedOutputAmount || parseFloat(inputValue || '0') <= 0) {
       return `1 ${inputToken?.symbol || 'token'} = 0 ${outputToken?.symbol || 'token'}`;
     }
@@ -666,7 +714,7 @@ export function useSwapLogic(
     const inputAmt = parseFloat(inputValue);
     const outputAmt = parseFloat(estimatedOutputAmount);
     const rate = outputAmt / inputAmt;
-
+    console.log(`1 ${inputToken.symbol} = ${rate.toFixed(6)} ${outputToken.symbol}`);
     return `1 ${inputToken.symbol} = ${rate.toFixed(6)} ${outputToken.symbol}`;
   }, [inputToken, outputToken, inputValue, estimatedOutputAmount]);
 
@@ -675,12 +723,14 @@ export function useSwapLogic(
 
   // Check if a provider is available for selection
   const isProviderAvailable = useCallback((provider: SwapProvider) => {
+    // console.log("----------------is provider available------------------------");
     // Now Jupiter, Raydium, and PumpSwap are fully implemented
     return provider === 'JupiterUltra' || provider === 'Raydium' || provider === 'PumpSwap';
   }, []);
 
   // Check if the swap button should be enabled
   const isSwapButtonEnabled = useCallback(() => {
+    // console.log("---------------- isswapped button enabled------------------------");
     if (!connected || loading) return false;
 
     // Check if the provider is available
@@ -703,6 +753,7 @@ export function useSwapLogic(
 
   // Function to handle keypad input
   const handleKeyPress = (key: string) => {
+    // console.log("----------------handleKeypress------------------------");
     if (key === 'delete') {
       setInputValue(prev => prev.slice(0, -1) || '0');
       return;
@@ -721,17 +772,18 @@ export function useSwapLogic(
 
   // Execute swap
   const handleSwap = useCallback(async () => {
-    console.log('[SwapScreen] ⚠️⚠️⚠️ SWAP BUTTON CLICKED ⚠️⚠️⚠️');
+    // console.log("----------------handleswap------------------------");
+    // console.log('[SwapScreen] ⚠️⚠️⚠️ SWAP BUTTON CLICKED ⚠️⚠️⚠️');
     console.log(`[SwapScreen] Provider: ${activeProvider}, Amount: ${inputValue} ${inputToken?.symbol || 'token'}`);
 
     if (!connected || !userPublicKey) {
-      console.log('[SwapScreen] Error: Wallet not connected');
+      // console.log('[SwapScreen] Error: Wallet not connected');
       Alert.alert('Wallet not connected', 'Please connect your wallet first.');
       return;
     }
 
     if (!inputToken || !outputToken) {
-      console.log('[SwapScreen] Error: Tokens not initialized');
+      // console.log('[SwapScreen] Error: Tokens not initialized');
       Alert.alert('Tokens not loaded', 'Please wait for tokens to load or select tokens first.');
       return;
     }
@@ -741,7 +793,7 @@ export function useSwapLogic(
       Alert.alert('Invalid amount', 'Please enter a valid amount to swap.');
       return;
     }
-
+    console.log("active provider: ", activeProvider);
     // Check if the selected provider is implemented
     if (!isProviderAvailable(activeProvider)) {
       console.log('[SwapScreen] Error: Provider not available:', activeProvider);
@@ -754,7 +806,7 @@ export function useSwapLogic(
 
     // For PumpSwap, check if pool address is provided
     if (activeProvider === 'PumpSwap' && !poolAddress) {
-      console.log('[SwapScreen] Error: PumpSwap selected but no pool address provided');
+      // console.log('[SwapScreen] Error: PumpSwap selected but no pool address provided');
       Alert.alert(
         'Pool Address Required',
         'Please enter a pool address for PumpSwap.'
@@ -808,6 +860,7 @@ export function useSwapLogic(
     try {
       // Execute the swap using the trade service with the selected provider
       console.log('[SwapScreen] Calling TradeService.executeSwap');
+      // console.log("userPublickey: ", userPublicKey);
       const response = await TradeService.executeSwap(
         inputToken,
         outputToken,
@@ -850,7 +903,7 @@ export function useSwapLogic(
             console.log('[SwapScreen] Checking if fee alert is visible...');
           }, 500);
 
-          
+
         }
       } else {
         console.log('[SwapScreen] Swap response not successful:', response);
@@ -1044,6 +1097,7 @@ export function useSwapLogic(
 
   // View transaction on Solscan
   const viewTransaction = useCallback(() => {
+    console.log("----------------view transaction------------------------");
     if (solscanTxSig) {
       const url = `https://solscan.io/tx/${solscanTxSig}`;
       Linking.openURL(url).catch(err => {
@@ -1054,6 +1108,7 @@ export function useSwapLogic(
 
   // Function to swap input and output tokens
   const handleSwapTokens = useCallback(async () => {
+    console.log("----------------handle swap tokens------------------------");
     if (!isMounted.current || pendingTokenOps.input || pendingTokenOps.output) {
       console.log('[SwapScreen] Token operations pending, cannot swap tokens now.');
       return;
@@ -1103,7 +1158,7 @@ export function useSwapLogic(
         }
       }
     }
-    
+
     // Mark operations as complete
     setPendingTokenOps({ input: false, output: false });
 
@@ -1114,13 +1169,13 @@ export function useSwapLogic(
       console.log('[SwapScreen] Triggering swap estimation after token swap.');
     }
   }, [
-    inputToken, 
-    outputToken, 
-    inputValue, 
-    estimatedOutputAmount, 
-    connected, 
+    inputToken,
+    outputToken,
+    inputValue,
+    estimatedOutputAmount,
+    connected,
     userPublicKey,
-    fetchTokenBalance, 
+    fetchTokenBalance,
     fetchTokenPrice,
     setPendingTokenOps
   ]);
@@ -1163,35 +1218,35 @@ export function useSwapLogic(
       if (priceUpdateTimer.current) {
         clearTimeout(priceUpdateTimer.current);
       }
-      
+
       if (estimateSwapTimer.current) {
         clearTimeout(estimateSwapTimer.current);
-        }
+      }
 
       // Use a sequence of operations with proper timing gaps
       // First check balance, then price, then calculate estimates
       const fetchSequence = async () => {
         if (!isMounted.current) return;
-        
+
         try {
           // 1. First fetch balance
           const balance = await fetchTokenBalance(userPublicKey, inputToken);
           if (!isMounted.current) return;
-          
+
           if (balance !== null && balance !== currentBalance) {
             setCurrentBalance(balance);
           }
-          
+
           // 2. Next fetch input token price (with small delay)
           setTimeout(async () => {
             if (!isMounted.current) return;
-            
+
             const price = await fetchTokenPrice(inputToken);
             if (!isMounted.current) return;
-            
+
             if (price !== null && price !== currentPriceRef.current) {
               currentPriceRef.current = price;
-              
+
               // Debounce the actual state update
               priceUpdateTimer.current = setTimeout(() => {
                 if (isMounted.current) {
@@ -1200,18 +1255,18 @@ export function useSwapLogic(
                   // 3. Finally, estimate the swap (with further delay)
                   setTimeout(() => {
                     if (isMounted.current && parseFloat(inputValue) > 0) {
-      estimateSwap();
+                      estimateSwap();
                     }
                   }, 300);
                 }
               }, PRICE_UPDATE_DEBOUNCE / 2);
-    }
+            }
           }, 100);
         } catch (error) {
           console.error('[SwapScreen] Error updating token data:', error);
         }
       };
-      
+
       // Start the sequence with a small delay
       const timer = setTimeout(fetchSequence, 200);
 
@@ -1226,14 +1281,14 @@ export function useSwapLogic(
       };
     }
   }, [tokensInitialized, initializeTokens, connected, userPublicKey, inputToken, currentTokenPrice, currentBalance, estimateSwap, inputValue]);
-  
+
   // Update output estimate when input changes, but with debounce
   useEffect(() => {
     // Clear any pending estimate
     if (estimateSwapTimer.current) {
       clearTimeout(estimateSwapTimer.current);
     }
-    
+
     // Schedule new estimate with debounce
     estimateSwapTimer.current = setTimeout(() => {
       if (isMounted.current) {
@@ -1245,11 +1300,11 @@ export function useSwapLogic(
         }
       }
     }, 300);
-    
+
     return () => {
       if (estimateSwapTimer.current) {
         clearTimeout(estimateSwapTimer.current);
-            }
+      }
     };
   }, [inputValue, estimateSwap, estimatedOutputAmount]);
 
@@ -1259,7 +1314,7 @@ export function useSwapLogic(
     outputToken,
     currentBalance,
     currentTokenPrice,
-    
+
     // UI state
     inputValue,
     estimatedOutputAmount,
@@ -1274,10 +1329,10 @@ export function useSwapLogic(
     errorMsg,
     solscanTxSig,
     pendingTokenOps,
-    
+
     // Computed values
     conversionRate,
-    
+
     // State updaters
     setInputValue,
     setActiveProvider,
@@ -1285,7 +1340,7 @@ export function useSwapLogic(
     setSelectingWhichSide,
     setPoolAddress,
     setSlippage,
-    
+
     // Action handlers
     handleTokenSelected,
     handleMaxButtonClick,
@@ -1298,7 +1353,7 @@ export function useSwapLogic(
     isProviderAvailable,
     isSwapButtonEnabled,
     handleSwapTokens,
-    
+
     // Token operations
     fetchBalance,
     getTokenPrice

@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     StyleSheet,
     Platform,
-    Image,
+    Modal,
+    Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
@@ -15,57 +16,46 @@ import { useWallet } from '@/modules/wallet-providers/hooks/useWallet';
 import { AppHeader } from '@/core/shared-ui';
 import COLORS from '@/assets/colors';
 import TYPOGRAPHY from '@/assets/typography';
-import { SwapForm, LiquidityPanel, TokenCreationForm } from '../components';
+import { TokenCreationForm } from '../components';
 
-// Tab enum for navigation
 enum MeteoraTab {
-    // SWAP = 'swap',
-    // LIQUIDITY = 'liquidity',
     CREATE_TOKEN = 'create_token'
 }
 
 export default function MeteoraScreen() {
     const navigation = useNavigation();
-    const wallet = useWallet();
-    const [activeTab, setActiveTab] = useState<MeteoraTab>(MeteoraTab.CREATE_TOKEN);
-    const [transactionHistory, setTransactionHistory] = useState<Array<{ id: string, type: string, timestamp: number }>>([]);
+    const {wallet, isPrivy, sendBase64Transaction} = useWallet();
 
-    // Safely extract wallet address
+    // console.log("isprivy: ", isPrivy);
+    // console.log("sendbase64: ", sendBase64Transaction);
+    // ✅ all hooks declared at top level, always in same order
+    const [activeTab] = useState<MeteoraTab>(MeteoraTab.CREATE_TOKEN);
+    const [transactionHistory, setTransactionHistory] = useState<
+        Array<{ id: string; type: string; timestamp: number }>
+    >([]);
+    const [creationResult, setCreationResult] = useState<{ txId: string; baseMint: string } | null>(null);
+
     const walletAddress = wallet?.publicKey?.toString() || '';
 
     const handleBack = useCallback(() => {
         navigation.goBack();
     }, [navigation]);
 
-    // Commented out as we're only showing the create token tab
-    /*
-    const handleTabPress = (tab: MeteoraTab) => {
-        setActiveTab(tab);
-    };
-    */
-
-    const handleTransactionComplete = (txId: string, type?: string) => {
-        // Add the transaction to history
+    const handleTransactionComplete = useCallback((txId: string, type?: string) => {
         setTransactionHistory(prev => [
             {
                 id: txId,
                 type: type || 'Token Creation',
-                timestamp: Date.now()
+                timestamp: Date.now(),
             },
-            ...prev
+            ...prev,
         ]);
-    };
+    }, []);
 
-    const handleTokenCreated = (tokenAddress: string, txId: string) => {
+    const handleTokenCreated = useCallback((tokenAddress: string, txId: string) => {
         handleTransactionComplete(txId, 'Token Creation');
-        // Commented out as we're not switching tabs anymore
-        // setActiveTab(MeteoraTab.SWAP);
-    };
-
-    // Simplified to only show token creation
-    const renderTabContent = () => {
-        return <TokenCreationForm walletAddress={walletAddress} onTokenCreated={handleTokenCreated} />;
-    };
+        setCreationResult({ txId, baseMint: tokenAddress });
+    }, [handleTransactionComplete]);
 
     return (
         <SafeAreaView
@@ -76,60 +66,19 @@ export default function MeteoraScreen() {
             <StatusBar style="light" />
 
             <AppHeader
-                title="Meteora"
+                title="Launch a coin"
                 showBackButton={true}
                 onBackPress={handleBack}
             />
 
-            {/* Meteora Logo and Tagline */}
-         
-            {/* Tab Navigation - Commented out as we're only showing token creation
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === MeteoraTab.CREATE_TOKEN && styles.activeTabButton
-                    ]}
-                    onPress={() => handleTabPress(MeteoraTab.CREATE_TOKEN)}
-                >
-                    <Text
-                        style={[
-                            styles.tabButtonText,
-                            activeTab === MeteoraTab.CREATE_TOKEN && styles.activeTabButtonText
-                        ]}
-                    >
-                        Create
-                    </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === MeteoraTab.SWAP && styles.activeTabButton
-                    ]}
-                    onPress={() => handleTabPress(MeteoraTab.SWAP)}
-                >
-                    <Text
-                        style={[
-                            styles.tabButtonText,
-                            activeTab === MeteoraTab.SWAP && styles.activeTabButtonText
-                        ]}
-                    >
-                        Swap
-                    </Text>
-                </TouchableOpacity>
-            </View>
-            */}
-
-            {/* Main Content Area */}
             <ScrollView
                 contentContainerStyle={styles.contentContainer}
                 showsVerticalScrollIndicator={false}
             >
-                {renderTabContent()}
+                {/* ✅ no conditional hooks, just pass props */}
+                <TokenCreationForm walletAddress={walletAddress} isPrivy={isPrivy} sendBase64Transaction={sendBase64Transaction} onTokenCreated={handleTokenCreated} />
 
-                {/* Transaction History */}
-                {transactionHistory.length > 0 && (
+                {/* {transactionHistory.length > 0 && (
                     <View style={styles.historyContainer}>
                         <Text style={styles.historyTitle}>Recent Transactions</Text>
                         {transactionHistory.map((tx) => (
@@ -144,58 +93,58 @@ export default function MeteoraScreen() {
                             </View>
                         ))}
                     </View>
-                )}
+                )} */}
             </ScrollView>
+
+            {/* ✅ keep Modal always mounted, just control `visible` */}
+            {/* <Modal
+                visible={!!creationResult}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setCreationResult(null)}
+            > 
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={styles.modalTitle}>Token Created 🎉</Text>
+                        <Text style={styles.modalText}>TxID: {creationResult?.txId}</Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                const explorerUrl = `https://explorer.solana.com/address/${creationResult?.baseMint}?cluster=devnet`;
+                                Linking.openURL(explorerUrl).catch(err =>
+                                    console.error("Failed to open Solana Explorer:", err)
+                                );
+                            }}
+                        >
+                            <Text style={[styles.modalText, { color: '#a49999ff', textDecorationLine: 'underline' }]}>
+                                Base Mint: {creationResult?.baseMint}
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.modalText}>Base Mint: {creationResult?.baseMint}</Text>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setCreationResult(null)}
+                        >
+                            <Text style={styles.closeButtonText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal> */}
+            
         </SafeAreaView>
     );
 }
 
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.lightBackground,
     },
     androidSafeArea: {
         paddingTop: 50,
     },
-    headerContainer: {
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    tagline: {
-        fontSize: TYPOGRAPHY.size.md,
-        color: COLORS.greyMid,
-        textAlign: 'center',
-    },
-    tabContainer: {
-        flexDirection: 'row',
-        marginHorizontal: 16,
-        marginBottom: 16,
-        backgroundColor: COLORS.lighterBackground,
-        borderRadius: 12,
-        padding: 4,
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 12,
-        alignItems: 'center',
-        borderRadius: 8,
-    },
-    activeTabButton: {
-        backgroundColor: COLORS.brandPrimary,
-    },
-    tabButtonText: {
-        color: COLORS.white,
-        fontSize: TYPOGRAPHY.size.md,
-        fontWeight: TYPOGRAPHY.weights.medium,
-    },
-    activeTabButtonText: {
-        color: COLORS.black,
-        fontWeight: TYPOGRAPHY.weights.semiBold,
-    },
     contentContainer: {
-        paddingBottom: 40,
+        // paddingBottom: 40,
     },
     historyContainer: {
         marginHorizontal: 16,
@@ -237,4 +186,40 @@ const styles = StyleSheet.create({
         fontSize: TYPOGRAPHY.size.sm,
         color: COLORS.brandGreen,
     },
-}); 
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalBox: {
+        backgroundColor: COLORS.darkerBackground,
+        padding: 24,
+        borderRadius: 16,
+        width: '85%',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: TYPOGRAPHY.size.lg,
+        fontWeight: TYPOGRAPHY.weights.semiBold,
+        color: COLORS.white,
+        marginBottom: 12,
+    },
+    modalText: {
+        fontSize: TYPOGRAPHY.size.sm,
+        color: COLORS.greyMid,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    closeButton: {
+        marginTop: 16,
+        backgroundColor: COLORS.brandPrimary,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    closeButtonText: {
+        color: COLORS.white,
+        fontWeight: TYPOGRAPHY.weights.semiBold,
+    },
+});

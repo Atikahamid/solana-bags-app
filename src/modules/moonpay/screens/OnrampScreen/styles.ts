@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    padding: 16,
+    padding: 1,
   },
   scrollContainer: {
     paddingBottom: 24,
@@ -34,21 +34,21 @@ export const styles = StyleSheet.create({
   },
   widgetWrapper: {
     backgroundColor: COLORS.lighterBackground,
-    borderRadius: 20,
+    // borderRadius: 0,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    // shadowRadius: 8,
     elevation: 4,
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: 0,
+    marginBottom: 2,
   },
   walletInfoContainer: {
     backgroundColor: COLORS.darkerBackground,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
+    // marginBottom: 20,
   },
   walletInfoLabel: {
     fontSize: TYPOGRAPHY.size.sm,

@@ -1,0 +1,1 @@
+export {default as PerpetualsScreen} from './PerpetualsScreen';

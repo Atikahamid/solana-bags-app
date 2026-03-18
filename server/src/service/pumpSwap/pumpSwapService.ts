@@ -347,228 +347,228 @@ export class PumpSwapClient {
   /**
    * Build a transaction for swapping tokens
    */
-  async buildSwapTx(params: SwapParams): Promise<PumpSwapResponse<{transaction: string}>> {
-    console.log('[PumpSwapClient:buildSwapTx] Starting buildSwapTx with params:', {
-      pool: params.pool,
-      inputAmount: params.inputAmount,
-      direction: params.direction === Direction.BaseToQuote ? 'BaseToQuote' : 'QuoteToBase',
-      slippage: params.slippage || 0.5,
-      userPublicKey: params.userPublicKey
-    });
+  // async buildSwapTx(params: SwapParams): Promise<PumpSwapResponse<{transaction: string}>> {
+  //   console.log('[PumpSwapClient:buildSwapTx] Starting buildSwapTx with params:', {
+  //     pool: params.pool,
+  //     inputAmount: params.inputAmount,
+  //     direction: params.direction === Direction.BaseToQuote ? 'BaseToQuote' : 'QuoteToBase',
+  //     slippage: params.slippage || 0.5,
+  //     userPublicKey: params.userPublicKey
+  //   });
     
-    try {
-      const { pool, inputAmount, direction, slippage = 0.5, userPublicKey } = params;
+  //   try {
+  //     const { pool, inputAmount, direction, slippage = 0.5, userPublicKey } = params;
       
-      console.log(`[PumpSwapClient:buildSwapTx] Building swap transaction: pool=${pool}, direction=${direction}, amount=${inputAmount}`);
+  //     console.log(`[PumpSwapClient:buildSwapTx] Building swap transaction: pool=${pool}, direction=${direction}, amount=${inputAmount}`);
       
-      console.log('[PumpSwapClient:buildSwapTx] Creating PublicKey objects');
-      const userPubkey = new PublicKey(userPublicKey);
-      const poolAddress = new PublicKey(pool);
+  //     console.log('[PumpSwapClient:buildSwapTx] Creating PublicKey objects');
+  //     const userPubkey = new PublicKey(userPublicKey);
+  //     const poolAddress = new PublicKey(pool);
       
-      // Use slippage exactly as provided by the frontend
-      console.log(`[PumpSwapClient:buildSwapTx] Using slippage from frontend: ${slippage}%`);
-      const slippageDecimal = slippage / 100;
+  //     // Use slippage exactly as provided by the frontend
+  //     console.log(`[PumpSwapClient:buildSwapTx] Using slippage from frontend: ${slippage}%`);
+  //     const slippageDecimal = slippage / 100;
       
-      console.log('[PumpSwapClient:buildSwapTx] Setting up amount parameters');
-      const INPUT_DECIMALS = 9;
-      const inputAmountRaw = Math.floor(inputAmount * Math.pow(10, INPUT_DECIMALS));
-      const inputAmountBN = new BN(inputAmountRaw);
+  //     console.log('[PumpSwapClient:buildSwapTx] Setting up amount parameters');
+  //     const INPUT_DECIMALS = 9;
+  //     const inputAmountRaw = Math.floor(inputAmount * Math.pow(10, INPUT_DECIMALS));
+  //     const inputAmountBN = new BN(inputAmountRaw);
       
-      console.log(`[PumpSwapClient:buildSwapTx] Input amount: ${inputAmount}, Raw: ${inputAmountRaw}, BN: ${inputAmountBN.toString()}`);
+  //     console.log(`[PumpSwapClient:buildSwapTx] Input amount: ${inputAmount}, Raw: ${inputAmountRaw}, BN: ${inputAmountBN.toString()}`);
       
-      // Calculate minimum output amount based on quote and slippage
-      const OUTPUT_DECIMALS = 9;
-      let minOutputAmountBN: BN;
-      let minOutputAmountNum: number;
-      const numericDirectionForQuote = direction === Direction.BaseToQuote ? 1 : 0;
+  //     // Calculate minimum output amount based on quote and slippage
+  //     const OUTPUT_DECIMALS = 9;
+  //     let minOutputAmountBN: BN;
+  //     let minOutputAmountNum: number;
+  //     const numericDirectionForQuote = direction === Direction.BaseToQuote ? 1 : 0;
       
-      console.log(`[PumpSwapClient:buildSwapTx] Getting quote to calculate minimum output - direction: ${numericDirectionForQuote === 1 ? 'BaseToQuote' : 'QuoteToBase'}`);
-      try {
-        console.log('[PumpSwapClient:buildSwapTx] Checking connection status');
-        const versionResp = await this.connection.getVersion();
-        console.log(`[PumpSwapClient:buildSwapTx] Connected to Solana ${versionResp['solana-core']}`);
+  //     console.log(`[PumpSwapClient:buildSwapTx] Getting quote to calculate minimum output - direction: ${numericDirectionForQuote === 1 ? 'BaseToQuote' : 'QuoteToBase'}`);
+  //     try {
+  //       console.log('[PumpSwapClient:buildSwapTx] Checking connection status');
+  //       const versionResp = await this.connection.getVersion();
+  //       console.log(`[PumpSwapClient:buildSwapTx] Connected to Solana ${versionResp['solana-core']}`);
         
-        // For pools with extreme price impact, we need a different approach
-        // Option 1: Use a mock minimumOutputAmount that will allow the trade to go through
-        // This is equivalent to setting an extremely high slippage (99%)
-        // We'll use this as a fallback if we detect a large price discrepancy
+  //       // For pools with extreme price impact, we need a different approach
+  //       // Option 1: Use a mock minimumOutputAmount that will allow the trade to go through
+  //       // This is equivalent to setting an extremely high slippage (99%)
+  //       // We'll use this as a fallback if we detect a large price discrepancy
 
-        try {
-          let expectedOutputRaw: BN;
-          console.log(`[PumpSwapClient:buildSwapTx] Attempting to get quote from SDK...`);
+  //       try {
+  //         let expectedOutputRaw: BN;
+  //         console.log(`[PumpSwapClient:buildSwapTx] Attempting to get quote from SDK...`);
           
-          if (numericDirectionForQuote === 1) { // BaseToQuote
-            console.log(`[PumpSwapClient:buildSwapTx] Calling swapAutocompleteQuoteFromBase with baseAmount=${inputAmountBN.toString()}`);
-            expectedOutputRaw = await this.sdk.swapAutocompleteQuoteFromBase(
-              poolAddress,
-              inputAmountBN,
-              0, // Use 0 slippage for expected amount
-              numericDirectionForQuote as any // Cast to any
-            );
-          } else { // QuoteToBase
-            console.log(`[PumpSwapClient:buildSwapTx] Calling swapAutocompleteBaseFromQuote with quoteAmount=${inputAmountBN.toString()}`);
-            expectedOutputRaw = await this.sdk.swapAutocompleteBaseFromQuote(
-              poolAddress,
-              inputAmountBN,
-              0, // Use 0 slippage for expected amount
-              numericDirectionForQuote as any // Cast to any
-            );
-          }
+  //         if (numericDirectionForQuote === 1) { // BaseToQuote
+  //           console.log(`[PumpSwapClient:buildSwapTx] Calling swapAutocompleteQuoteFromBase with baseAmount=${inputAmountBN.toString()}`);
+  //           expectedOutputRaw = await this.sdk.swapAutocompleteQuoteFromBase(
+  //             poolAddress,
+  //             inputAmountBN,
+  //             0, // Use 0 slippage for expected amount
+  //             numericDirectionForQuote as any // Cast to any
+  //           );
+  //         } else { // QuoteToBase
+  //           console.log(`[PumpSwapClient:buildSwapTx] Calling swapAutocompleteBaseFromQuote with quoteAmount=${inputAmountBN.toString()}`);
+  //           expectedOutputRaw = await this.sdk.swapAutocompleteBaseFromQuote(
+  //             poolAddress,
+  //             inputAmountBN,
+  //             0, // Use 0 slippage for expected amount
+  //             numericDirectionForQuote as any // Cast to any
+  //           );
+  //         }
           
-          console.log(`[PumpSwapClient:buildSwapTx] Expected output (raw): ${expectedOutputRaw.toString()}`);
+  //         console.log(`[PumpSwapClient:buildSwapTx] Expected output (raw): ${expectedOutputRaw.toString()}`);
           
-          // Get pool info to validate the quote
-          console.log('[PumpSwapClient:buildSwapTx] Getting pool info to validate quote');
-          const poolInfo = await this.connection.getAccountInfo(poolAddress);
+  //         // Get pool info to validate the quote
+  //         console.log('[PumpSwapClient:buildSwapTx] Getting pool info to validate quote');
+  //         const poolInfo = await this.connection.getAccountInfo(poolAddress);
           
-          if (!poolInfo) {
-            throw new Error('Pool account not found');
-          }
+  //         if (!poolInfo) {
+  //           throw new Error('Pool account not found');
+  //         }
           
-          // Calculate a more reasonable minimum output for this pool
-          // For extremely illiquid pools or price fluctuations, use a much higher slippage
-          // By setting the minimum output to a small fraction of the expected output
+  //         // Calculate a more reasonable minimum output for this pool
+  //         // For extremely illiquid pools or price fluctuations, use a much higher slippage
+  //         // By setting the minimum output to a small fraction of the expected output
           
-          let effectiveSlippage = slippageDecimal;
-          const rawOutputNumber = expectedOutputRaw.toNumber();
+  //         let effectiveSlippage = slippageDecimal;
+  //         const rawOutputNumber = expectedOutputRaw.toNumber();
           
-          // Convert the expected output to a human-readable number
-          const expectedOutput = rawOutputNumber / Math.pow(10, OUTPUT_DECIMALS);
-          console.log(`[PumpSwapClient:buildSwapTx] Expected output in token units: ${expectedOutput}`);
+  //         // Convert the expected output to a human-readable number
+  //         const expectedOutput = rawOutputNumber / Math.pow(10, OUTPUT_DECIMALS);
+  //         console.log(`[PumpSwapClient:buildSwapTx] Expected output in token units: ${expectedOutput}`);
           
-          // Calculate minimum output using extreme slippage of 99% as a safety measure
-          // This will let most trades go through but still provide minimal protection
-          const safetyMinOutput = rawOutputNumber * 0.01; // 99% slippage
+  //         // Calculate minimum output using extreme slippage of 99% as a safety measure
+  //         // This will let most trades go through but still provide minimal protection
+  //         const safetyMinOutput = rawOutputNumber * 0.01; // 99% slippage
           
-          minOutputAmountNum = Math.floor(safetyMinOutput);
-          minOutputAmountBN = new BN(minOutputAmountNum);
+  //         minOutputAmountNum = Math.floor(safetyMinOutput);
+  //         minOutputAmountBN = new BN(minOutputAmountNum);
           
-          console.log(`[PumpSwapClient:buildSwapTx] Using SAFETY minimum output: ${minOutputAmountNum} (99% slippage)`);
-          console.log(`[PumpSwapClient:buildSwapTx] This will allow trades with high price impact to succeed`);
+  //         console.log(`[PumpSwapClient:buildSwapTx] Using SAFETY minimum output: ${minOutputAmountNum} (99% slippage)`);
+  //         console.log(`[PumpSwapClient:buildSwapTx] This will allow trades with high price impact to succeed`);
           
-        } catch (quoteError: any) {
-          console.error('[PumpSwapClient:buildSwapTx] Error calculating output with SDK, using fallback value:', quoteError);
+  //       } catch (quoteError: any) {
+  //         console.error('[PumpSwapClient:buildSwapTx] Error calculating output with SDK, using fallback value:', quoteError);
           
-          // Fallback: Use an extremely low minimum output value
-          // This essentially allows any trade to go through - use with caution!
-          minOutputAmountNum = 1; // Absolute minimum possible
-          minOutputAmountBN = new BN(minOutputAmountNum);
+  //         // Fallback: Use an extremely low minimum output value
+  //         // This essentially allows any trade to go through - use with caution!
+  //         minOutputAmountNum = 1; // Absolute minimum possible
+  //         minOutputAmountBN = new BN(minOutputAmountNum);
           
-          console.log(`[PumpSwapClient:buildSwapTx] Using FALLBACK minimum output: ${minOutputAmountNum}`);
-        }
-      } catch (quoteError: any) {
-        console.error("[PumpSwapClient:buildSwapTx] Error calculating minimum output amount:", quoteError);
+  //         console.log(`[PumpSwapClient:buildSwapTx] Using FALLBACK minimum output: ${minOutputAmountNum}`);
+  //       }
+  //     } catch (quoteError: any) {
+  //       console.error("[PumpSwapClient:buildSwapTx] Error calculating minimum output amount:", quoteError);
         
-        // Log the response in the error if it exists
-        if (quoteError.response) {
-          console.error("[PumpSwapClient:buildSwapTx] Response in error:", quoteError.response);
-        }
+  //       // Log the response in the error if it exists
+  //       if (quoteError.response) {
+  //         console.error("[PumpSwapClient:buildSwapTx] Response in error:", quoteError.response);
+  //       }
         
-        // Log stack trace
-        console.error("[PumpSwapClient:buildSwapTx] Error stack:", quoteError.stack);
+  //       // Log stack trace
+  //       console.error("[PumpSwapClient:buildSwapTx] Error stack:", quoteError.stack);
         
-        // Check specifically for API key errors
-        if (quoteError.message && quoteError.message.includes('api key not found')) {
-          console.error("[PumpSwapClient:buildSwapTx] API key error detected. Check your RPC_URL in environment variables.");
+  //       // Check specifically for API key errors
+  //       if (quoteError.message && quoteError.message.includes('api key not found')) {
+  //         console.error("[PumpSwapClient:buildSwapTx] API key error detected. Check your RPC_URL in environment variables.");
           
-          // Log the current RPC endpoint being used
-          const endpoint = this.connection.rpcEndpoint;
-          console.error("[PumpSwapClient:buildSwapTx] Current RPC endpoint:", endpoint);
-        }
+  //         // Log the current RPC endpoint being used
+  //         const endpoint = this.connection.rpcEndpoint;
+  //         console.error("[PumpSwapClient:buildSwapTx] Current RPC endpoint:", endpoint);
+  //       }
         
-        throw new Error(`Failed to calculate swap quote for minimum output: ${quoteError.message}`);
-      }
+  //       throw new Error(`Failed to calculate swap quote for minimum output: ${quoteError.message}`);
+  //     }
       
-      console.log('[PumpSwapClient:buildSwapTx] Creating transaction');
-      const tx = new Transaction();
+  //     console.log('[PumpSwapClient:buildSwapTx] Creating transaction');
+  //     const tx = new Transaction();
       
-      try {
-        console.log(`[PumpSwapClient:buildSwapTx] Getting swap instructions from SDK for direction: ${direction === Direction.BaseToQuote ? 'BaseToQuote' : 'QuoteToBase'}`);
+  //     try {
+  //       console.log(`[PumpSwapClient:buildSwapTx] Getting swap instructions from SDK for direction: ${direction === Direction.BaseToQuote ? 'BaseToQuote' : 'QuoteToBase'}`);
         
-        let swapInstructions: TransactionInstruction[];
-        const numericDirectionForSwap = direction === Direction.BaseToQuote ? 1 : 0;
+  //       let swapInstructions: TransactionInstruction[];
+  //       const numericDirectionForSwap = direction === Direction.BaseToQuote ? 1 : 0;
 
-        if (numericDirectionForSwap === 1) { // BaseToQuote
-          if (typeof this.sdk.swapBaseInstructions !== 'function') {
-            console.error("[PumpSwapClient:buildSwapTx] SDK missing swapBaseInstructions method");
-            throw new Error("SDK missing swapBaseInstructions method");
-          }
+  //       if (numericDirectionForSwap === 1) { // BaseToQuote
+  //         if (typeof this.sdk.swapBaseInstructions !== 'function') {
+  //           console.error("[PumpSwapClient:buildSwapTx] SDK missing swapBaseInstructions method");
+  //           throw new Error("SDK missing swapBaseInstructions method");
+  //         }
           
-          console.log(`[PumpSwapClient:buildSwapTx] Calling swapBaseInstructions with amount=${inputAmountBN.toString()}, minOutput=${minOutputAmountNum}`);
-          swapInstructions = await this.sdk.swapBaseInstructions(
-            poolAddress,
-            inputAmountBN,
-            minOutputAmountNum,
-            slippageDecimal as any,
-            userPubkey
-          );
-        } else { // QuoteToBase
-          if (typeof this.sdk.swapQuoteInstructions !== 'function') {
-            console.error("[PumpSwapClient:buildSwapTx] SDK missing swapQuoteInstructions method");
-            throw new Error("SDK missing swapQuoteInstructions method");
-          }
+  //         console.log(`[PumpSwapClient:buildSwapTx] Calling swapBaseInstructions with amount=${inputAmountBN.toString()}, minOutput=${minOutputAmountNum}`);
+  //         swapInstructions = await this.sdk.swapBaseInstructions(
+  //           poolAddress,
+  //           inputAmountBN,
+  //           minOutputAmountNum,
+  //           slippageDecimal as any,
+  //           userPubkey
+  //         );
+  //       } else { // QuoteToBase
+  //         if (typeof this.sdk.swapQuoteInstructions !== 'function') {
+  //           console.error("[PumpSwapClient:buildSwapTx] SDK missing swapQuoteInstructions method");
+  //           throw new Error("SDK missing swapQuoteInstructions method");
+  //         }
           
-          console.log(`[PumpSwapClient:buildSwapTx] Calling swapQuoteInstructions with amount=${inputAmountBN.toString()}, minOutput=${minOutputAmountNum}`);
-          swapInstructions = await this.sdk.swapQuoteInstructions(
-            poolAddress,
-            inputAmountBN,
-            minOutputAmountNum,
-            slippageDecimal as any,
-            userPubkey
-          );
-        }
+  //         console.log(`[PumpSwapClient:buildSwapTx] Calling swapQuoteInstructions with amount=${inputAmountBN.toString()}, minOutput=${minOutputAmountNum}`);
+  //         swapInstructions = await this.sdk.swapQuoteInstructions(
+  //           poolAddress,
+  //           inputAmountBN,
+  //           minOutputAmountNum,
+  //           slippageDecimal as any,
+  //           userPubkey
+  //         );
+  //       }
           
-        console.log(`[PumpSwapClient:buildSwapTx] SDK generated ${swapInstructions.length} instructions for swap`);
+  //       console.log(`[PumpSwapClient:buildSwapTx] SDK generated ${swapInstructions.length} instructions for swap`);
         
-        for (const instruction of swapInstructions) {
-          tx.add(instruction);
-        }
-      } catch (sdkError: any) {
-        console.error("[PumpSwapClient:buildSwapTx] Error generating swap instructions:", sdkError);
+  //       for (const instruction of swapInstructions) {
+  //         tx.add(instruction);
+  //       }
+  //     } catch (sdkError: any) {
+  //       console.error("[PumpSwapClient:buildSwapTx] Error generating swap instructions:", sdkError);
         
-        // Log stack trace
-        console.error("[PumpSwapClient:buildSwapTx] SDK error stack:", sdkError.stack);
+  //       // Log stack trace
+  //       console.error("[PumpSwapClient:buildSwapTx] SDK error stack:", sdkError.stack);
         
-        throw new Error(`SDK error generating swap instructions: ${sdkError.message || 'Unknown SDK error'}`);
-      }
+  //       throw new Error(`SDK error generating swap instructions: ${sdkError.message || 'Unknown SDK error'}`);
+  //     }
       
-      // Get recent blockhash
-      console.log('[PumpSwapClient:buildSwapTx] Getting recent blockhash');
-      try {
-        const blockhash = await getBlockhashWithFallback(this.connection);
-        console.log(`[PumpSwapClient:buildSwapTx] Got blockhash: ${blockhash}`);
-        tx.recentBlockhash = blockhash;
-        tx.feePayer = userPubkey;
-      } catch (blockhashError: any) {
-        console.error("[PumpSwapClient:buildSwapTx] Error getting blockhash:", blockhashError);
-        throw new Error(`Failed to get recent blockhash: ${blockhashError.message}`);
-      }
+  //     // Get recent blockhash
+  //     console.log('[PumpSwapClient:buildSwapTx] Getting recent blockhash');
+  //     try {
+  //       const blockhash = await getBlockhashWithFallback(this.connection);
+  //       console.log(`[PumpSwapClient:buildSwapTx] Got blockhash: ${blockhash}`);
+  //       tx.recentBlockhash = blockhash;
+  //       tx.feePayer = userPubkey;
+  //     } catch (blockhashError: any) {
+  //       console.error("[PumpSwapClient:buildSwapTx] Error getting blockhash:", blockhashError);
+  //       throw new Error(`Failed to get recent blockhash: ${blockhashError.message}`);
+  //     }
       
-      // Serialize transaction
-      console.log('[PumpSwapClient:buildSwapTx] Serializing transaction');
-      const serializedTx = serializeTransaction(tx);
-      console.log(`[PumpSwapClient:buildSwapTx] Transaction serialized, length: ${serializedTx.length}`);
+  //     // Serialize transaction
+  //     console.log('[PumpSwapClient:buildSwapTx] Serializing transaction');
+  //     const serializedTx = serializeTransaction(tx);
+  //     console.log(`[PumpSwapClient:buildSwapTx] Transaction serialized, length: ${serializedTx.length}`);
       
-      console.log('[PumpSwapClient:buildSwapTx] Successfully built swap transaction');
-      return { 
-        success: true, 
-        data: { transaction: serializedTx }
-      };
-    } catch (error: any) {
-      console.error('[PumpSwapClient:buildSwapTx] Error building swap transaction:', error);
+  //     console.log('[PumpSwapClient:buildSwapTx] Successfully built swap transaction');
+  //     return { 
+  //       success: true, 
+  //       data: { transaction: serializedTx }
+  //     };
+  //   } catch (error: any) {
+  //     console.error('[PumpSwapClient:buildSwapTx] Error building swap transaction:', error);
       
-      // Check for API key errors
-      if (error.message && error.message.includes('api key not found')) {
-        console.error('[PumpSwapClient:buildSwapTx] API key error detected in final catch block.');
-        console.error('[PumpSwapClient:buildSwapTx] Please add an API key to your RPC_URL in environment variables.');
+  //     // Check for API key errors
+  //     if (error.message && error.message.includes('api key not found')) {
+  //       console.error('[PumpSwapClient:buildSwapTx] API key error detected in final catch block.');
+  //       console.error('[PumpSwapClient:buildSwapTx] Please add an API key to your RPC_URL in environment variables.');
         
-        // Suggest fix in logs
-        console.error('[PumpSwapClient:buildSwapTx] Example fix: Set RPC_URL=https://your-endpoint.example.com?api-key=YOUR_API_KEY in .env file');
-      }
+  //       // Suggest fix in logs
+  //       console.error('[PumpSwapClient:buildSwapTx] Example fix: Set RPC_URL=https://your-endpoint.example.com?api-key=YOUR_API_KEY in .env file');
+  //     }
       
-      return { success: false, error: error.message || 'Failed to build swap transaction' };
-    }
-  }
+  //     return { success: false, error: error.message || 'Failed to build swap transaction' };
+  //   }
+  // }
 
   /**
    * Build a transaction for adding liquidity

@@ -706,7 +706,7 @@ export default function Profile({
           onDeleteAccount={handleDeleteAccountAction} // Pass the delete handler
         />
       )}
-    </SafeAreaView>
+    </SafeAreaView> 
   );
 }
 

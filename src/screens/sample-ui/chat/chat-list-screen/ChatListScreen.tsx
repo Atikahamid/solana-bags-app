@@ -40,7 +40,7 @@ type ChatListNavigationProp = StackNavigationProp<RootStackParamList, 'ChatListS
 const androidStyles = StyleSheet.create({
   statusBarPlaceholder: {
     height: RNStatusBar.currentHeight || 24,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   headerContainer: {
     paddingTop: 8, // Additional padding for Android camera hole
@@ -64,13 +64,23 @@ const formatRelativeTime = (dateString: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-// AI Agent chat hardcoded image and initial message
-const AI_AGENT = {
-  id: 'ai-agent',
-  name: 'AI Assistant',
-  avatar: null, // We'll handle this specially in the AutoAvatar component
-  initialMessage: "Hey! I'm your AI assistant. I can help you with various tasks like buying/selling tokens, swapping tokens, or providing information about your wallet. How can I assist you today?"
+const formatCompactNumber = (value: number) => {
+  const num = Number(value ?? 0);
+  if (Number.isNaN(num)) return '0';
+  if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
+  if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+  if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
+  return `${num}`;
 };
+
+// AI Agent chat hardcoded image and initial message
+// const AI_AGENT = {
+//   id: 'ai-agent',
+//   name: 'AI Assistant',
+//   avatar: null, // We'll handle this specially in the AutoAvatar component
+//   initialMessage: "Hey! I'm your AI assistant. I can help you with various tasks like buying/selling tokens, swapping tokens, or providing information about your wallet. How can I assist you today?"
+// };
 
 /**
  * ChatListScreen component - Entry point for the chat feature
@@ -272,38 +282,38 @@ const ChatListScreen: React.FC = () => {
     return usersForChat.length > 0 ? usersForChat.length : 128;
   }, [usersForChat]);
 
-  // Handle AI agent chat
-  const handleAIAgentChat = useCallback(() => {
-    navigation.navigate('ChatScreen', {
-      chatId: AI_AGENT.id,
-      chatName: AI_AGENT.name,
-      isGroup: false
-    });
-  }, [navigation]);
+  // // Handle AI agent chat
+  // const handleAIAgentChat = useCallback(() => {
+  //   navigation.navigate('ChatScreen', {
+  //     chatId: AI_AGENT.id,
+  //     chatName: AI_AGENT.name,
+  //     isGroup: false
+  //   });
+  // }, [navigation]);
 
   // Prepare all chats - both API chats and the special global chat
   const prepareChats = useCallback(() => {
     // Create AI Agent chat
-    const aiAgentChat = {
-      id: AI_AGENT.id,
-      name: AI_AGENT.name,
-      lastMessage: {
-        content: "How can I assist you today?",
-        sender: { username: 'AI' },
-        created_at: new Date().toISOString(),
-      },
-      time: 'now',
-      type: 'ai' as const,
-      is_active: true,
-      participants: [],
-      created_at: '',
-      updated_at: '',
-      unreadCount: 0,
-      avatar: AI_AGENT.avatar,
-    };
+    // const aiAgentChat = {
+    //   id: AI_AGENT.id,
+    //   name: AI_AGENT.name,
+    //   lastMessage: {
+    //     content: "How can I assist you today?",
+    //     sender: { username: 'AI' },
+    //     created_at: new Date().toISOString(),
+    //   },
+    //   time: 'now',
+    //   type: 'ai' as const,
+    //   is_active: true,
+    //   participants: [],
+    //   created_at: '',
+    //   updated_at: '',
+    //   unreadCount: 0,
+    //   avatar: AI_AGENT.avatar,
+    // };
 
     // Create global chat item - commented out as requested
-    /*
+    
     const globalChat = {
       id: 'global',
       name: 'Global Community',
@@ -322,7 +332,7 @@ const ChatListScreen: React.FC = () => {
       avatar: DEFAULT_IMAGES.groupChat,
       memberCount: getTotalUserCount(), // Add the total user count
     };
-    */
+    
 
     // Filter and format API chats
     const apiChats = sortedChats.map(chat => {
@@ -382,7 +392,7 @@ const ChatListScreen: React.FC = () => {
       };
     });
 
-    return [aiAgentChat, ...apiChats];
+    return [globalChat, ...apiChats];
 
   }, [sortedChats, userId, getGlobalChatLastMessage, getGlobalChatTime, getTotalUserCount]);
 
@@ -395,10 +405,10 @@ const ChatListScreen: React.FC = () => {
 
   // Handle chat item press - navigate to ChatScreen
   const handleChatPress = useCallback((chat: any) => {
-    if (chat.id === AI_AGENT.id) {
-      handleAIAgentChat();
-      return;
-    }
+    // if (chat.id === AI_AGENT.id) {
+    //   handleAIAgentChat();
+    //   return;
+    // }
 
     // Reset the unread counter when selecting a chat
     dispatch(setSelectedChat(chat.id));
@@ -408,7 +418,7 @@ const ChatListScreen: React.FC = () => {
       chatName: chat.name,
       isGroup: chat.type !== 'direct'
     });
-  }, [navigation, handleAIAgentChat, dispatch]);
+  }, [navigation, dispatch]);
 
   // Handle new chat button press
   const handleNewChat = useCallback(() => {
@@ -424,7 +434,8 @@ const ChatListScreen: React.FC = () => {
   const renderChatItem = ({ item }: { item: any }) => {
     // Detect if this is a direct chat
     const isDirect = item.type === 'direct';
-    const isAI = item.id === AI_AGENT.id;
+    // AI assistant removed - always treat chats as normal
+    const isAI = false;
 
     // For direct chats, check online status and get participant info
     let isOnline = false;
@@ -446,26 +457,26 @@ const ChatListScreen: React.FC = () => {
       }
     }
 
-    if (isAI) {
-      isOnline = true;
-      participantUser = {
-        id: AI_AGENT.id,
-        username: AI_AGENT.name,
-        handle: 'ai-assistant',
-        avatar: null, // Special handling for AI
-        verified: true,
-      };
-    }
+    // if (isAI) {
+    //   isOnline = true;
+    //   participantUser = {
+    //     id: AI_AGENT.id,
+    //     username: AI_AGENT.name,
+    //     handle: 'ai-assistant',
+    //     avatar: null, // Special handling for AI
+    //     verified: true,
+    //   };
+    // }
 
-    if (!participantUser && !isDirect && !isAI) {
-      participantUser = {
-        id: item.id,
-        username: item.name,
-        handle: 'group-chat',
-        avatar: item.avatar || null, // Don't provide fallback - let AutoAvatar handle it
-        verified: false,
-      };
-    }
+    // if (!participantUser && !isDirect && !isAI) {
+    //   participantUser = {
+    //     id: item.id,
+    //     username: item.name,
+    //     handle: 'group-chat',
+    //     avatar: item.avatar || null, // Don't provide fallback - let AutoAvatar handle it
+    //     verified: false,
+    //   };
+    // }
 
     const displayUser = participantUser || {
       id: item.id,
@@ -497,7 +508,7 @@ const ChatListScreen: React.FC = () => {
               showInitials={true}
             />
           )}
-          {!isDirect && !isAI ? (
+          {!isDirect ? (
             <View style={styles.groupIndicator}>
               <Icons.ProfilePlusIcon width={12} height={12} color={COLORS.white} />
             </View>
@@ -510,17 +521,15 @@ const ChatListScreen: React.FC = () => {
           <View style={styles.chatNameRow}>
             <View style={styles.nameContainer}>
               <Text style={styles.chatName}>{item.name}</Text>
-              {item.id === 'global' ? (
+              {item.type !== 'direct' ? (
                 <Text style={styles.memberCount}>
-                  {item.memberCount} members
+                  {formatCompactNumber(
+                    Number(item.memberCount ?? item.participants?.length ?? 0),
+                  )}{' '}
+                  members online
                 </Text>
-              ) : item.type !== 'direct' && item.id !== AI_AGENT.id && (
-                <Text style={styles.memberCount}>
-                  {item.participants ? `${item.participants.length} members` : 'Group chat'}
-                </Text>
-              )}
+              ) : null}
             </View>
-            <Text style={styles.chatTime}>{item.time}</Text>
           </View>
           <View style={styles.lastMessageRow}>
             <Text
@@ -530,7 +539,9 @@ const ChatListScreen: React.FC = () => {
               ]}
               numberOfLines={1}
             >
-              {item.lastMessage?.content || 'No messages yet'}
+              {item.type !== 'direct'
+                ? 'Join the conversation'
+                : item.lastMessage?.content || 'No messages yet'}
             </Text>
             {item.unreadCount > 0 && (
               <View style={styles.unreadBadge}>
@@ -546,100 +557,93 @@ const ChatListScreen: React.FC = () => {
   return (
     <>
       {Platform.OS === 'android' && <View style={androidStyles.statusBarPlaceholder} />}
-      <SafeAreaView style={styles.safeArea}>
-        <View style={[
-          styles.container,
-          { paddingBottom: Math.max(insets.bottom, 65) } // Account for bottom tab bar
-        ]}>
-          <StatusBar style="light" />
+      <LinearGradient
+        colors={COLORS.backgroundGradient as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{ flex: 1 }}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={[
+            styles.container,
+            { paddingBottom: Math.max(insets.bottom, 65) } // Account for bottom tab bar
+          ]}>
+            <StatusBar style="light" />
 
-          {/* Replace custom header with AppHeader component */}
-          <AppHeader
-            title="Messages"
-            showBackButton={false}
-          />
-
-          {/* Search bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <Icons.searchIcon width={16} height={16} color={COLORS.lightGrey} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search users or messages"
-                placeholderTextColor={COLORS.lightGrey}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                keyboardAppearance="dark"
-              />
-              {searchQuery ? (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
-                  style={styles.clearButton}
-                >
-                  <Icons.cross width={14} height={14} color={COLORS.lightGrey} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-
-          {/* Chat list */}
-          {loadingChats ? (
-            <FlatList
-              data={[1, 2, 3, 4, 5, 6, 7, 8]} // User's current number of skeletons
-              keyExtractor={(item) => item.toString()}
-              renderItem={() => <ChatListItemSkeleton />}
-              contentContainerStyle={styles.chatListContainer}
-              showsVerticalScrollIndicator={false}
+            <AppHeader
+              title="Chats"
+              showBackButton={true}
+              showBottomGradient={false}
+              showDefaultRightIcons={false}
             />
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => dispatch(fetchUserChats(userId))}
-              >
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
+
+            {/* Search bar */}
+            <View style={styles.searchContainer}>
+              <View style={styles.searchInputContainer}>
+                <Icons.searchIcon width={16} height={16} color={'rgba(255,255,255,0.55)'} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search"
+                  placeholderTextColor={'rgba(255,255,255,0.45)'}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  keyboardAppearance="dark"
+                />
+                {searchQuery ? (
+                  <TouchableOpacity
+                    onPress={() => setSearchQuery('')}
+                    style={styles.clearButton}
+                  >
+                    <Icons.cross width={14} height={14} color={'rgba(255,255,255,0.55)'} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
-          ) : isContentLoaded ? (
-            <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+
+            {/* Chat list */}
+            {loadingChats ? (
               <FlatList
-                data={filteredChats}
-                renderItem={renderChatItem}
-                keyExtractor={item => `${item.id}-${item.unreadCount || 0}-${item.lastMessage?.created_at || 'none'}`}
-                extraData={onlineUsers} // Re-render when online status changes
+                data={[1, 2, 3, 4, 5, 6, 7, 8]}
+                keyExtractor={(item) => item.toString()}
+                renderItem={() => <ChatListItemSkeleton />}
                 contentContainerStyle={styles.chatListContainer}
                 showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>
-                      {searchQuery ? 'No chats found' : 'No conversations yet'}
-                    </Text>
-                    <Text style={styles.emptySubtext}>
-                      {searchQuery
-                        ? 'Try a different search term'
-                        : 'Start chatting with other users by tapping the button below'}
-                    </Text>
-                  </View>
-                }
               />
-            </Animated.View>
-          ) : null}
+            ) : error ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => dispatch(fetchUserChats(userId))}
+                >
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isContentLoaded ? (
+              <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
+                <FlatList
+                  data={filteredChats}
+                  renderItem={renderChatItem}
+                  keyExtractor={item =>
+                    `${item.id}-${item.unreadCount || 0}-${item.lastMessage?.created_at || 'none'}`
+                  }
+                  extraData={onlineUsers}
+                  contentContainerStyle={styles.chatListContainer}
+                  showsVerticalScrollIndicator={false}
+                  ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                      <Text style={styles.emptyText}>
+                        {searchQuery ? 'No chats found' : 'No chats yet'}
+                      </Text>
+                    </View>
+                  }
+                />
+              </Animated.View>
+            ) : null}
 
-          {/* Floating action button to start new chat - adjusted for bottom bar */}
-          <TouchableOpacity
-            style={[
-              styles.fab,
-              { bottom: Math.max(24, insets.bottom + 16) },
-              Platform.OS === 'android' && androidStyles.fabAdjusted
-            ]}
-            onPress={handleNewChat}
-            activeOpacity={0.8}
-          >
-            <Icons.MessageIcon width={24} height={24} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     </>
   );
 };

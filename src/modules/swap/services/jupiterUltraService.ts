@@ -3,6 +3,7 @@ import { Buffer } from 'buffer';
 import { ENDPOINTS } from '@/shared/config/constants';
 import { TokenInfo } from '@/modules/data-module';
 import { TransactionService } from '@/modules/wallet-providers/services/transaction/transactionService';
+import { SERVER_URL } from '@env';
 
 // Define interfaces for Jupiter Ultra API responses
 export interface JupiterUltraOrderResponse {
@@ -94,7 +95,7 @@ export interface SwapCallback {
  * - Request for token balances of an account
  */
 export class JupiterUltraService {
-  
+
   /**
    * Gets a swap order from Jupiter Ultra API via our server
    */
@@ -104,12 +105,13 @@ export class JupiterUltraService {
     amount: string | number,
     taker?: string
   ): Promise<JupiterUltraOrderResponse> {
-    try {
+    try { 
+      console.log("******************taker*********************", taker);
       console.log('[JupiterUltraService] 🚀 Getting Ultra swap order');
       console.log(`[JupiterUltraService] Input: ${inputMint} -> Output: ${outputMint}, Amount: ${amount}`);
-      
+
       const ultraOrderUrl = `${ENDPOINTS.serverBase}/api/jupiter/ultra/order`;
-      
+
       const requestBody = {
         inputMint,
         outputMint,
@@ -133,14 +135,15 @@ export class JupiterUltraService {
           errorData
         });
         throw new Error(
-          `Failed to get Ultra swap order: ${response.statusText}${
-            errorData?.error ? ` - ${errorData.error}` : ''
+          `Failed to get Ultra swap order: ${response.statusText}${errorData?.error ? ` - ${errorData.error}` : ''
           }`
         );
       }
 
       const data = await response.json();
-      
+
+      console.log("json data: ", data);
+
       if (!data.success || !data.data) {
         console.error('[JupiterUltraService] Invalid Ultra order response:', data);
         throw new Error(data.error || 'Invalid response from Ultra API');
@@ -164,9 +167,9 @@ export class JupiterUltraService {
     try {
       console.log('[JupiterUltraService] 🔄 Executing Ultra swap order');
       console.log(`[JupiterUltraService] Request ID: ${requestId}`);
-      
+
       const ultraExecuteUrl = `${ENDPOINTS.serverBase}/api/jupiter/ultra/execute`;
-      
+
       const requestBody = {
         signedTransaction,
         requestId,
@@ -189,14 +192,13 @@ export class JupiterUltraService {
           errorData
         });
         throw new Error(
-          `Failed to execute Ultra swap: ${response.statusText}${
-            errorData?.error ? ` - ${errorData.error}` : ''
+          `Failed to execute Ultra swap: ${response.statusText}${errorData?.error ? ` - ${errorData.error}` : ''
           }`
         );
       }
 
       const data = await response.json();
-      
+
       if (!data.success || !data.data) {
         console.error('[JupiterUltraService] Invalid Ultra execute response:', data);
         throw new Error(data.error || 'Invalid response from Ultra execute API');
@@ -217,9 +219,9 @@ export class JupiterUltraService {
     try {
       console.log('[JupiterUltraService] 💰 Getting wallet balances');
       console.log(`[JupiterUltraService] Wallet: ${walletAddress}`);
-      
+
       const ultraBalancesUrl = `${ENDPOINTS.serverBase}/api/jupiter/ultra/balances?wallet=${walletAddress}`;
-      
+
       const response = await fetch(ultraBalancesUrl);
 
       if (!response.ok) {
@@ -230,14 +232,13 @@ export class JupiterUltraService {
           errorData
         });
         throw new Error(
-          `Failed to get Ultra balances: ${response.statusText}${
-            errorData?.error ? ` - ${errorData.error}` : ''
+          `Failed to get Ultra balances: ${response.statusText}${errorData?.error ? ` - ${errorData.error}` : ''
           }`
         );
       }
 
       const data = await response.json();
-      
+
       if (!data.success || !data.data) {
         console.error('[JupiterUltraService] Invalid Ultra balances response:', data);
         throw new Error(data.error || 'Invalid response from Ultra balances API');
@@ -266,18 +267,18 @@ export class JupiterUltraService {
         console.error('[JupiterUltraService] Invalid tokens for order:', { inputToken, outputToken });
         return null;
       }
-      
+
       // Convert input amount to integer with proper decimal handling
       const inputAmountNum = parseFloat(inputAmount);
       if (isNaN(inputAmountNum) || inputAmountNum <= 0) {
         console.error('[JupiterUltraService] Invalid input amount for order:', inputAmount);
         return null;
       }
-      
+
       // Calculate amount in lamports/base units
       const amountInBaseUnits = inputAmountNum * Math.pow(10, inputToken.decimals);
       console.log(`[JupiterUltraService] Converting ${inputAmountNum} ${inputToken.symbol} to ${amountInBaseUnits} base units`);
-      
+
       return this.getSwapOrder(
         inputToken.address,
         outputToken.address,
@@ -322,6 +323,7 @@ export class JupiterUltraService {
         outputToken.address,
         inputLamports.toString(),
         walletPublicKey.toString()
+        // 'AZxYoq26chaKTzhxN1FaD8FjHKhyEtgnmcHACNsX8JRy'
       );
 
       if (!order || !order.transaction) {
@@ -341,11 +343,113 @@ export class JupiterUltraService {
       if (!signature) {
         throw new Error('Transaction was not signed or failed to send.');
       }
-      
+
       updateStatus('Executing swap on the server...');
 
       // The swap is already executed by the wallet, but we can double-check with the server if needed
       // For now, we'll assume the signature means success and show it to the user.
+      // Decide side
+      // Decide side
+      const isBuy = inputToken.symbol === "SOL";
+
+      // Base values
+      const executedAt = new Date().toISOString();
+      console.log("executedat: ", executedAt);
+      const txHash = signature;
+      console.log("txHash: ", txHash);
+
+
+      // Amounts from Ultra order
+      const inputAmountBase = order.inAmount;   // in base units
+      console.log("inputAmountBase: ", inputAmountBase);
+
+      const outputAmountBase = order.outAmount; // in base units
+      console.log("outputAmountBase: ", outputAmountBase);
+
+      // Convert to human readable
+      const inputAmountUi = JupiterUltraService.fromBaseUnits(
+        inputAmountBase,
+        inputToken.decimals
+      );
+      console.log("inputAmountUi: ", inputAmountUi);
+
+      const outputAmountUi = JupiterUltraService.fromBaseUnits(
+        outputAmountBase,
+        outputToken.decimals
+      );
+      console.log("outputAmountUi: ", outputAmountUi);
+
+      // Quantity = token amount user receives (buy) or sells (sell)
+      const quantity = isBuy ? outputAmountUi : inputAmountUi;
+      console.log("quantity: ", quantity);
+
+      // Price = SOL spent / token received (BUY)
+      // Price = SOL received / token sold (SELL)
+      const priceUsd = isBuy
+        ? Number(inputAmountUi) / Number(outputAmountUi)
+        : Number(outputAmountUi) / Number(inputAmountUi);
+      console.log("priceUsd: ", priceUsd);
+
+      // Payload shared fields
+      const basePayload = {
+        userPrivyId: walletPublicKey.toString(),
+        txHash,
+        executedAt,
+      };
+      console.log("basePayload: ", basePayload);
+
+
+      try {
+        if (isBuy) {
+          const buy = await fetch(
+            `${ENDPOINTS.serverBase}/api/jupiter/ultra/buy-pnl`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...basePayload,
+                tokenMint: outputToken.address,
+                quantity: Number(quantity),
+                priceUsd,
+              }),
+            }
+          );
+
+          const data = await buy.json();
+          if (!buy.ok) {
+            console.error("❌ BUY API ERROR:", data);
+            return;
+          }
+
+          console.log("✅ BUY STORED:", data);
+        } else {
+          const sell = await fetch(
+            `${ENDPOINTS.serverBase}/api/jupiter/ultra/sell-pnl`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...basePayload,
+                tokenMint: inputToken.address,
+                quantity: Number(quantity),
+                priceUsd,
+              }),
+            }
+          );
+
+          const data = await sell.json();
+          if (!sell.ok) {
+            console.error("❌ SELL API ERROR:", data);
+            return;
+          }
+
+          console.log("✅ SELL STORED:", data);
+        }
+      } catch (err) {
+        console.error("❌ Error sending PnL to backend:", err);
+      }
+
+
 
       updateStatus('Swap successful! Finalizing...');
 

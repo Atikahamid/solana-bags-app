@@ -103,14 +103,15 @@ export const ThreadItem: React.FC<ThreadItemProps> = ({
         />
 
         {/* Twitter style retweet indicator */}
-        {isRetweet && (
+        {/* {isRetweet && (
           <View style={retweetStyles.retweetHeader}>
             <Icons.RetweetIdle width={12} height={12} color={COLORS.greyMid} />
             <Text style={retweetStyles.retweetHeaderText}>
               {post.user.username} Reposted
             </Text>
           </View>
-        )}
+        )} */}
+
 
         {isRetweet ? (
           /* If it's a retweet, handle it differently depending on whether it has content */
@@ -196,14 +197,15 @@ export const ThreadItem: React.FC<ThreadItemProps> = ({
               userStyleSheet={userStyleSheet}
             />
 
-            <PostFooter
+            {/* <PostFooter
               post={post}
               onPressComment={handlePostPress}
               themeOverrides={themeOverrides}
               styleOverrides={styleOverrides}
-            />
+            /> */}
           </TouchableOpacity>
         )}
+
       </View>
 
       {/* Edit modal (hidden by default) */}

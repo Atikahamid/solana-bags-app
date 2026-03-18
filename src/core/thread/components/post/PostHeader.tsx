@@ -194,7 +194,8 @@ export default React.memo(function PostHeader({
             )}
           </TouchableOpacity>
           <Text style={styles.threadItemHandleTime}>
-            {user.handle} • {timeString}
+            {/* {user.handle} • {timeString} */}
+            0.014 SOL at $42.53K market cap
           </Text>
         </View>
       </View>

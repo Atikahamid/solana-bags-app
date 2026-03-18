@@ -8,7 +8,7 @@ type AnimatedTabIconProps = {
   size: number;
   style?: object;
 };
-
+ 
 function AnimatedTabIcon({
   focused,
   icon: IconDefault,

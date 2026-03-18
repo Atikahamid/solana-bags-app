@@ -14,7 +14,7 @@ export default StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily,
     color: COLORS.greyMid,
     marginTop: 4,
-    marginBottom: 4,
+    marginBottom: 1,
   },
   card: {
     flexDirection: 'column',
@@ -27,16 +27,17 @@ export default StyleSheet.create({
     padding: 8,
   },
   imageContainer: {
-    width: 200,
-    height: 200,
+    width: 50,
+    height: 50,
     backgroundColor: COLORS.darkerBackground,
     borderRadius: 8,
     overflow: 'hidden',
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: '50%',
+    height: '50%',
     resizeMode: 'cover',
+    borderRadius: 20,
   },
   placeholder: {
     flex: 1,
