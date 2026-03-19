@@ -2,10 +2,10 @@ import React, {useState, useMemo} from 'react';
 import {View, StyleSheet, Text, Button, Dimensions, TouchableOpacity} from 'react-native';
 import {
   VictoryChart,
-  VictoryLine,
-  VictoryAxis,
+  Line,
+  // VictoryAxis,
   VictoryScatter,
-  VictoryLabel,
+  // VictoryLabel,
 } from 'victory-native';
 
 export type OhlcPoint = {
@@ -122,7 +122,7 @@ const LineGraph: React.FC<LineGraphProps> = ({ohlcData = []}) => {
         /> */}
 
         {/* MAIN PRICE LINE */}
-        <VictoryLine
+        <Line
           data={chartData}
           interpolation="monotoneX"
           style={{
@@ -134,7 +134,7 @@ const LineGraph: React.FC<LineGraphProps> = ({ohlcData = []}) => {
         />
 
         {/* LAST PRICE HORIZONTAL DOTTED LINE */}
-        <VictoryLine
+        <Line
           data={[
             {x: chartData[0].x, y: lastPoint.y},
             {x: lastPoint.x, y: lastPoint.y},

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 // import { Video } from 'expo-av';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,7 @@ type VideoDetail = {
   title: string | null;
   description: string | null;
   views_count: number;
+  thumbnail_url: string | null;
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -186,6 +188,12 @@ export default function VideoDetailScreen() {
         shouldPlay={isFocused}
       useNativeControls
       /> */}
+
+      <Image
+        source={{ uri: video.thumbnail_url }}
+        style={styles.videoPlayer}
+        resizeMode="cover"
+      />
 
       <View style={[styles.topInfo]}>
         <View style={styles.topTitleRow}>

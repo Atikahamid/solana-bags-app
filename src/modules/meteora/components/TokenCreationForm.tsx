@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Icons from '@/assets/svgs';
 import { IPFSAwareImage } from '@/shared/utils/IPFSImage';
-
+import { Video } from 'react-native-compressor';
 import * as ImagePicker from 'expo-image-picker';
 // import * as VideoThumbnails from 'expo-video-thumbnails';
 import COLORS from '@/assets/colors';
@@ -40,7 +40,8 @@ import BondingCurveVisualizer from './BondingCurveVisualizer';
 import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
 import { useWallet } from '@/modules/wallet-providers/hooks/useWallet';
 import BN from 'bn.js';
-import { HELIUS_STAKED_URL } from '@env';
+import { HELIUS_STAKED_URL, SERVER_URL } from '@env';
+import axios from 'axios';
 
 interface TokenCreationFormProps {
   walletAddress: string;
@@ -250,6 +251,12 @@ export default function TokenCreationForm({
     return true;
   };
 
+  const compressVideo = async (uri: string) => {
+    return await Video.compress(uri, {
+      compressionMethod: 'auto',
+    });
+  };
+
   const validateStep2 = () => {
     const initMarketCap = Number(initialMarketCap);
     if (isNaN(initMarketCap) || initMarketCap <= 0) {
@@ -316,13 +323,13 @@ export default function TokenCreationForm({
       setStatusMessage('Uploading token metadata...');
       let uri = metadataUri;
 
-      if (!uri) {
-        uri = await uploadMetadata();
-      }
+      // if (!uri) {
+      //   uri = await uploadMetadata();
+      // }
 
-      if (!uri) {
-        throw new Error('Failed to get metadata URI');
-      }
+      // if (!uri) {
+      //   throw new Error('Failed to get metadata URI');
+      // }
 
       // Step 2: Create token with curve
       setStatusMessage('Creating token with bonding curve...');
@@ -561,28 +568,38 @@ export default function TokenCreationForm({
   // Function to upload video to server
   const uploadVideoToServer = async (tokenMint: string) => {
     if (!videoFile) return;
-
+    console.log("uploading video started");
     try {
       setIsUploadingVideo(true);
+      if(!videoUri) {
+        throw new Error('No video selected');
+      }
 
+      const compressedUri = await compressVideo(videoUri);
       const formData = new FormData();
       formData.append('video', {
-        uri: videoUri,
+        uri: compressedUri,
         type: videoFile.type || 'video/mp4',
         name: videoFile.fileName || `video_${Date.now()}.mp4`,
       } as any);
       formData.append('tokenMint', tokenMint);
       formData.append('userId', walletAddress); // Using wallet address as user ID
-
-      const response = await fetch(`${process.env.SERVER_URL || 'http://localhost:3000'}/api/videos/upload`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      const result = await response.json();
+      console.log("form data: ", formData);
+      // const response = await fetch(`${SERVER_URL || 'http://192.168.1.148:8080'}/api/videos/upload`, {
+      //   method: 'POST',
+      //   body: formData,
+      // });
+      const response = await axios.post(
+        `${SERVER_URL}/api/videos/upload`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      console.log('Video upload response status:', response);
+      const result = await response.data;
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to upload video');
@@ -787,7 +804,7 @@ export default function TokenCreationForm({
               {videoUri && videoThumbnail ? (
                 <View style={styles.videoPreviewContainer}>
                   <Image
-                    source={{uri: videoThumbnail}}
+                    source={{ uri: videoThumbnail }}
                     style={styles.videoThumbnailPreview}
                   />
                   <View style={styles.videoPlayOverlay}>

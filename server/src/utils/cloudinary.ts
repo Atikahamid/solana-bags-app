@@ -27,39 +27,65 @@ function bufferToStream(buffer: Buffer): Readable {
   return stream;
 }
 
+// /**
+//  * Uploads a video buffer to Cloudinary and returns the hosted video URL.
+//  *
+//  * @param buffer - Raw file contents
+//  * @param publicId - Desired public ID (name) for the uploaded asset
+//  * @param folder - Optional folder path inside Cloudinary (e.g., "videos/")
+//  */
+// export async function uploadFileToCloudinary(
+//   buffer: Buffer,
+//   publicId: string,
+//   folder?: string,
+// ): Promise<string> {
+//   return new Promise<string>((resolve, reject) => {
+//     const uploadStream = cloudinary.v2.uploader.upload_stream(
+//       {
+//         resource_type: 'video',
+//         public_id: publicId,
+//         folder,
+//         overwrite: true,
+//       },
+//       (error, result) => {
+//         if (error) {
+//           return reject(error);
+//         }
+
+//         if (!result || !result.secure_url) {
+//           return reject(new Error('Cloudinary upload returned missing URL'));
+//         }
+
+//         resolve(result.secure_url);
+//       },
+//     );
+
+//     bufferToStream(buffer).pipe(uploadStream);
+//   });
+// }
+
 /**
- * Uploads a video buffer to Cloudinary and returns the hosted video URL.
+ * Uploads a video file from disk to Cloudinary
  *
- * @param buffer - Raw file contents
- * @param publicId - Desired public ID (name) for the uploaded asset
- * @param folder - Optional folder path inside Cloudinary (e.g., "videos/")
+ * @param filePath - Local file path
+ * @param publicId - Desired public ID
+ * @param folder - Optional folder
  */
 export async function uploadFileToCloudinary(
-  buffer: Buffer,
+  filePath: string,
   publicId: string,
   folder?: string,
 ): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const uploadStream = cloudinary.v2.uploader.upload_stream(
-      {
-        resource_type: 'video',
-        public_id: publicId,
-        folder,
-        overwrite: true,
-      },
-      (error, result) => {
-        if (error) {
-          return reject(error);
-        }
-
-        if (!result || !result.secure_url) {
-          return reject(new Error('Cloudinary upload returned missing URL'));
-        }
-
-        resolve(result.secure_url);
-      },
-    );
-
-    bufferToStream(buffer).pipe(uploadStream);
+  const result = await cloudinary.v2.uploader.upload(filePath, {
+    resource_type: 'video',
+    public_id: publicId,
+    folder,
+    overwrite: true,
   });
+
+  if (!result.secure_url) {
+    throw new Error('Cloudinary upload failed');
+  }
+
+  return result.secure_url;
 }

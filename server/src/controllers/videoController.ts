@@ -5,6 +5,7 @@ import { uploadFileToCloudinary } from '../utils/cloudinary';
 import { uploadToIpfs } from '../utils/ipfs';
 import knex from '../db/knex';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
 
 interface VideoUploadRequest {
   tokenMint: string;
@@ -18,12 +19,98 @@ interface VideoInteractionRequest {
 }
 
 // Upload video for a token
+// export async function uploadVideo(req: Request, res: Response): Promise<void> {
+//   try {
+//     const { tokenMint, title, description, userId } = req.body as VideoUploadRequest & { userId: string };
+//     const userPrivyId = userId;
+
+//     if (!userPrivyId) {
+//       res.status(401).json({ success: false, error: 'Unauthorized - missing userId' });
+//       return;
+//     }
+
+//     if (!tokenMint) {
+//       res.status(400).json({ success: false, error: 'Token mint is required' });
+//       return;
+//     }
+
+//     if (!req.file) {
+//       res.status(400).json({ success: false, error: 'Video file is required' });
+//       return;
+//     }
+
+//     // Check if token exists
+//     const token = await knex('tokens').where('mint_address', tokenMint).first();
+//     if (!token) {
+//       res.status(404).json({ success: false, error: 'Token not found' });
+//       return;
+//     }
+
+//     // Generate unique filename
+//     const videoId = uuidv4();
+//     const fileExtension = req.file.originalname.split('.').pop() || 'mp4';
+//     const videoFileName = `videos/${videoId}.${fileExtension}`;
+
+//     // Upload video to Cloudinary
+//     // Use a folder path to keep uploads organized
+//     const cloudinaryPublicId = `token_videos/${videoId}`;
+//     const videoUrl = await uploadFileToCloudinary(
+//       req.file.buffer,
+//       cloudinaryPublicId,
+//       'token_videos',
+//     );
+//     // const thumbnailUrl = videoUrl.replace(
+//     //   '/upload/',
+//     //   '/upload/so_1,f_jpg/' 
+//     // );
+
+//     const thumbnailUrl = videoUrl.replace(
+//       '/upload/',
+//       '/upload/so_1,f_jpg,w_400,h_600,c_fill/'
+//     );
+//     // Create video record
+//     const videoData = {
+//       id: videoId,
+//       token_mint: tokenMint,
+//       user_privy_id: userPrivyId,
+//       video_url: videoUrl,
+//       thumbnail_url: thumbnailUrl, // ✅ ADD THIS LINE
+//       title: title || null,
+//       description: description || null,
+//       metadata: JSON.stringify({
+//         originalName: req.file.originalname,
+//         size: req.file.size,
+//         mimeType: req.file.mimetype,
+//       }),
+//     };
+
+//     await knex('videos').insert(videoData);
+
+//     // Update token with video URL
+//     await knex('tokens')
+//       .where('mint_address', tokenMint)
+//       .update({ video_url: videoUrl });
+
+//     res.json({
+//       success: true,
+//       video: videoData,
+//     });
+//   } catch (err: any) {
+//     console.error('[uploadVideo] Error:', err);
+//     res.status(500).json({
+//       success: false,
+//       error: err?.message || 'Unknown error uploading video.',
+//     });
+//   }
+// }
+
 export async function uploadVideo(req: Request, res: Response): Promise<void> {
   try {
-    const { tokenMint, title, description, userId } = req.body as VideoUploadRequest & { userId: string };
-    const userPrivyId = userId;
+    console.log("vedio upload started00");
+    const { tokenMint, title, description, userId } =
+      req.body as VideoUploadRequest & { userId: string };
 
-    if (!userPrivyId) {
+    if (!userId) {
       res.status(401).json({ success: false, error: 'Unauthorized - missing userId' });
       return;
     }
@@ -38,42 +125,42 @@ export async function uploadVideo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Check if token exists
-    const token = await knex('tokens').where('mint_address', tokenMint).first();
+    const token = await knex('tokens')
+      .where('mint_address', tokenMint)
+      .first();
+
     if (!token) {
       res.status(404).json({ success: false, error: 'Token not found' });
       return;
     }
 
-    // Generate unique filename
     const videoId = uuidv4();
-    const fileExtension = req.file.originalname.split('.').pop() || 'mp4';
-    const videoFileName = `videos/${videoId}.${fileExtension}`;
-
-    // Upload video to Cloudinary
-    // Use a folder path to keep uploads organized
+    const filePath = req.file.path; // ✅ use file path
     const cloudinaryPublicId = `token_videos/${videoId}`;
+    console.log("vedio upload filepath", filePath);
+    console.log("vedio upload cloudinaryPublicId", cloudinaryPublicId);
+    
+    // ✅ upload using file path (stream)
     const videoUrl = await uploadFileToCloudinary(
-      req.file.buffer,
+      filePath,
       cloudinaryPublicId,
-      'token_videos',
+      'token_videos'
     );
-    // const thumbnailUrl = videoUrl.replace(
-    //   '/upload/',
-    //   '/upload/so_1,f_jpg/' 
-    // );
+    console.log("vedio upload videoUrl", videoUrl);
+    // ✅ delete local file after upload
+    fs.unlinkSync(filePath);
 
     const thumbnailUrl = videoUrl.replace(
       '/upload/',
       '/upload/so_1,f_jpg,w_400,h_600,c_fill/'
     );
-    // Create video record
+
     const videoData = {
       id: videoId,
       token_mint: tokenMint,
-      user_privy_id: userPrivyId,
+      user_privy_id: userId,
       video_url: videoUrl,
-      thumbnail_url: thumbnailUrl, // ✅ ADD THIS LINE
+      thumbnail_url: thumbnailUrl,
       title: title || null,
       description: description || null,
       metadata: JSON.stringify({
@@ -85,7 +172,6 @@ export async function uploadVideo(req: Request, res: Response): Promise<void> {
 
     await knex('videos').insert(videoData);
 
-    // Update token with video URL
     await knex('tokens')
       .where('mint_address', tokenMint)
       .update({ video_url: videoUrl });
@@ -94,6 +180,7 @@ export async function uploadVideo(req: Request, res: Response): Promise<void> {
       success: true,
       video: videoData,
     });
+    console.log("vedio upload completed");
   } catch (err: any) {
     console.error('[uploadVideo] Error:', err);
     res.status(500).json({

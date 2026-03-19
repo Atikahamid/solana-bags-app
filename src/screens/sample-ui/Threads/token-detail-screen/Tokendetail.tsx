@@ -183,7 +183,7 @@ const TokenDetailScreen: React.FC = () => {
                     </View> */}
 
           {/* Chart Component */}
-          <Chart mintAddress={token.mint} />
+          {/* <Chart mintAddress={token.mint} /> */}
           {/* Tabs */}
           <View style={styles.tabsContainer}>
             <TouchableOpacity
@@ -272,7 +272,7 @@ const TokenDetailScreen: React.FC = () => {
                       <View style={styles.videoCardOverlay}>
                         {index === 0 ? (
                           <View style={styles.pinnedBadge}>
-                            <Text style={styles.pinnedText}>Pinned</Text>
+                            {/* <Text style={styles.pinnedText}>Pinned</Text> */}
                           </View>
                         ) : null}
                         <View style={styles.videoMetaRow}>
@@ -465,14 +465,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   videoCard: {
-    width: '48%',
-    borderRadius: 14,
+    width: '40%',
+    height: 200,
+    borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 12,
     backgroundColor: '#161a22',
   },
   videoCardImage: {
     width: '100%',
+    height: '100%',
     aspectRatio: 1,
   },
   videoCardOverlay: {
@@ -485,7 +487,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   pinnedBadge: {
-    backgroundColor: 'rgba(255, 0, 255, 0.9)',
+    // backgroundColor: 'rgba(255, 0, 255, 0.9)',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -500,7 +502,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    // backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
