@@ -18,7 +18,9 @@ import Icons from '@/assets/svgs';
 import { IPFSAwareImage } from '@/shared/utils/IPFSImage';
 import { Video } from 'react-native-compressor';
 import * as ImagePicker from 'expo-image-picker';
-// import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+// import { generateThumbnailsAsync } from 'expo-video';
+
 import COLORS from '@/assets/colors';
 import TYPOGRAPHY from '@/assets/typography';
 import {
@@ -42,6 +44,9 @@ import { useWallet } from '@/modules/wallet-providers/hooks/useWallet';
 import BN from 'bn.js';
 import { HELIUS_STAKED_URL, SERVER_URL } from '@env';
 import axios from 'axios';
+import { useAuth } from '@/modules/wallet-providers';
+
+// import { Video } from 'expo-av';
 
 interface TokenCreationFormProps {
   walletAddress: string;
@@ -135,7 +140,9 @@ export default function TokenCreationForm({
   const [isUploadingMetadata, setIsUploadingMetadata] = useState(false);
   const [showSocials, setShowSocials] = useState(false);
   const [feeSharing, setFeeSharing] = useState(false);
-
+  const { user } = useAuth();
+  const privyId = user?.id;
+  console.log("privy id: ", privyId);
   // Video upload handling
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<any>(null);
@@ -488,7 +495,7 @@ export default function TokenCreationForm({
         setVideoUri(asset.uri);
         setVideoFile(asset);
         // Generate thumbnail for the video
-        // await generateVideoThumbnail(asset.uri);
+        await generateVideoThumbnail(asset.uri);
       }
     } catch (error) {
       console.error('Error picking video:', error);
@@ -497,20 +504,20 @@ export default function TokenCreationForm({
   };
 
   // Function to generate video thumbnail
-  // const generateVideoThumbnail = async (uri: string) => {
-  //   try {
-  //     const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
-  //       uri,
-  //       {
-  //         time: 0, // Get thumbnail from the start of the video
-  //       },
-  //     );
-  //     setVideoThumbnail(thumbnailUri);
-  //   } catch (error) {
-  //     console.error('Error generating video thumbnail:', error);
-  //     // If thumbnail generation fails, it's not critical - video can still be used
-  //   }
-  // };
+  const generateVideoThumbnail = async (uri: string) => {
+    try {
+      const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(
+        uri,
+        {
+          time: 0, // Get thumbnail from the start of the video
+        },
+      );
+      setVideoThumbnail(thumbnailUri);
+    } catch (error) {
+      console.error('Error generating video thumbnail:', error);
+      // If thumbnail generation fails, it's not critical - video can still be used
+    }
+  };
 
   // Function to remove selected video
   const removeVideo = () => {
@@ -571,7 +578,7 @@ export default function TokenCreationForm({
     console.log("uploading video started");
     try {
       setIsUploadingVideo(true);
-      if(!videoUri) {
+      if (!videoUri) {
         throw new Error('No video selected');
       }
 
@@ -583,7 +590,7 @@ export default function TokenCreationForm({
         name: videoFile.fileName || `video_${Date.now()}.mp4`,
       } as any);
       formData.append('tokenMint', tokenMint);
-      formData.append('userId', walletAddress); // Using wallet address as user ID
+      formData.append('userId', privyId ? privyId : ''); // Using wallet address as user ID
       console.log("form data: ", formData);
       // const response = await fetch(`${SERVER_URL || 'http://192.168.1.148:8080'}/api/videos/upload`, {
       //   method: 'POST',
@@ -820,6 +827,7 @@ export default function TokenCreationForm({
                   <Text style={styles.videoPlaceholderText}>Add Video</Text>
                 </View>
               )}
+              
             </TouchableOpacity>
           </View>
           <Text style={styles.helperText}>Max 60 seconds, MP4 format recommended</Text>
